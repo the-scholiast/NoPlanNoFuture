@@ -1,0 +1,2 @@
+# NoPlanNoFuture
+Stop being lazy!
