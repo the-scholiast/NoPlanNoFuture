@@ -1,4 +1,3 @@
-// client/src/app/page.js or page.tsx
 'use client'
 import { useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
