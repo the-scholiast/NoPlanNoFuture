@@ -1,19 +1,14 @@
 'use client'
-import { useEffect } from 'react'
-import { supabase } from '@/lib/supabaseClient'
+import { useState } from "react";
+import YearPicker from "@/components/year";
+export default function Page() {
+  const [year, setYear] = useState(new Date().getFullYear());
 
-export default function HomePage() {
-  useEffect(() => {
-    const testConnection = async () => {
-      const { data, error } = await supabase.from('users').select('*')
-      if (error) {
-        console.error('❌ Supabase error:', error)
-      } else {
-        console.log('✅ Supabase connected. Users:', data)
-      }
-    }
-    testConnection()
-  }, [])
-
-  return <main>Check console for Supabase test</main>
+  return (
+    <div>
+      <label htmlFor="year" className="block mb-1 font-medium">Select Year</label>
+      <YearPicker value={year} onChange={setYear} />
+      <p className="mt-2">Selected year: {year}</p>
+    </div>
+  );
 }
