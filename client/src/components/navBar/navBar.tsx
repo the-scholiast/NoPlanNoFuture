@@ -68,14 +68,14 @@ export function NavSidebar() {
   return (
     <Sidebar>
       {/* Replace with app icon */}
-      <SidebarHeader className="text-[25px] font-semibold mx-2">No Plan No Future</SidebarHeader>
+      <SidebarHeader className="text-2xl font-semibold mx-2">No Plan No Future</SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild size="lg" className="text-base">
+                  <SidebarMenuButton asChild size="lg" className="text-lg">
                     <Link href={item.url}>
                       <span>{item.title}</span>
                     </Link>
