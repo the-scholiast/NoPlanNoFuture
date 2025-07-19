@@ -10,6 +10,7 @@ import {
   SidebarFooter,
   SidebarHeader
 } from "@/components/ui/sidebar"
+import Link from "next/link";
 
 interface MenuItem {
   title: string;
@@ -20,27 +21,27 @@ interface MenuItem {
 const items: MenuItem[] = [
   {
     title: "Home",
-    url: "#",
+    url: "/",
   },
   {
     title: "Calendar",
-    url: "#",
+    url: "/calendar",
   },
   {
     title: "Planner",
-    url: "#",
+    url: "/calendar/planner",
   },
   {
     title: "Gym",
-    url: "#",
+    url: "/gym",
   },
   {
     title: "To Do",
-    url: "#",
+    url: "/todo",
   },
   {
     title: "Stats",
-    url: "#",
+    url: "/stats",
   },
 ]
 
@@ -56,10 +57,9 @@ export function NavSidebar() {
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    {/* use Link component */}
-                    <a href={item.url}>
+                    <Link href={item.url}>
                       <span>{item.title}</span>
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -68,7 +68,7 @@ export function NavSidebar() {
         </SidebarGroup>
       </SidebarContent>
       {/* Connect to logout function */}
-      <SidebarFooter>Logout</SidebarFooter>
+      <SidebarFooter>Login</SidebarFooter>
     </Sidebar>
   )
 }

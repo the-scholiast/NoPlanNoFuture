@@ -1,6 +1,6 @@
 'use client'
 
-import GoogleAuthButton from '@/components/GoogleAuthButton'
+import GoogleAuthButton from '@/components/login/GoogleAuthButton'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
