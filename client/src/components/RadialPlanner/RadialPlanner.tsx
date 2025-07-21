@@ -7,37 +7,108 @@ interface Task {
     end: number;
     remarks: string;
     hourGroup: 'AM' | 'PM';
-    displayRing?: 'inner' | 'outer'; // For cross-period tasks
+    displayRing?: 'inner' | 'outer';
 }
 
 const RadialPlanner: React.FC = () => {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [formVisible, setFormVisible] = useState<boolean>(false);
-    const [newTask, setNewTask] = useState<Task>({ title: '', start: 0, end: 1, remarks: '', hourGroup: 'AM', displayRing: 'outer' });
-    const [startHour, setStartHour] = useState<number>(12);
-    const [startMinute, setStartMinute] = useState<number>(0);
-    const [endHour, setEndHour] = useState<number>(1);
-    const [endMinute, setEndMinute] = useState<number>(0);
+    const [newTask, setNewTask] = useState<Task>({ title: '', start: 0, end: 1, remarks: '', hourGroup: 'AM' });
+    const [startTime, setStartTime] = useState<string>("12:00");
+    const [endTime, setEndTime] = useState<string>("1:00");
+    const [timeError, setTimeError] = useState<string>("");
 
-    const addTask = () => {
-        const taskToAdd = {
-            ...newTask,
-            start: startHour === 12 ? 0 + startMinute / 60 : startHour + startMinute / 60,
-            end: endHour === 12 ? 0 + endMinute / 60 : endHour + endMinute / 60
-        };
+    const validateTimeString = (timeStr: string): boolean => {
+        // Allow single digit hours (1-12) and proper HH:MM format
+        const timeRegex = /^(1[0-2]|[1-9])(:([0-5][0-9]))?$/;
+        return timeRegex.test(timeStr);
+    };
 
-        // Check if it's a cross-period task
-        const isCrossPeriod = taskToAdd.start > taskToAdd.end && taskToAdd.hourGroup === 'AM';
-        if (!isCrossPeriod) {
-            taskToAdd.displayRing = undefined; // Reset for non-cross-period tasks
+    const parseTimeString = (timeStr: string): number => {
+        if (!validateTimeString(timeStr)) {
+            return 0;
         }
 
+        // Handle cases like "2" -> "2:00"
+        const parts = timeStr.includes(':') ? timeStr.split(':') : [timeStr, '0'];
+        const [hourStr, minuteStr] = parts;
+        const hour = parseInt(hourStr);
+        const minute = parseInt(minuteStr) || 0;
+        return (hour === 12 ? 0 : hour) + minute / 60;
+    };
+
+    const validateTimes = (): boolean => {
+        setTimeError("");
+
+        if (!validateTimeString(startTime)) {
+            setTimeError("Start time must be 1-12 (e.g., 9 or 9:30)");
+            return false;
+        }
+
+        if (!validateTimeString(endTime)) {
+            setTimeError("End time must be 1-12 (e.g., 10 or 10:30)");
+            return false;
+        }
+
+        const start = parseTimeString(startTime);
+        const end = parseTimeString(endTime);
+
+        if (newTask.hourGroup === 'PM' && end <= start) {
+            setTimeError("End time must be after start time for PM tasks");
+            return false;
+        }
+
+        // For AM tasks, allow cross-period (e.g., 11 AM to 1 PM)
+        return true;
+    };
+
+    const formatTimeInput = (input: string): string => {
+        // Remove all non-digits and colons
+        const cleaned = input.replace(/[^\d:]/g, '');
+
+        // If it's just digits, handle auto-formatting
+        if (!/[:]/g.test(cleaned)) {
+            const digits = cleaned.replace(/\D/g, '');
+
+            if (digits.length === 0) return '';
+            if (digits.length === 1) return digits;
+            if (digits.length === 2) {
+                const hour = parseInt(digits);
+                // If it's a valid hour (1-12), auto-add :00
+                if (hour >= 1 && hour <= 12) {
+                    return digits + ':00';
+                }
+                return digits;
+            }
+            if (digits.length === 3) return `${digits[0]}:${digits.slice(1)}`;
+            if (digits.length >= 4) return `${digits.slice(0, -2)}:${digits.slice(-2)}`;
+        }
+
+        return cleaned;
+    };
+
+    const handleTimeInput = (value: string, setter: (val: string) => void) => {
+        const formatted = formatTimeInput(value);
+        setter(formatted);
+        setTimeError("");
+    };
+
+    const addTask = () => {
+        if (!validateTimes() || !newTask.title.trim()) {
+            return;
+        }
+
+        const taskToAdd = {
+            ...newTask,
+            start: parseTimeString(startTime),
+            end: parseTimeString(endTime)
+        };
+
         setTasks([...tasks, taskToAdd]);
-        setNewTask({ title: '', start: 0, end: 1, remarks: '', hourGroup: 'AM', displayRing: 'outer' });
-        setStartHour(12);
-        setStartMinute(0);
-        setEndHour(1);
-        setEndMinute(0);
+        setNewTask({ title: '', start: 0, end: 1, remarks: '', hourGroup: 'AM' });
+        setStartTime("12:00");
+        setEndTime("1:00");
+        setTimeError("");
         setFormVisible(false);
     };
 
@@ -45,43 +116,64 @@ const RadialPlanner: React.FC = () => {
     const innerRadius = 60;
     const center = 200;
 
-    // Get color based on time of day
     const getTimeColor = (hour: number, isAM: boolean) => {
         let actualHour = hour;
         if (!isAM) actualHour += 12;
         if (actualHour === 24) actualHour = 0;
 
         if (actualHour >= 5 && actualHour < 7) {
-            // Dawn - orange/pink
             return '#ff7b7b';
         } else if (actualHour >= 7 && actualHour < 11) {
-            // Morning - light blue/yellow
             return '#87ceeb';
         } else if (actualHour >= 11 && actualHour < 17) {
-            // Day - bright blue/yellow
             return '#ffd700';
         } else if (actualHour >= 17 && actualHour < 20) {
-            // Evening - orange/red
             return '#ff8c42';
         } else {
-            // Night - dark blue/purple
             return '#2e2e5f';
         }
+    };
+
+    const getOptimalTextPosition = (startAngle: number, endAngle: number, radius: number, isInnerRing: boolean) => {
+        let midAngle = (startAngle + endAngle) / 2;
+
+        // For tasks that cross the 11-1 position (around -π/2 to π/2), adjust text position
+        const span = Math.abs(endAngle - startAngle);
+
+        // If the task spans across the top (12 o'clock position), move text away from center
+        if (span > Math.PI) {
+            // For large spans, place text at the bottom of the arc
+            midAngle = midAngle + Math.PI;
+        } else if (midAngle > -Math.PI / 3 && midAngle < Math.PI / 3) {
+            // For tasks near 12 o'clock, move text slightly outward
+            const textRadius = isInnerRing ? radius * 0.7 : (radius + innerRadius) / 2 + 10;
+            return {
+                x: center + textRadius * Math.cos(midAngle),
+                y: center + textRadius * Math.sin(midAngle),
+                angle: midAngle
+            };
+        }
+
+        const textRadius = isInnerRing ? radius * 0.5 : (radius + innerRadius) / 2;
+        return {
+            x: center + textRadius * Math.cos(midAngle),
+            y: center + textRadius * Math.sin(midAngle),
+            angle: midAngle
+        };
     };
 
     const renderCrossPeriodTask = (task: Task, index: number) => {
         const offset = -Math.PI / 2;
         const originalIndex = tasks.findIndex(t => t === task);
 
-        // Split the task into AM and PM portions
         const amPortion = {
             start: task.start,
-            end: 12, // End at 12:00 (which is 0 in our system, but represents 12:00)
+            end: 12,
             ring: 'outer'
         };
 
         const pmPortion = {
-            start: 0, // Start at 12:00 (which is 0 in our system)
+            start: 0,
             end: task.end,
             ring: 'inner'
         };
@@ -111,10 +203,8 @@ const RadialPlanner: React.FC = () => {
 
             let pathData;
             if (isInnerRing) {
-                // Inner ring: full pie slice from center
                 pathData = `M${x1},${y1} L${x2},${y2} A${radius},${radius} 0 ${largeArc} 1 ${x3},${y3} Z`;
             } else {
-                // Outer ring: arc (ring shape)
                 const innerX2 = center + innerRadius * Math.cos(startAngle);
                 const innerY2 = center + innerRadius * Math.sin(startAngle);
                 const innerX3 = center + innerRadius * Math.cos(endAngle);
@@ -123,11 +213,7 @@ const RadialPlanner: React.FC = () => {
                 pathData = `M${x2},${y2} A${radius},${radius} 0 ${largeArc} 1 ${x3},${y3} L${innerX3},${innerY3} A${innerRadius},${innerRadius} 0 ${largeArc} 0 ${innerX2},${innerY2} Z`;
             }
 
-            const midAngle = (startAngle + endAngle) / 2;
-            const textRadius = isInnerRing ? radius * 0.5 : (radius + innerRadius) / 2;
-            const textX = center + textRadius * Math.cos(midAngle);
-            const textY = center + textRadius * Math.sin(midAngle);
-
+            const textPos = getOptimalTextPosition(startAngle, endAngle, radius, isInnerRing);
             const avgTime = (portion.start + portion.end) / 2;
             const colorTimeGroup = portionIndex === 0 ? 'AM' : 'PM';
             const taskColor = getTimeColor(avgTime, colorTimeGroup === 'AM');
@@ -141,14 +227,14 @@ const RadialPlanner: React.FC = () => {
                         opacity="1.0"
                     />
                     <text
-                        x={textX}
-                        y={textY}
+                        x={textPos.x}
+                        y={textPos.y}
                         textAnchor="middle"
                         dominantBaseline="middle"
-                        fontSize="12"
+                        fontSize="10"
                         fill="white"
                         fontWeight="bold"
-                        style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}
+                        style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)', cursor: 'default' }}
                     >
                         {task.title}
                     </text>
@@ -156,8 +242,7 @@ const RadialPlanner: React.FC = () => {
             );
         });
 
-        // Add connecting line for visual cue
-        const connectionAngle = 0 + offset; // 12:00 position
+        const connectionAngle = 0 + offset;
         const outerConnectionX = center + outerRadius * Math.cos(connectionAngle);
         const outerConnectionY = center + outerRadius * Math.sin(connectionAngle);
         const innerConnectionX = center + innerRadius * Math.cos(connectionAngle);
@@ -182,14 +267,13 @@ const RadialPlanner: React.FC = () => {
     const renderTasks = () => {
         const elements: React.ReactElement[] = [];
 
-        // Sort outer ring tasks first, then inner ring tasks (so inner can cover outer)
+
         const sortedTasks = [...tasks].sort((a, b) => {
-            // Determine which ring each task should be on
-            const aRing = a.displayRing || (a.hourGroup === 'AM' ? 'outer' : 'inner');
-            const bRing = b.displayRing || (b.hourGroup === 'AM' ? 'outer' : 'inner');
+            const aRing = a.hourGroup === 'AM' ? 'outer' : 'inner';
+            const bRing = b.hourGroup === 'AM' ? 'outer' : 'inner';
 
             if (aRing !== bRing) {
-                return aRing === 'outer' ? -1 : 1; // Outer ring tasks first
+                return aRing === 'outer' ? -1 : 1;
             }
 
             const durationA = getTaskDuration(a);
@@ -198,7 +282,6 @@ const RadialPlanner: React.FC = () => {
         });
 
         sortedTasks.forEach((task, index) => {
-            // Check if this is a cross-period task
             const isCrossPeriod = task.hourGroup === 'AM' && task.end < task.start;
 
             if (isCrossPeriod) {
@@ -206,8 +289,7 @@ const RadialPlanner: React.FC = () => {
                 return;
             }
 
-            // Regular task rendering
-            const useRing = task.displayRing || (task.hourGroup === 'AM' ? 'outer' : 'inner');
+            const useRing = task.hourGroup === 'AM' ? 'outer' : 'inner';
             const isInnerRing = useRing === 'inner';
 
             const offset = -Math.PI / 2;
@@ -234,10 +316,8 @@ const RadialPlanner: React.FC = () => {
 
             let pathData;
             if (isInnerRing) {
-                // Inner ring: full pie slice from center
                 pathData = `M${x1},${y1} L${x2},${y2} A${radius},${radius} 0 ${largeArc} 1 ${x3},${y3} Z`;
             } else {
-                // Outer ring: arc (ring shape)
                 const innerX2 = center + innerRadius * Math.cos(startAngle);
                 const innerY2 = center + innerRadius * Math.sin(startAngle);
                 const innerX3 = center + innerRadius * Math.cos(endAngle);
@@ -246,15 +326,14 @@ const RadialPlanner: React.FC = () => {
                 pathData = `M${x2},${y2} A${radius},${radius} 0 ${largeArc} 1 ${x3},${y3} L${innerX3},${innerY3} A${innerRadius},${innerRadius} 0 ${largeArc} 0 ${innerX2},${innerY2} Z`;
             }
 
-            const midAngle = (startAngle + endAngle) / 2;
-            const textRadius = isInnerRing ? radius * 0.5 : (radius + innerRadius) / 2;
-            const textX = center + textRadius * Math.cos(midAngle);
-            const textY = center + textRadius * Math.sin(midAngle);
-
+            const textPos = getOptimalTextPosition(startAngle, endAngle, radius, isInnerRing);
             const originalIndex = tasks.findIndex(t => t === task);
             const avgTime = (startHour + endHour) / 2;
             const colorTimeGroup = task.hourGroup;
             const taskColor = getTimeColor(avgTime, colorTimeGroup === 'AM');
+
+            // Determine font size based on task duration
+            const fontSize = duration > 2 ? 11 : duration > 1 ? 10 : 9;
 
             elements.push(
                 <g key={`task-${originalIndex}`}>
@@ -265,14 +344,14 @@ const RadialPlanner: React.FC = () => {
                         opacity="1.0"
                     />
                     <text
-                        x={textX}
-                        y={textY}
+                        x={textPos.x}
+                        y={textPos.y}
                         textAnchor="middle"
                         dominantBaseline="middle"
-                        fontSize="12"
+                        fontSize={fontSize}
                         fill="white"
                         fontWeight="bold"
-                        style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}
+                        style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)', cursor: 'default' }}
                     >
                         {task.title}
                     </text>
@@ -287,13 +366,12 @@ const RadialPlanner: React.FC = () => {
         const marks = [];
         const offset = -Math.PI / 2;
 
-        // Draw outer ring marks (thick lines and thin lines)
-        for (let i = 0; i < 24; i++) { // 24 marks for both hour and half-hour
-            const angle = (i / 12) * Math.PI + offset; // i/12 * 180 degrees
-            const isHourMark = i % 2 === 0; // Even numbers are hour marks
+        for (let i = 0; i < 24; i++) {
+            const angle = (i / 12) * Math.PI + offset;
+            const isHourMark = i % 2 === 0;
 
-            const markLength = isHourMark ? 15 : 8; // Hour marks longer than half-hour marks
-            const strokeWidth = isHourMark ? 2 : 1; // Hour marks thicker (reduced from 3 to 2)
+            const markLength = isHourMark ? 15 : 8;
+            const strokeWidth = isHourMark ? 2 : 1;
 
             const outerX = center + outerRadius * Math.cos(angle);
             const outerY = center + outerRadius * Math.sin(angle);
@@ -317,17 +395,15 @@ const RadialPlanner: React.FC = () => {
         return marks;
     };
 
-    // Render inner circle hour marks that appear on top of tasks
     const renderInnerHourMarks = () => {
         const marks = [];
         const offset = -Math.PI / 2;
 
-        // Only draw hour marks (every 2nd mark, so 12 total)
         for (let i = 0; i < 12; i++) {
-            const angle = (i / 6) * Math.PI + offset; // i/6 * 180 degrees (12 marks around circle)
+            const angle = (i / 6) * Math.PI + offset;
 
-            const markLength = 12; // Length of hour marks
-            const strokeWidth = 1.5; // Thinner stroke width
+            const markLength = 12;
+            const strokeWidth = 1.5;
 
             const outerX = center + innerRadius * Math.cos(angle);
             const outerY = center + innerRadius * Math.sin(angle);
@@ -354,33 +430,27 @@ const RadialPlanner: React.FC = () => {
     const renderClockNumbers = () => {
         const numbers = [];
         const offset = -Math.PI / 2;
-        const displayPositions = [
-            { hour: 12, angle: 0 },
-            { hour: 3, angle: 3 },
-            { hour: 6, angle: 6 },
-            { hour: 9, angle: 9 }
-        ];
 
         const maxTaskRadius = Math.max(
-            outerRadius + Math.max(...tasks.filter(t => (t.displayRing || (t.hourGroup === 'AM' ? 'outer' : 'inner')) === 'outer').map(t => {
+            outerRadius + Math.max(...tasks.filter(t => t.hourGroup === 'AM').map(t => {
                 const duration = getTaskDuration(t);
                 return Math.max(0, (duration - 1) * 8);
             }), 0),
-            innerRadius + Math.max(...tasks.filter(t => (t.displayRing || (t.hourGroup === 'AM' ? 'outer' : 'inner')) === 'inner').map(t => {
+            innerRadius + Math.max(...tasks.filter(t => t.hourGroup === 'PM').map(t => {
                 const duration = getTaskDuration(t);
                 return Math.max(0, (duration - 1) * 8);
             }), 0)
         );
         const numberRadius = maxTaskRadius + 30;
 
-        for (let pos of displayPositions) {
-            const angle = (pos.angle / 12) * 2 * Math.PI + offset;
+        for (let hour = 1; hour <= 12; hour++) {
+            const angle = ((hour === 12 ? 0 : hour) / 12) * 2 * Math.PI + offset;
             const x = center + numberRadius * Math.cos(angle);
             const y = center + numberRadius * Math.sin(angle);
 
             numbers.push(
                 <text
-                    key={pos.hour}
+                    key={hour}
                     x={x}
                     y={y}
                     textAnchor="middle"
@@ -389,7 +459,7 @@ const RadialPlanner: React.FC = () => {
                     fill="white"
                     fontWeight="bold"
                 >
-                    {pos.hour}
+                    {hour}
                 </text>
             );
         }
@@ -403,7 +473,6 @@ const RadialPlanner: React.FC = () => {
     const formatTime = (timeValue: number, hourGroup: string) => {
         const hours = Math.floor(timeValue);
         const minutes = Math.round((timeValue % 1) * 60);
-        // Fix 12:00 display - when hours is 0, show 12
         const displayHour = hours === 0 ? 12 : hours;
         return `${displayHour}:${minutes.toString().padStart(2, '0')} ${hourGroup}`;
     };
@@ -415,8 +484,10 @@ const RadialPlanner: React.FC = () => {
         return Math.abs(task.end - task.start);
     };
 
-    const isCrossPeriodTask = (startHour: number, endHour: number, hourGroup: string) => {
-        return hourGroup === 'AM' && endHour < startHour;
+    const isCrossPeriodTask = (startTime: string, endTime: string, hourGroup: string) => {
+        const start = parseTimeString(startTime);
+        const end = parseTimeString(endTime);
+        return hourGroup === 'AM' && end < start;
     };
 
     return (
@@ -427,7 +498,7 @@ const RadialPlanner: React.FC = () => {
                 className="bg-blue-500 px-6 py-3 rounded-lg hover:bg-blue-600 mb-6 text-lg font-semibold transition-colors"
                 onClick={() => setFormVisible(true)}
             >
-                Add task
+                Add Task
             </button>
 
             {formVisible && (
@@ -453,84 +524,38 @@ const RadialPlanner: React.FC = () => {
                         <option value="PM">PM (Afternoon/Evening)</option>
                     </select>
 
-                    {isCrossPeriodTask(
-                        startHour === 12 ? 0 + startMinute / 60 : startHour + startMinute / 60,
-                        endHour === 12 ? 0 + endMinute / 60 : endHour + endMinute / 60,
-                        newTask.hourGroup
-                    ) && (
-                            <>
-                                <label className="block mb-2 font-semibold">Display on Ring</label>
-                                <select
-                                    className="w-full border px-3 py-2 mb-3 rounded"
-                                    value={newTask.displayRing}
-                                    onChange={(e) => setNewTask({ ...newTask, displayRing: e.target.value as 'inner' | 'outer' })}
-                                >
-                                    <option value="outer">Outer Ring (Arc Shape)</option>
-                                    <option value="inner">Inner Ring (Pie Shape)</option>
-                                </select>
-                            </>
-                        )}
-
                     <div className="flex gap-3 mb-3">
                         <div className="flex-1">
                             <label className="block mb-2 font-semibold">Start Time</label>
-                            <div className="flex gap-2">
-                                <select
-                                    className="flex-1 border px-3 py-2 rounded"
-                                    value={startHour}
-                                    onChange={(e) => setStartHour(parseInt(e.target.value))}
-                                >
-                                    {Array.from({ length: 12 }, (_, i) => {
-                                        const hour = i + 1;
-                                        return (
-                                            <option key={hour} value={hour === 12 ? 12 : hour}>
-                                                {hour}
-                                            </option>
-                                        );
-                                    })}
-                                </select>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    max="59"
-                                    className="w-16 border px-2 py-2 rounded text-center"
-                                    value={startMinute}
-                                    onChange={(e) => setStartMinute(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
-                                    placeholder="00"
-                                />
-                            </div>
+                            <input
+                                type="text"
+                                className="w-full border px-3 py-2 rounded"
+                                value={startTime}
+                                onChange={(e) => handleTimeInput(e.target.value, setStartTime)}
+                                placeholder="9 or 9:30"
+                            />
+                            <small className="text-gray-600">Format: H or H:MM (1-12)</small>
                         </div>
                         <div className="flex-1">
                             <label className="block mb-2 font-semibold">End Time</label>
-                            <div className="flex gap-2">
-                                <select
-                                    className="flex-1 border px-3 py-2 rounded"
-                                    value={endHour}
-                                    onChange={(e) => setEndHour(parseInt(e.target.value))}
-                                >
-                                    {Array.from({ length: 12 }, (_, i) => {
-                                        const hour = i + 1;
-                                        return (
-                                            <option key={hour} value={hour === 12 ? 12 : hour}>
-                                                {hour}
-                                            </option>
-                                        );
-                                    })}
-                                </select>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    max="59"
-                                    className="w-16 border px-2 py-2 rounded text-center"
-                                    value={endMinute}
-                                    onChange={(e) => setEndMinute(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
-                                    placeholder="00"
-                                />
-                            </div>
+                            <input
+                                type="text"
+                                className="w-full border px-3 py-2 rounded"
+                                value={endTime}
+                                onChange={(e) => handleTimeInput(e.target.value, setEndTime)}
+                                placeholder="10 or 10:30"
+                            />
+                            <small className="text-gray-600">Format: H or H:MM (1-12)</small>
                         </div>
                     </div>
 
-                    <label className="block mb-2 font-semibold">Remarks</label>
+                    {timeError && (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-3">
+                            {timeError}
+                        </div>
+                    )}
+
+                    <label className="block mb-2 font-semibold">Notes</label>
                     <textarea
                         className="w-full border px-3 py-2 mb-4 rounded"
                         rows={3}
@@ -541,7 +566,7 @@ const RadialPlanner: React.FC = () => {
 
                     <div className="flex justify-between gap-3">
                         <button
-                            className="bg-green-500 px-4 py-2 rounded hover:bg-green-600 text-white font-semibold flex-1 transition-colors"
+                            className="bg-green-500 px-4 py-2 rounded hover:bg-green-600 text-white font-semibold flex-1 transition-colors disabled:bg-gray-400"
                             onClick={addTask}
                             disabled={!newTask.title.trim()}
                         >
@@ -549,7 +574,10 @@ const RadialPlanner: React.FC = () => {
                         </button>
                         <button
                             className="bg-red-500 px-4 py-2 rounded hover:bg-red-600 text-white font-semibold flex-1 transition-colors"
-                            onClick={() => setFormVisible(false)}
+                            onClick={() => {
+                                setFormVisible(false);
+                                setTimeError("");
+                            }}
                         >
                             Cancel
                         </button>
@@ -561,9 +589,9 @@ const RadialPlanner: React.FC = () => {
                 <svg width="400" height="400" className="bg-gray-800 rounded-full shadow-lg" viewBox="0 0 400 400">
                     <circle cx="200" cy="200" r={outerRadius} fill="#4a5568" stroke="#2d3748" strokeWidth="2" />
                     <circle cx="200" cy="200" r={innerRadius} fill="#2d3748" stroke="#1a202c" strokeWidth="2" />
-                    {renderTimeMarks()}
                     <circle cx="200" cy="200" r="4" fill="#e2e8f0" />
                     {renderTasks()}
+                    {renderTimeMarks()}
                     {renderInnerHourMarks()}
                     {renderClockNumbers()}
                 </svg>
@@ -587,9 +615,13 @@ const RadialPlanner: React.FC = () => {
                                             formatTime(task.end, task.hourGroup)
                                         }
                                     </div>
-                                    <div className="font-medium flex-1 min-w-0 mx-3">{task.title}</div>
+                                    <div className="font-medium flex-1 min-w-0 mx-3" title={task.title}>
+                                        {task.title}
+                                    </div>
                                     {task.remarks && (
-                                        <div className="text-sm text-gray-400 flex-1 min-w-0 mx-3">{task.remarks}</div>
+                                        <div className="text-sm text-gray-400 flex-1 min-w-0 mx-3" title={task.remarks}>
+                                            {task.remarks}
+                                        </div>
                                     )}
                                     <button
                                         onClick={() => deleteTask(index)}
