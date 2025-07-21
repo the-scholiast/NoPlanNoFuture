@@ -1,8 +1,8 @@
+import TimeTable from "@/components/calendar/timeTable";
+
 export default function Page() {
 
   return (
-    <div className="bg-red-500 text-white p-4">
-      Testing week
-    </div>
+    <TimeTable></TimeTable>
   );
 }
