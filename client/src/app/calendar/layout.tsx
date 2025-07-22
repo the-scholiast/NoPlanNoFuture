@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import CalendarBreadcrumb from '@/components/calendar/calendarBreadcrumb'
+import CalendarBreadcrumb from '@/components/calendar/CalendarBreadcrumb'
 
 export default function CalendarLayout({
   children,

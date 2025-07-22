@@ -1,10 +1,24 @@
-import TimeTable from "@/components/calendar/timeTable";
+'use client'
 
-export default function Page() {
+import { useState } from 'react'
+import TimeTable from '@/components/calendar/TimeTable'
+import DateNavigation from "@/components/calendar/DateNavigation"
+
+export default function WeekPage() {
+  const [selectedDate, setSelectedDate] = useState(new Date())
+
+  const handleDateChange = (date: Date) => {
+    setSelectedDate(date)
+  }
 
   return (
     <>
-      <TimeTable />
+      <DateNavigation 
+        mode="week" 
+        onDateChange={handleDateChange}
+        className="mb-6"
+      />
+      <TimeTable selectedDate={selectedDate} />
     </>
-  );
+  )
 }

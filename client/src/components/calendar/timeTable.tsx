@@ -4,13 +4,26 @@ import { Card } from "../ui/card"
 import { Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "../ui/table"
 import { useEffect, useRef, useState } from "react"
 
-export default function TimeTable() {
+interface TimeTableProps {
+  selectedDate?: Date
+}
+
+export default function TimeTable({ selectedDate }: TimeTableProps) {
   // Single reference to the Table element
   const tableRef = useRef<HTMLTableElement>(null);
 
   // State to track scroll position and initialization status
   const [savedScrollPosition, setSavedScrollPosition] = useState<number | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Define dayNames at the top to avoid scope issues
+  const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+  // Set mounted state after component mounts to avoid hydration issues
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   /** 
    * Generates a complete day's worth of time slots in 30-minute increments
@@ -39,9 +52,49 @@ export default function TimeTable() {
     return slots;
   };
 
-  // Generate all time slots and days for the timetable
+  // Get the current week's dates based on selectedDate
+  const getWeekDates = (date: Date) => {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+    const monday = new Date(d.setDate(diff));
+
+    const weekDates = [];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(monday);
+      day.setDate(monday.getDate() + i);
+      weekDates.push(day);
+    }
+    return weekDates;
+  };
+
+  // Generate header content for each day
+  const getDayHeader = (dayName: string, index: number, weekDates?: Date[]) => {
+    if (!isMounted || !weekDates) {
+      return (
+        <div className="flex flex-col items-center">
+          <div>{dayName}</div>
+          <div className="text-xs font-normal text-muted-foreground">--</div>
+        </div>
+      );
+    }
+
+    const date = weekDates[index];
+    const today = new Date();
+    const isToday = date.toDateString() === today.toDateString();
+
+    return (
+      <div className="flex flex-col items-center">
+        <div>{dayName}</div>
+        <div className={`text-xs font-normal ${isToday ? 'text-blue-600 font-medium' : 'text-muted-foreground'}`}>
+          {date.getDate()}
+        </div>
+      </div>
+    );
+  };
+
+  // Generate all time slots
   const timeSlots = generateTimeSlots();
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   /**
    * LOCAL STORAGE FUNCTIONS
@@ -185,6 +238,14 @@ export default function TimeTable() {
     };
   }, [hasInitialized]);
 
+  // Get week dates only if mounted and selectedDate is available
+  let weekDates: Date[] | undefined;
+  if (isMounted && selectedDate) {
+    weekDates = getWeekDates(selectedDate);
+  } else if (isMounted) {
+    weekDates = getWeekDates(new Date());
+  }
+
   return (
     <div className="w-full h-[calc(100vh-2rem)] flex flex-col">
       <Card className="flex-1 overflow-auto relative">
@@ -192,20 +253,36 @@ export default function TimeTable() {
           <TableHeader className="sticky top-0 bg-white z-10">
             <TableRow>
               <TableHead className="w-24 border-r bg-white">Time</TableHead>
-              {days.map((day) => (
-                <TableHead key={day} className="text-center w-32 bg-white">{day}</TableHead>
-              ))}
+              {dayNames.map((dayName, index) => {
+                const headerContent = getDayHeader(dayName, index, weekDates);
+                const isToday = isMounted && weekDates && weekDates[index].toDateString() === new Date().toDateString();
+
+                return (
+                  <TableHead
+                    key={dayName}
+                    className={`text-center w-32 bg-white ${isToday ? 'text-blue-600 font-semibold' : ''}`}
+                  >
+                    {headerContent}
+                  </TableHead>
+                );
+              })}
             </TableRow>
           </TableHeader>
           <TableBody>
             {timeSlots.map((time) => (
               <TableRow key={time} id={time === "7:00 AM" ? "seven-am-row" : undefined}>
                 <TableCell className="font-medium text-sm border-r sticky left-0 bg-white">{time}</TableCell>
-                {days.map((day) => (
-                  <TableCell key={`${day}-${time}`} className="h-12 border-r w-32 hover:bg-gray-50">
-                    {/* Event content will go here */}
-                  </TableCell>
-                ))}
+                {dayNames.map((dayName, index) => {
+                  const isToday = isMounted && weekDates && weekDates[index].toDateString() === new Date().toDateString();
+                  return (
+                    <TableCell
+                      key={`${dayName}-${time}`}
+                      className={`h-12 border-r w-32 hover:bg-gray-50 ${isToday ? 'bg-blue-50' : ''}`}
+                    >
+                      {/* Event content will go here */}
+                    </TableCell>
+                  );
+                })}
               </TableRow>
             ))}
           </TableBody>
