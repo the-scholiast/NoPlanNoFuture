@@ -10,6 +10,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import AddTaskModal from "@/components/todo/AddTaskModal";
+import UniversalDateNavigation from "@/components/calendar/DateNavigation";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,8 +37,15 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         <NavSidebar />
         <SidebarInset>
           <main className="p-6">
-            {/* Global Add Button - positioned to push content down */}
-            <div className="flex justify-end mb-6">
+            {/* Header with Date Navigation and Add Button aligned */}
+            <div className="flex items-center justify-between mb-6">
+              {/* Left spacer for balance */}
+              <div className="w-12"></div>
+
+              {/* Center: Date Navigation */}
+              <UniversalDateNavigation className="mb-0" />
+
+              {/* Right: Add Button */}
               <Button
                 className="h-12 w-12 rounded-full shadow-lg"
                 size="icon"

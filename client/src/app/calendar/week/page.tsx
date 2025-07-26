@@ -13,11 +13,6 @@ export default function WeekPage() {
 
   return (
     <>
-      <DateNavigation 
-        mode="week" 
-        onDateChange={handleDateChange}
-        className="mb-6"
-      />
       <TimeTable selectedDate={selectedDate} />
     </>
   )
