@@ -23,11 +23,6 @@ export default function WorkoutPage() {
       exercises: ["Squats", "Leg Press", "Lunges", "Leg Curls", "Calf Raises"]
     }
   ];
-  
-  const exercises: string[] = [
-    "Bench Press", "Squat", "Deadlift", "Overhead Press", 
-    "Pull-ups", "Push-ups", "Lunges", "Dips"
-  ];
 
   return (
     <div className="container mx-auto py-8">
@@ -37,7 +32,6 @@ export default function WorkoutPage() {
 
       <WorkoutSheet
         initialTemplates={templates}
-        exerciseDatabase={exercises}
       />
     </div>
   );

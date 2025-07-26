@@ -10,6 +10,7 @@ import { Textarea } from '../ui/textarea';
 import { saveCompletedWorkout, createWorkoutTemplate, getWorkoutTemplates } from '@/lib/api/workoutApi';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabaseClient';
+import ExerciseInput from './ExerciseInput';
 
 // ===== TYPE DEFINITIONS =====
 interface Exercise {
@@ -32,13 +33,11 @@ interface WorkoutTemplate {
 
 interface WorkoutSheetProps {
   initialTemplates: WorkoutTemplate[];
-  exerciseDatabase: string[];
   className?: string;
 }
 
 export default function WorkoutSheet({
   initialTemplates,
-  exerciseDatabase,
   className
 }: WorkoutSheetProps) {
   const { user, loading: authLoading } = useAuth();
@@ -49,8 +48,6 @@ export default function WorkoutSheet({
     initialTemplates.length > 0 ? initialTemplates[0].name : ""
   );
   const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [newExerciseName, setNewExerciseName] = useState("");
-  const [exerciseSuggestions, setExerciseSuggestions] = useState<string[]>([]);
 
   // Workout completion state
   const [workoutName, setWorkoutName] = useState("");
@@ -220,21 +217,6 @@ export default function WorkoutSheet({
   };
 
   // ===== ADD NEW EXERCISE =====
-  const handleExerciseInput = (value: string) => {
-    setNewExerciseName(value);
-
-    if (value.length > 1) {
-      const suggestions = exerciseDatabase
-        .filter(exercise =>
-          exercise.toLowerCase().includes(value.toLowerCase())
-        )
-        .slice(0, 5);
-      setExerciseSuggestions(suggestions);
-    } else {
-      setExerciseSuggestions([]);
-    }
-  };
-
   const addExercise = (exerciseName: string) => {
     const newExercise: Exercise = {
       id: Date.now().toString(),
@@ -245,8 +227,6 @@ export default function WorkoutSheet({
     };
 
     setExercises([...exercises, newExercise]);
-    setNewExerciseName("");
-    setExerciseSuggestions([]);
   };
 
   // ===== WORKOUT COMPLETION =====
@@ -360,8 +340,8 @@ export default function WorkoutSheet({
     <div className={`max-w-6xl mx-auto p-6 space-y-6 ${className}`}>
       {/* Auth Status - Remove this after testing */}
       <div className={`rounded-lg p-4 text-sm ${authReady
-          ? 'bg-green-50 border border-green-200'
-          : 'bg-yellow-50 border border-yellow-200'
+        ? 'bg-green-50 border border-green-200'
+        : 'bg-yellow-50 border border-yellow-200'
         }`}>
         <p className={authReady ? 'text-green-800' : 'text-yellow-800'}>
           {authReady
@@ -508,37 +488,11 @@ export default function WorkoutSheet({
 
       {/* Add Exercise */}
       {!isWorkoutCompleted && (
-        <div className="space-y-2">
-          <label className="block text-sm font-medium">Add Exercise</label>
-          <div className="flex gap-2">
-            <div className="flex-1 relative">
-              <Input
-                value={newExerciseName}
-                onChange={(e) => handleExerciseInput(e.target.value)}
-                placeholder="Search for an exercise..."
-              />
-              {exerciseSuggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg z-10 max-h-40 overflow-y-auto">
-                  {exerciseSuggestions.map((suggestion, index) => (
-                    <button
-                      key={index}
-                      className="w-full text-left px-3 py-2 hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
-                      onClick={() => addExercise(suggestion)}
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <Button
-              onClick={() => newExerciseName.trim() && addExercise(newExerciseName.trim())}
-              disabled={!newExerciseName.trim()}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+        <ExerciseInput
+          onExerciseAdd={addExercise}
+          disabled={isWorkoutCompleted}
+          placeholder="Search for an exercise..."
+        />
       )}
 
       {/* Exercises */}
