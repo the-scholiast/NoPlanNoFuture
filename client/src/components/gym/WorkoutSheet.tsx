@@ -1,11 +1,15 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Check } from 'lucide-react';
+import { X, Plus, Check, Save, Clock, StickyNote, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Textarea } from '../ui/textarea';
+import { saveCompletedWorkout, createWorkoutTemplate, getWorkoutTemplates } from '@/lib/api/workoutApi';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/lib/supabaseClient';
 
 // ===== TYPE DEFINITIONS =====
 interface Exercise {
@@ -18,6 +22,7 @@ interface Set {
   id: string;
   weight: number;
   reps: number;
+  completed?: boolean;
 }
 
 interface WorkoutTemplate {
@@ -26,9 +31,9 @@ interface WorkoutTemplate {
 }
 
 interface WorkoutSheetProps {
-  initialTemplates: WorkoutTemplate[];  // Available workout templates from database/API
-  exerciseDatabase: string[];           // Complete list of exercises for autocomplete
-  className?: string;                   // Optional CSS classes for styling
+  initialTemplates: WorkoutTemplate[];
+  exerciseDatabase: string[];
+  className?: string;
 }
 
 export default function WorkoutSheet({
@@ -36,22 +41,95 @@ export default function WorkoutSheet({
   exerciseDatabase,
   className
 }: WorkoutSheetProps) {
-  // ===== STATE MANAGEMENT =====
+  const { user, loading: authLoading } = useAuth();
 
-  // Currently selected workout template name. Defaults to first available template or empty string
-  const [selectedTemplate, setSelectedTemplate] = useState(initialTemplates.length > 0 ? initialTemplates[0].name : "");
-  // Current workout exercises with their sets
+  // ===== STATE MANAGEMENT =====
+  const [templates, setTemplates] = useState<WorkoutTemplate[]>(initialTemplates);
+  const [selectedTemplate, setSelectedTemplate] = useState(
+    initialTemplates.length > 0 ? initialTemplates[0].name : ""
+  );
   const [exercises, setExercises] = useState<Exercise[]>([]);
-  // Input value for adding new exercises
   const [newExerciseName, setNewExerciseName] = useState("");
-  // Autocomplete suggestions shown to user while typing. Filtered from exerciseDatabase based on input
   const [exerciseSuggestions, setExerciseSuggestions] = useState<string[]>([]);
 
+  // Workout completion state
+  const [workoutName, setWorkoutName] = useState("");
+  const [workoutNotes, setWorkoutNotes] = useState("");
+  const [workoutDuration, setWorkoutDuration] = useState<number>(0);
+  const [startTime, setStartTime] = useState<Date | null>(null);
+  const [isWorkoutCompleted, setIsWorkoutCompleted] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isRefreshingTemplates, setIsRefreshingTemplates] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+
+  // Wait for authentication to be ready
+  useEffect(() => {
+    const waitForAuth = async () => {
+      if (authLoading) {
+        console.log('🔄 Waiting for auth to load...');
+        return;
+      }
+
+      if (!user) {
+        console.log('❌ No user found after auth loading');
+        setAuthReady(false);
+        return;
+      }
+
+      // Wait a bit more and verify session
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('🔍 Final session check:', {
+          hasSession: !!session,
+          hasToken: !!session?.access_token,
+          userId: user.id,
+          email: user.email
+        });
+
+        if (session?.access_token) {
+          console.log('✅ Auth ready for API calls');
+          setAuthReady(true);
+        } else {
+          console.log('⏳ Session not ready, retrying...');
+          // Retry once more
+          setTimeout(() => waitForAuth(), 1000);
+        }
+      } catch (error) {
+        console.error('❌ Auth check failed:', error);
+        setAuthReady(false);
+      }
+    };
+
+    waitForAuth();
+  }, [user, authLoading]);
+
   // ===== TEMPLATE MANAGEMENT =====
+  const refreshTemplates = async () => {
+    if (!authReady) {
+      console.log('⏳ Auth not ready, skipping template refresh');
+      return;
+    }
+
+    setIsRefreshingTemplates(true);
+    try {
+      console.log('Refreshing templates...');
+      const newTemplates = await getWorkoutTemplates();
+      console.log('Fetched templates:', newTemplates);
+      setTemplates(newTemplates);
+    } catch (error) {
+      console.error('Error refreshing templates:', error);
+      // If fetch fails, keep existing templates
+    } finally {
+      setIsRefreshingTemplates(false);
+    }
+  };
+
   const loadTemplate = (templateName: string) => {
     setSelectedTemplate(templateName);
 
-    const template = initialTemplates.find(t => t.name === templateName);
+    const template = templates.find(t => t.name === templateName);
     if (!template) return;
 
     // Create new exercises with default sets
@@ -59,53 +137,60 @@ export default function WorkoutSheet({
       id: `${Date.now()}-${index}`,
       name: exerciseName,
       sets: [
-        { id: `${Date.now()}-${index}-1`, weight: 0, reps: 0 }
+        { id: `${Date.now()}-${index}-1`, weight: 0, reps: 0, completed: false }
       ]
     }));
 
     setExercises(newExercises);
+    setWorkoutName(templateName);
+    setStartTime(new Date());
+    setIsWorkoutCompleted(false);
   };
 
   // Load initial template on mount
   useEffect(() => {
+    setTemplates(initialTemplates);
     if (initialTemplates.length > 0) {
       loadTemplate(initialTemplates[0].name);
     }
   }, [initialTemplates]);
 
   // ===== EXERCISE MANAGEMENT =====
-
-  // Removes an entire exercise from the workout
   const removeExercise = (exerciseId: string) => {
     setExercises(exercises.filter(ex => ex.id !== exerciseId));
   };
 
-  // Adds a new set to an existing exercise. New set inherits weight/reps from the last set as starting values
   const addSet = (exerciseId: string) => {
     setExercises(exercises.map(exercise => {
       if (exercise.id === exerciseId) {
+        const lastSet = exercise.sets[exercise.sets.length - 1];
         const newSet: Set = {
           id: Date.now().toString(),
-          weight: exercise.sets.length > 0 ? exercise.sets[exercise.sets.length - 1].weight : 0,
-          reps: exercise.sets.length > 0 ? exercise.sets[exercise.sets.length - 1].reps : 0
+          weight: lastSet ? lastSet.weight : 0,
+          reps: lastSet ? lastSet.reps : 0,
+          completed: false
         };
-        return { ...exercise, sets: [...exercise.sets, newSet] };
+        return {
+          ...exercise,
+          sets: [...exercise.sets, newSet]
+        };
       }
       return exercise;
     }));
   };
 
-  // Removes a specific set from an exercise only if exercise has more than one set
   const removeSet = (exerciseId: string, setId: string) => {
     setExercises(exercises.map(exercise => {
       if (exercise.id === exerciseId) {
-        return { ...exercise, sets: exercise.sets.filter(set => set.id !== setId) };
+        return {
+          ...exercise,
+          sets: exercise.sets.filter(set => set.id !== setId)
+        };
       }
       return exercise;
     }));
   };
 
-  // Updates weight or reps value for a specific set
   const updateSet = (exerciseId: string, setId: string, field: 'weight' | 'reps', value: number) => {
     setExercises(exercises.map(exercise => {
       if (exercise.id === exerciseId) {
@@ -120,237 +205,453 @@ export default function WorkoutSheet({
     }));
   };
 
-  // ===== EXERCISE AUTOCOMPLETE SYSTEM =====
-
-  // Handles changes to the exercise name input field. Provides real-time autocomplete suggestions as user types
-  const handleExerciseNameChange = (value: string) => {
-    setNewExerciseName(value);
-
-    // Only show suggestions if user has typed at least 3 characters
-    if (value.length > 2) {
-      // Filter exercise database for matches (case-insensitive)
-      const matches = exerciseDatabase.filter(exercise =>
-        exercise.toLowerCase().includes(value.toLowerCase())
-      );
-      setExerciseSuggestions(matches.slice(0, 5)); // Limit to 5 suggestions
-    } else {
-      setExerciseSuggestions([]); // Clear suggestions for short inputs
-    }
+  const toggleSetCompleted = (exerciseId: string, setId: string) => {
+    setExercises(exercises.map(exercise => {
+      if (exercise.id === exerciseId) {
+        return {
+          ...exercise,
+          sets: exercise.sets.map(set =>
+            set.id === setId ? { ...set, completed: !set.completed } : set
+          )
+        };
+      }
+      return exercise;
+    }));
   };
 
-  // Adds a new exercise to the workout from the input field. Creates exercise with one empty set and clears input
-  const addExerciseFromInput = () => {
-    if (newExerciseName.trim()) {
-      const newExercise: Exercise = {
-        id: Date.now().toString(),
-        name: newExerciseName.trim(),
-        sets: [{ id: Date.now().toString(), weight: 0, reps: 0 }]
-      };
-      setExercises([...exercises, newExercise]);
-      // Clear input and suggestions after adding
-      setNewExerciseName("");
+  // ===== ADD NEW EXERCISE =====
+  const handleExerciseInput = (value: string) => {
+    setNewExerciseName(value);
+
+    if (value.length > 1) {
+      const suggestions = exerciseDatabase
+        .filter(exercise =>
+          exercise.toLowerCase().includes(value.toLowerCase())
+        )
+        .slice(0, 5);
+      setExerciseSuggestions(suggestions);
+    } else {
       setExerciseSuggestions([]);
     }
   };
 
-  // Selects an exercise from the autocomplete suggestions
-  const selectSuggestion = (suggestion: string) => {
-    setNewExerciseName(suggestion);
+  const addExercise = (exerciseName: string) => {
+    const newExercise: Exercise = {
+      id: Date.now().toString(),
+      name: exerciseName,
+      sets: [
+        { id: `${Date.now()}-1`, weight: 0, reps: 0, completed: false }
+      ]
+    };
+
+    setExercises([...exercises, newExercise]);
+    setNewExerciseName("");
     setExerciseSuggestions([]);
   };
 
-  // Handles Enter key press to add exercise
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      addExerciseFromInput();
+  // ===== WORKOUT COMPLETION =====
+  const calculateDuration = () => {
+    if (startTime) {
+      const now = new Date();
+      const durationMs = now.getTime() - startTime.getTime();
+      return Math.round(durationMs / (1000 * 60)); // Convert to minutes
+    }
+    return 0;
+  };
+
+  const completeWorkout = async () => {
+    if (!authReady) {
+      alert('Please wait for authentication to complete');
+      return;
+    }
+
+    if (!workoutName.trim()) {
+      alert('Please enter a workout name');
+      return;
+    }
+
+    if (exercises.length === 0) {
+      alert('Please add at least one exercise');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const duration = workoutDuration || calculateDuration();
+
+      const workoutData = {
+        name: workoutName,
+        exercises: exercises,
+        notes: workoutNotes,
+        duration_minutes: duration
+      };
+
+      console.log('Saving workout:', workoutData);
+
+      const savedWorkout = await saveCompletedWorkout(workoutData);
+
+      if (savedWorkout) {
+        setIsWorkoutCompleted(true);
+        alert(`Workout "${workoutName}" saved successfully! 🎉`);
+        console.log('Workout saved:', savedWorkout);
+      } else {
+        throw new Error('Failed to save workout');
+      }
+    } catch (error) {
+      console.error('Error saving workout:', error);
+      alert('Failed to save workout. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  // Handle case where no templates are available - change to work without templates (freestyle workouts and option to save current workout as template)!!!!!!!
-  if (initialTemplates.length === 0) {
-    return (
-      <div className="max-w-4xl mx-auto p-6 bg-background">
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No workout templates available</p>
-        </div>
-      </div>
-    );
-  }
+  const saveAsTemplate = async () => {
+    if (!authReady) {
+      alert('Please wait for authentication to complete');
+      return;
+    }
+
+    if (!workoutName.trim()) {
+      alert('Please enter a workout name');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const templateData = {
+        name: `${workoutName} Template`,
+        exercises: exercises.map(ex => ex.name),
+        is_public: false
+      };
+
+      console.log('Saving template:', templateData);
+      const savedTemplate = await createWorkoutTemplate(templateData);
+
+      if (savedTemplate) {
+        alert(`Template "${templateData.name}" saved successfully! 🎉`);
+        console.log('Template saved:', savedTemplate);
+
+        // Refresh templates to show the new one
+        await refreshTemplates();
+      } else {
+        throw new Error('Failed to save template');
+      }
+    } catch (error) {
+      console.error('Error saving template:', error);
+      alert('Failed to save template. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const startNewWorkout = () => {
+    setExercises([]);
+    setWorkoutName("");
+    setWorkoutNotes("");
+    setWorkoutDuration(0);
+    setStartTime(new Date());
+    setIsWorkoutCompleted(false);
+    setSelectedTemplate("");
+  };
 
   return (
-    <div className={`max-w-4xl mx-auto p-6 bg-background ${className}`}>
-      {/* Header with template selector */}
-      <div className="flex items-center justify-between mb-6 pb-4 border-b">
-        <div className="flex items-center gap-4">
-          {/* Dropdown for selecting workout templates */}
-          <Select value={selectedTemplate} onValueChange={loadTemplate}>
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {initialTemplates.map(template => (
-                <SelectItem key={template.name} value={template.name}>
-                  {template.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <span className="text-sm text-muted-foreground">Select Template</span>
+    <div className={`max-w-6xl mx-auto p-6 space-y-6 ${className}`}>
+      {/* Auth Status - Remove this after testing */}
+      <div className={`rounded-lg p-4 text-sm ${authReady
+          ? 'bg-green-50 border border-green-200'
+          : 'bg-yellow-50 border border-yellow-200'
+        }`}>
+        <p className={authReady ? 'text-green-800' : 'text-yellow-800'}>
+          {authReady
+            ? `✅ Ready - Logged in as: ${user?.email}`
+            : `⏳ Initializing auth for: ${user?.email}`
+          }
+        </p>
+        {!authReady && (
+          <p className="text-yellow-600 text-xs mt-1">
+            Please wait a moment before using save functions...
+          </p>
+        )}
+      </div>
+
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold">Workout Tracker</h2>
+          {startTime && !isWorkoutCompleted && (
+            <p className="text-sm text-gray-600">
+              Started: {startTime.toLocaleTimeString()}
+            </p>
+          )}
         </div>
-      </div>
 
-      {/* Workout table */}
-      <div className="rounded-lg border bg-card">
-        <Table>
-          {/* Table header with column labels */}
-          <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead className="w-12"></TableHead>
-              <TableHead className="font-semibold">Exercises</TableHead>
-              <TableHead className="text-center font-semibold w-20">Set</TableHead>
-              <TableHead className="text-center font-semibold w-24">Weight</TableHead>
-              <TableHead className="text-center font-semibold w-20">Reps</TableHead>
-              <TableHead className="w-16"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {/* 
-              ===== EXERCISE ROWS =====
-              Each exercise can have multiple sets, so create a row for each set.
-              Exercise name only appears on the first row of each exercise.
-            */}
-            {exercises.map((exercise) => (
-              exercise.sets.map((set, setIndex) => (
-                <TableRow key={`${exercise.id}-${set.id}`} className="group hover:bg-muted/30">
-                  {/* Remove Exercise Button - Only show on first set of each exercise */}
-                  <TableCell>
-                    {setIndex === 0 && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                        onClick={() => removeExercise(exercise.id)}
-                        title="Remove exercise"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </TableCell>
-                  {/* Exercise Name - Only show on first set of each exercise */}
-                  <TableCell className="font-medium">
-                    {setIndex === 0 ? exercise.name : ''}
-                  </TableCell>
-                  {/* Set Number - Shows which set this is (1, 2, 3, etc.) */}
-                  <TableCell className="text-center">
-                    <span className="text-sm text-muted-foreground">
-                      {setIndex + 1}
-                    </span>
-                  </TableCell>
-                  {/* Weight Input - Allows user to enter weight for this set */}
-                  <TableCell className="text-center">
-                    <Input
-                      type="number"
-                      value={set.weight || ''}
-                      onChange={(e) => updateSet(exercise.id, set.id, 'weight', parseInt(e.target.value) || 0)}
-                      className="w-20 h-8 text-center border-none bg-transparent focus:bg-background"
-                      placeholder="0"
-                    />
-                  </TableCell>
-                  {/* Reps Input - Allows user to enter repetitions for this set */}
-                  <TableCell className="text-center">
-                    <Input
-                      type="number"
-                      value={set.reps || ''}
-                      onChange={(e) => updateSet(exercise.id, set.id, 'reps', parseInt(e.target.value) || 0)}
-                      className="w-16 h-8 text-center border-none bg-transparent focus:bg-background"
-                      placeholder="0"
-                    />
-                  </TableCell>
-                  {/* Set Management Buttons */}
-                  <TableCell>
-                    {/* Add Set Button - Only show on the last set of each exercise */}
-                    {setIndex === exercise.sets.length - 1 && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                        onClick={() => addSet(exercise.id)}
-                        title="Add set"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {/* Remove Set Button - Only show if exercise has multiple sets and this isn't the first set */}
-                    {exercise.sets.length > 1 && setIndex > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => removeSet(exercise.id, set.id)}
-                        title="Remove set"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
-            ))}
-            {/* Add exercise row */}
-            <TableRow className="border-dashed">
-              <TableCell></TableCell>
-              <TableCell colSpan={5}>
-                <div className="relative">
-                  {/* Exercise Input with Add Button */}
-                  <div className="flex items-center gap-2">
-                    <Plus className="h-4 w-4 text-muted-foreground" />
-                    <Input
-                      value={newExerciseName}
-                      onChange={(e) => handleExerciseNameChange(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder="Type exercise name..."
-                      className="flex-1 border-dashed bg-muted/20 hover:bg-muted/40"
-                    />
-                    <Button
-                      onClick={addExerciseFromInput}
-                      disabled={!newExerciseName.trim()}
-                      size="sm"
-                      variant="outline"
-                    >
-                      Add
-                    </Button>
-                  </div>
-
-                  {/* Exercise suggestions dropdown */}
-                  {exerciseSuggestions.length > 0 && (
-                    <div className="absolute top-full left-6 right-0 z-10 mt-1 bg-popover border rounded-md shadow-md">
-                      {exerciseSuggestions.map((suggestion, index) => (
-                        <div
-                          key={index}
-                          onClick={() => selectSuggestion(suggestion)}
-                          className="px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground text-sm border-b last:border-b-0 flex items-center gap-2"
-                        >
-                          <Check className="h-3 w-3 text-green-500" />
-                          {suggestion}
-                          <span className="ml-auto text-xs text-muted-foreground">from database</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Action buttons */}
-      <div className="flex justify-between mt-6">
-        <Button variant="outline">Save Template</Button>
         <div className="flex gap-2">
-          <Button variant="outline">Cancel</Button>
-          <Button>Complete Workout</Button>
+          {!isWorkoutCompleted ? (
+            <>
+              <Button
+                onClick={completeWorkout}
+                disabled={isSaving || !authReady}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {isSaving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Saving...
+                  </>
+                ) : !authReady ? (
+                  <>
+                    <Clock className="h-4 w-4 mr-2" />
+                    Waiting for Auth...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Complete Workout
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={saveAsTemplate}
+                variant="outline"
+                disabled={isSaving || !authReady}
+              >
+                {isSaving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-500 mr-2"></div>
+                    Saving Template...
+                  </>
+                ) : !authReady ? (
+                  'Waiting for Auth...'
+                ) : (
+                  'Save as Template'
+                )}
+              </Button>
+            </>
+          ) : (
+            <Button onClick={startNewWorkout} className="bg-blue-600 hover:bg-blue-700">
+              Start New Workout
+            </Button>
+          )}
         </div>
+      </div>
+
+      {/* Workout Details */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Workout Name</label>
+          <Input
+            value={workoutName}
+            onChange={(e) => setWorkoutName(e.target.value)}
+            placeholder="Enter workout name"
+            disabled={isWorkoutCompleted}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Load Template</label>
+          <div className="flex gap-2">
+            <Select value={selectedTemplate} onValueChange={loadTemplate} disabled={isWorkoutCompleted}>
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Choose a template" />
+              </SelectTrigger>
+              <SelectContent>
+                {templates.map((template) => (
+                  <SelectItem key={template.name} value={template.name}>
+                    {template.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={refreshTemplates}
+              disabled={isRefreshingTemplates || isWorkoutCompleted || !authReady}
+              variant="outline"
+              size="sm"
+            >
+              {isRefreshingTemplates ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-500"></div>
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Duration (minutes)</label>
+          <Input
+            type="number"
+            value={workoutDuration || calculateDuration()}
+            onChange={(e) => setWorkoutDuration(parseInt(e.target.value) || 0)}
+            placeholder="0"
+            disabled={isWorkoutCompleted}
+          />
+        </div>
+      </div>
+
+      {/* Notes */}
+      <div>
+        <label className="block text-sm font-medium mb-1">
+          <StickyNote className="h-4 w-4 inline mr-1" />
+          Workout Notes
+        </label>
+        <Textarea
+          value={workoutNotes}
+          onChange={(e) => setWorkoutNotes(e.target.value)}
+          placeholder="How did the workout go? Any observations?"
+          disabled={isWorkoutCompleted}
+          rows={2}
+        />
+      </div>
+
+      {/* Add Exercise */}
+      {!isWorkoutCompleted && (
+        <div className="space-y-2">
+          <label className="block text-sm font-medium">Add Exercise</label>
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <Input
+                value={newExerciseName}
+                onChange={(e) => handleExerciseInput(e.target.value)}
+                placeholder="Search for an exercise..."
+              />
+              {exerciseSuggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg z-10 max-h-40 overflow-y-auto">
+                  {exerciseSuggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      className="w-full text-left px-3 py-2 hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
+                      onClick={() => addExercise(suggestion)}
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <Button
+              onClick={() => newExerciseName.trim() && addExercise(newExerciseName.trim())}
+              disabled={!newExerciseName.trim()}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Exercises */}
+      <div className="space-y-6">
+        {exercises.map((exercise) => (
+          <div key={exercise.id} className="border border-gray-200 rounded-lg p-4">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-semibold">{exercise.name}</h3>
+              {!isWorkoutCompleted && (
+                <Button
+                  onClick={() => removeExercise(exercise.id)}
+                  variant="outline"
+                  size="sm"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16">Set</TableHead>
+                  <TableHead>Weight (lbs)</TableHead>
+                  <TableHead>Reps</TableHead>
+                  <TableHead className="w-16">Done</TableHead>
+                  {!isWorkoutCompleted && <TableHead className="w-16">Action</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {exercise.sets.map((set, setIndex) => (
+                  <TableRow key={set.id}>
+                    <TableCell>{setIndex + 1}</TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        value={set.weight || ''}
+                        onChange={(e) => updateSet(exercise.id, set.id, 'weight', parseInt(e.target.value) || 0)}
+                        className="w-20"
+                        disabled={isWorkoutCompleted}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        value={set.reps || ''}
+                        onChange={(e) => updateSet(exercise.id, set.id, 'reps', parseInt(e.target.value) || 0)}
+                        className="w-20"
+                        disabled={isWorkoutCompleted}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        onClick={() => toggleSetCompleted(exercise.id, set.id)}
+                        variant={set.completed ? "default" : "outline"}
+                        size="sm"
+                        className="p-1"
+                        disabled={isWorkoutCompleted}
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                    {!isWorkoutCompleted && (
+                      <TableCell>
+                        <Button
+                          onClick={() => removeSet(exercise.id, set.id)}
+                          variant="outline"
+                          size="sm"
+                          className="p-1"
+                          disabled={exercise.sets.length <= 1}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            {!isWorkoutCompleted && (
+              <Button
+                onClick={() => addSet(exercise.id)}
+                variant="outline"
+                size="sm"
+                className="mt-2"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Set
+              </Button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Completion Status */}
+      {isWorkoutCompleted && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <Check className="h-5 w-5 text-green-600 mr-2" />
+            <span className="text-green-800 font-medium">
+              Workout completed and saved! 🎉
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Debug Info */}
+      <div className="mt-8 p-4 bg-gray-50 rounded-lg text-sm">
+        <p><strong>Templates:</strong> {templates.length}</p>
+        <p><strong>Exercises:</strong> {exercises.length}</p>
+        <p><strong>Total Sets:</strong> {exercises.reduce((total, ex) => total + ex.sets.length, 0)}</p>
+        <p><strong>Completed Sets:</strong> {exercises.reduce((total, ex) => total + ex.sets.filter(s => s.completed).length, 0)}</p>
       </div>
     </div>
   );
