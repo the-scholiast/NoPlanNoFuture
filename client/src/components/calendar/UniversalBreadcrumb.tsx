@@ -12,11 +12,48 @@ import { SlashIcon } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 
-export default function CalendarBreadcrumb() {
+/**
+ * Get the base path for navigation (calendar or gym)
+ */
+function getBasePath(pathname: string): string {
+  if (pathname.startsWith('/calendar')) return '/calendar'
+  if (pathname.startsWith('/gym')) return '/gym'
+  return '/calendar' // fallback
+}
+
+/**
+ * Determine page type from pathname
+ */
+function getPageType(pathname: string) {
+  const isYearPage = pathname.endsWith('/year')
+  const isMonthPage = pathname.endsWith('/month')
+  const isWeekPage = pathname.endsWith('/week')
+  const isDayPage = pathname.endsWith('/planner') || pathname.endsWith('/workout')
+
+  return { isYearPage, isMonthPage, isWeekPage, isDayPage }
+}
+
+/**
+ * Get the day route suffix based on section
+ */
+function getDayRoute(basePath: string): string {
+  return basePath === '/calendar' ? '/planner' : '/workout'
+}
+
+export default function UniversalBreadcrumb() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  // Extract year, month, and day from URL params or use current date as fallback
+  // Get base path and page types
+  const basePath = getBasePath(pathname)
+  const { isYearPage, isMonthPage, isWeekPage, isDayPage } = getPageType(pathname)
+
+  // Don't show breadcrumb on root section pages only
+  if (pathname === basePath) {
+    return null
+  }
+
+  // Extract date parameters from URL or use current date as fallback
   const currentDate = new Date()
   const currentYear = currentDate.getFullYear().toString()
   const currentMonth = (currentDate.getMonth() + 1).toString().padStart(2, '0')
@@ -26,6 +63,7 @@ export default function CalendarBreadcrumb() {
   const month = searchParams.get('month') || currentMonth
   const day = searchParams.get('day') || currentDay
 
+  // Format date strings
   const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('default', { month: 'long' })
   const dayName = new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).toLocaleDateString('default', {
     weekday: 'long',
@@ -33,27 +71,24 @@ export default function CalendarBreadcrumb() {
     day: 'numeric'
   })
 
-  // Determine current page type
-  const isYearPage = pathname.endsWith('/year')
-  const isMonthPage = pathname.endsWith('/month')
-  const isWeekPage = pathname.endsWith('/week')
-  const isDayPage = pathname.endsWith('/planner') // day mode uses /planner route
-
-  // Don't show breadcrumb on year page (year is the top level)
-  if (isYearPage) {
-    return null
-  }
-
   return (
-    <Breadcrumb className="mb-10">
+    <Breadcrumb className="">
       <BreadcrumbList>
-        {/* Year link - always show on month, week, and day pages */}
+        {/* Year link - show as clickable link on month/week/day pages, non-clickable on year pages */}
         <BreadcrumbItem>
-          <BreadcrumbLink asChild>
-            <Link href={`/calendar/year?year=${year}`}>
+          {isYearPage ? (
+            // Show as current page when on year page
+            <BreadcrumbPage>
               {year}
-            </Link>
-          </BreadcrumbLink>
+            </BreadcrumbPage>
+          ) : (
+            // Show as link when on other pages
+            <BreadcrumbLink asChild>
+              <Link href={`${basePath}/year?year=${year}`}>
+                {year}
+              </Link>
+            </BreadcrumbLink>
+          )}
         </BreadcrumbItem>
 
         {/* Month section */}
@@ -66,7 +101,7 @@ export default function CalendarBreadcrumb() {
               {(isWeekPage || isDayPage) ? (
                 // Show as link when on week or day pages
                 <BreadcrumbLink asChild>
-                  <Link href={`/calendar/month?year=${year}&month=${month}`}>
+                  <Link href={`${basePath}/month?year=${year}&month=${month}`}>
                     {monthName}
                   </Link>
                 </BreadcrumbLink>
@@ -94,7 +129,7 @@ export default function CalendarBreadcrumb() {
           </>
         )}
 
-        {/* Day section - only show on day/planner pages */}
+        {/* Day section - only show on day pages (planner/workout) */}
         {isDayPage && (
           <>
             <BreadcrumbSeparator>

@@ -10,7 +10,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import AddTaskModal from "@/components/todo/AddTaskModal";
-import UniversalDateNavigation from "@/components/calendar/DateNavigation";
+import UniversalDateNavigation from "@/components/calendar/UniversalDateNavigation";
+import UniversalBreadcrumb from "@/components/calendar/UniversalBreadcrumb";
+import { usePathname } from "next/navigation";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,9 +24,17 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Helper function to determine if breadcrumb should be shown
+function shouldShowBreadcrumb(pathname: string): boolean {
+  // Show breadcrumb on calendar and gym routes (but not root section pages)
+  return (pathname.startsWith('/calendar') && pathname !== '/calendar') ||
+         (pathname.startsWith('/gym') && pathname !== '/gym')
+}
+
 // Create a client component for the layout content
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const pathname = usePathname();
 
   const handleAddTasks = (tasks: any[]) => {
     // implement global task management 
@@ -37,6 +47,13 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         <NavSidebar />
         <SidebarInset>
           <main className="p-6">
+            {/* Universal Breadcrumb - conditionally rendered */}
+            {shouldShowBreadcrumb(pathname) && (
+              <div className="mb-2">
+                <UniversalBreadcrumb />
+              </div>
+            )}
+            
             {/* Header with Date Navigation and Add Button aligned */}
             <div className="flex items-center justify-between mb-6">
               {/* Left spacer for balance */}

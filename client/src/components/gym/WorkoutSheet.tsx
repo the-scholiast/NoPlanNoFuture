@@ -576,7 +576,7 @@ export default function WorkoutSheet({
           <div className="flex items-center">
             <Check className="h-5 w-5 text-green-600 mr-2" />
             <span className="text-green-800 font-medium">
-              Workout completed and saved! 🎉
+              Workout completed and saved!
             </span>
           </div>
         </div>
