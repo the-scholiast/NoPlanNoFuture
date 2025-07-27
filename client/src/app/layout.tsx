@@ -60,7 +60,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               <div className="w-12"></div>
 
               {/* Center: Date Navigation */}
-              <UniversalDateNavigation className="mb-0" />
+              <UniversalDateNavigation />
 
               {/* Right: Add Button */}
               <Button

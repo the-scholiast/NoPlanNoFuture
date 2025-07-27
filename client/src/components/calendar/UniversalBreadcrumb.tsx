@@ -34,10 +34,25 @@ function getPageType(pathname: string) {
 }
 
 /**
- * Get the day route suffix based on section
+ * Calculate week date range for breadcrumb display
  */
-function getDayRoute(basePath: string): string {
-  return basePath === '/calendar' ? '/planner' : '/workout'
+function getWeekDateRange(date: Date): string {
+  // Calculate Monday of current week
+  const monday = new Date(date)
+  const day = monday.getDay()
+  const diff = monday.getDate() - day + (day === 0 ? -6 : 1)
+  monday.setDate(diff)
+
+  // Calculate Sunday of current week
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+
+  // Format based on whether week spans months
+  if (monday.getMonth() === sunday.getMonth()) {
+    return `${monday.toLocaleString('default', { month: 'long' })} ${monday.getDate()}-${sunday.getDate()}, ${monday.getFullYear()}`
+  } else {
+    return `${monday.toLocaleString('default', { month: 'long' })} ${monday.getDate()} - ${sunday.toLocaleString('default', { month: 'long' })} ${sunday.getDate()}, ${monday.getFullYear()}`
+  }
 }
 
 export default function UniversalBreadcrumb() {
@@ -63,6 +78,9 @@ export default function UniversalBreadcrumb() {
   const month = searchParams.get('month') || currentMonth
   const day = searchParams.get('day') || currentDay
 
+  // Create date object for week calculation
+  const displayDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+
   // Format date strings
   const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('default', { month: 'long' })
   const dayName = new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).toLocaleDateString('default', {
@@ -70,6 +88,7 @@ export default function UniversalBreadcrumb() {
     month: 'long',
     day: 'numeric'
   })
+  const weekRange = getWeekDateRange(displayDate)
 
   return (
     <Breadcrumb className="">
@@ -115,7 +134,7 @@ export default function UniversalBreadcrumb() {
           </>
         )}
 
-        {/* Week section - only show on week pages */}
+        {/* Week section - only show on week pages with actual date range */}
         {isWeekPage && (
           <>
             <BreadcrumbSeparator>
@@ -123,7 +142,7 @@ export default function UniversalBreadcrumb() {
             </BreadcrumbSeparator>
             <BreadcrumbItem>
               <BreadcrumbPage>
-                Week
+                {weekRange}
               </BreadcrumbPage>
             </BreadcrumbItem>
           </>
