@@ -338,24 +338,6 @@ export default function WorkoutSheet({
 
   return (
     <div className={`max-w-6xl mx-auto p-6 space-y-6 ${className}`}>
-      {/* Auth Status - Remove this after testing */}
-      <div className={`rounded-lg p-4 text-sm ${authReady
-        ? 'bg-green-50 border border-green-200'
-        : 'bg-yellow-50 border border-yellow-200'
-        }`}>
-        <p className={authReady ? 'text-green-800' : 'text-yellow-800'}>
-          {authReady
-            ? `✅ Ready - Logged in as: ${user?.email}`
-            : `⏳ Initializing auth for: ${user?.email}`
-          }
-        </p>
-        {!authReady && (
-          <p className="text-yellow-600 text-xs mt-1">
-            Please wait a moment before using save functions...
-          </p>
-        )}
-      </div>
-
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -599,14 +581,6 @@ export default function WorkoutSheet({
           </div>
         </div>
       )}
-
-      {/* Debug Info */}
-      <div className="mt-8 p-4 bg-gray-50 rounded-lg text-sm">
-        <p><strong>Templates:</strong> {templates.length}</p>
-        <p><strong>Exercises:</strong> {exercises.length}</p>
-        <p><strong>Total Sets:</strong> {exercises.reduce((total, ex) => total + ex.sets.length, 0)}</p>
-        <p><strong>Completed Sets:</strong> {exercises.reduce((total, ex) => total + ex.sets.filter(s => s.completed).length, 0)}</p>
-      </div>
     </div>
   );
 }

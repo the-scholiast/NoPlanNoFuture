@@ -25,11 +25,7 @@ export default function WorkoutPage() {
   ];
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Workout Tracker</h1>
-      </div>
-
+    <div className="container mx-auto">
       <WorkoutSheet
         initialTemplates={templates}
       />
