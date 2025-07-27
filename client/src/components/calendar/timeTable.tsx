@@ -247,12 +247,12 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
   }
 
   return (
-    <div className="w-full h-[calc(100vh-2rem)] flex flex-col">
+    <div className="w-full flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
       <Card className="flex-1 overflow-auto relative">
         <Table ref={tableRef}>
-          <TableHeader className="sticky top-0 bg-white z-10">
+          <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow>
-              <TableHead className="w-24 border-r bg-white">Time</TableHead>
+              <TableHead className="w-24 border-r bg-background">Time</TableHead>
               {dayNames.map((dayName, index) => {
                 const headerContent = getDayHeader(dayName, index, weekDates);
                 const isToday = isMounted && weekDates && weekDates[index].toDateString() === new Date().toDateString();
@@ -260,7 +260,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                 return (
                   <TableHead
                     key={dayName}
-                    className={`text-center w-32 bg-white ${isToday ? 'text-blue-600 font-semibold' : ''}`}
+                    className={`text-center w-32 bg-background ${isToday ? 'text-blue-600 dark:text-blue-400 font-semibold' : ''}`}
                   >
                     {headerContent}
                   </TableHead>
@@ -271,13 +271,13 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
           <TableBody>
             {timeSlots.map((time) => (
               <TableRow key={time} id={time === "7:00 AM" ? "seven-am-row" : undefined}>
-                <TableCell className="font-medium text-sm border-r sticky left-0 bg-white">{time}</TableCell>
+                <TableCell className="font-medium text-sm border-r sticky left-0 bg-background">{time}</TableCell>
                 {dayNames.map((dayName, index) => {
                   const isToday = isMounted && weekDates && weekDates[index].toDateString() === new Date().toDateString();
                   return (
                     <TableCell
                       key={`${dayName}-${time}`}
-                      className={`h-12 border-r w-32 hover:bg-gray-50 ${isToday ? 'bg-blue-50' : ''}`}
+                      className={`h-12 border-r w-32 hover:bg-muted/50 ${isToday ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}
                     >
                       {/* Event content will go here */}
                     </TableCell>
