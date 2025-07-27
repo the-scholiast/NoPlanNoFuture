@@ -13,6 +13,7 @@ import AddTaskModal from "@/components/todo/AddTaskModal";
 import UniversalDateNavigation from "@/components/calendar/UniversalDateNavigation";
 import UniversalBreadcrumb from "@/components/calendar/UniversalBreadcrumb";
 import { usePathname } from "next/navigation";
+import TodoModalButton from "@/components/todo/TodoModalButton";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -49,8 +50,9 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
           <main className="p-6">
             {/* Universal Breadcrumb - conditionally rendered */}
             {shouldShowBreadcrumb(pathname) && (
-              <div className="mb-2">
+              <div className="mb-2 flex justify-between">
                 <UniversalBreadcrumb />
+                <TodoModalButton />
               </div>
             )}
             
