@@ -1,8 +1,6 @@
-// client/src/lib/api/workoutApi.ts
-
 import { supabase } from '@/lib/supabaseClient'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 
 // Helper function to get auth headers
 async function getAuthHeaders() {
@@ -67,7 +65,7 @@ async function getAuthHeaders() {
 async function apiCall(endpoint: string, options: RequestInit = {}) {
   const headers = await getAuthHeaders()
 
-  const response = await fetch(`${API_BASE}/api${endpoint}`, {
+  const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers: {
       ...headers,
@@ -234,12 +232,10 @@ export async function deleteWorkoutTemplate(id: string): Promise<boolean> {
 // COMPLETED WORKOUTS
 // =============================================
 
-/**
- * Get user's completed workouts
- */
+// Get user's completed workouts
 export async function getCompletedWorkouts(limit?: number): Promise<CompletedWorkout[]> {
   try {
-    const url = limit ? `/completed-workouts?limit=${limit}` : '/completed-workouts'
+    const url = limit ? `/workouts?limit=${limit}` : '/workouts' // Changed from /completed-workouts
     const data = await apiCall(url)
 
     return data.map((workout: any) => ({
@@ -258,19 +254,17 @@ export async function getCompletedWorkouts(limit?: number): Promise<CompletedWor
   }
 }
 
-/**
- * Save a completed workout
- */
+// Save a completed workout
 export async function saveCompletedWorkout(workout: {
   name: string
   template_id?: string
   exercises: Exercise[]
   notes?: string
   duration_minutes?: number
-  date: string
+  date?: string
 }): Promise<CompletedWorkout | null> {
   try {
-    const data = await apiCall('/completed-workouts', {
+    const data = await apiCall('/workouts', { // Changed from /completed-workouts
       method: 'POST',
       body: JSON.stringify(workout)
     })
@@ -291,15 +285,15 @@ export async function saveCompletedWorkout(workout: {
   }
 }
 
-/**
- * Update a completed workout
- */
-export async function updateCompletedWorkout(
-  id: string,
-  updates: Partial<CompletedWorkout>
-): Promise<CompletedWorkout | null> {
+// Update a completed workout
+export async function updateCompletedWorkout(id: string, updates: Partial<{
+  name: string
+  exercises: Exercise[]
+  notes: string
+  duration_minutes: number
+}>): Promise<CompletedWorkout | null> {
   try {
-    const data = await apiCall(`/completed-workouts/${id}`, {
+    const data = await apiCall(`/workouts/${id}`, { // Changed from /completed-workouts
       method: 'PATCH',
       body: JSON.stringify(updates)
     })
@@ -320,12 +314,11 @@ export async function updateCompletedWorkout(
   }
 }
 
-/**
- * Delete a completed workout
- */
+
+// Delete a completed workout
 export async function deleteCompletedWorkout(id: string): Promise<boolean> {
   try {
-    await apiCall(`/completed-workouts/${id}`, {
+    await apiCall(`/workouts/${id}`, { // Changed from /completed-workouts
       method: 'DELETE'
     })
     return true
@@ -335,13 +328,33 @@ export async function deleteCompletedWorkout(id: string): Promise<boolean> {
   }
 }
 
+// Get a specific completed workout by ID
+export async function getCompletedWorkout(id: string): Promise<CompletedWorkout | null> {
+  try {
+    const data = await apiCall(`/workouts/${id}`) // Changed from /completed-workouts
+
+    return {
+      id: data.id,
+      name: data.name,
+      template_id: data.template_id,
+      exercises: data.exercises || [],
+      notes: data.notes,
+      duration_minutes: data.duration_minutes,
+      date: data.date,
+      created_at: data.created_at
+    }
+  } catch (error) {
+    console.error('Error fetching completed workout:', error)
+    return null
+  }
+}
+
 // =============================================
 // EXERCISE DATABASE
 // =============================================
 
-/**
- * Get all exercises from the database (built-in + user custom)
- */
+
+// Get all exercises from the database (built-in + user custom)
 export async function getExerciseDatabase(): Promise<ExerciseDatabase[]> {
   try {
     const data = await apiCall('/exercises')
@@ -352,9 +365,7 @@ export async function getExerciseDatabase(): Promise<ExerciseDatabase[]> {
   }
 }
 
-/**
- * Create a custom exercise
- */
+// Create a custom exercise
 export async function createCustomExercise(name: string): Promise<ExerciseDatabase | null> {
   try {
     const data = await apiCall('/exercises', {
@@ -371,5 +382,26 @@ export async function createCustomExercise(name: string): Promise<ExerciseDataba
   } catch (error) {
     console.error('Error creating custom exercise:', error)
     return null
+  }
+}
+
+// Get completed workouts for a specific date
+export async function getCompletedWorkoutsByDate(date: string): Promise<CompletedWorkout[]> {
+  try {
+    const data = await apiCall(`/workouts?date=${date}`)
+
+    return data.map((workout: any) => ({
+      id: workout.id,
+      name: workout.name,
+      template_id: workout.template_id,
+      exercises: workout.exercises || [],
+      notes: workout.notes,
+      duration_minutes: workout.duration_minutes,
+      date: workout.date,
+      created_at: workout.created_at
+    }))
+  } catch (error) {
+    console.error('Error fetching workouts by date:', error)
+    return []
   }
 }

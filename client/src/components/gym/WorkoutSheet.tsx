@@ -1,13 +1,16 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Check, Save, Clock, StickyNote, RefreshCw } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { X, Plus, Check, Save, Clock, StickyNote, RefreshCw, ArrowLeft, Calendar, Dumbbell, FileText } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Textarea } from '../ui/textarea';
-import { saveCompletedWorkout, createWorkoutTemplate, getWorkoutTemplates } from '@/lib/api/workoutApi';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Badge } from '../ui/badge';
+import { saveCompletedWorkout, createWorkoutTemplate, getWorkoutTemplates, getCompletedWorkoutsByDate } from '@/lib/api/workoutApi';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabaseClient';
 import ExerciseInput from './ExerciseInput';
@@ -31,6 +34,16 @@ interface WorkoutTemplate {
   exercises: string[];
 }
 
+interface CompletedWorkout {
+  id: string;
+  name: string;
+  exercises: any[]; // Use any[] to match the API response
+  notes?: string;
+  duration_minutes?: number;
+  date: string;
+  created_at?: string;
+}
+
 interface WorkoutSheetProps {
   className?: string;
 }
@@ -39,6 +52,14 @@ export default function WorkoutSheet({
   className
 }: WorkoutSheetProps) {
   const { user, loading: authLoading } = useAuth();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // ===== DATE AWARENESS =====
+  const [targetDate, setTargetDate] = useState<string>('');
+  const [existingWorkout, setExistingWorkout] = useState<CompletedWorkout | null>(null);
+  const [isLoadingExistingWorkout, setIsLoadingExistingWorkout] = useState(true);
+  const [forceReload, setForceReload] = useState(0); // Counter to force reload
 
   // ===== STATE MANAGEMENT =====
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
@@ -55,6 +76,25 @@ export default function WorkoutSheet({
   const [isRefreshingTemplates, setIsRefreshingTemplates] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [templatesLoaded, setTemplatesLoaded] = useState(false);
+
+  // Get target date from URL parameters
+  useEffect(() => {
+    const year = searchParams.get('year');
+    const month = searchParams.get('month');
+    const day = searchParams.get('day');
+
+    let dateString: string;
+
+    if (year && month && day) {
+      // Use specific date from URL
+      dateString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    } else {
+      // Use today's date
+      dateString = new Date().toISOString().split('T')[0];
+    }
+
+    setTargetDate(dateString);
+  }, [searchParams]);
 
   // Wait for authentication to be ready
   useEffect(() => {
@@ -98,6 +138,49 @@ export default function WorkoutSheet({
 
     waitForAuth();
   }, [user, authLoading]);
+
+  // Check for existing workout on the target date
+  useEffect(() => {
+    const checkForExistingWorkout = async () => {
+      if (!targetDate || !authReady) return;
+
+      setIsLoadingExistingWorkout(true);
+
+      try {
+        console.log('Checking for workouts on date:', targetDate);
+
+        // Use the authenticated API function
+        const workouts = await getCompletedWorkoutsByDate(targetDate);
+        console.log('Found workouts for date:', targetDate, workouts);
+
+        // If there's a workout for this date, show it
+        if (workouts && workouts.length > 0) {
+          const workout = workouts[0];
+          console.log('Setting existing workout:', workout);
+          setExistingWorkout({
+            id: workout.id || Date.now().toString(),
+            name: workout.name || 'Completed Workout',
+            exercises: workout.exercises || [],
+            notes: workout.notes,
+            duration_minutes: workout.duration_minutes,
+            date: workout.date || targetDate,
+            created_at: workout.created_at
+          });
+        } else {
+          console.log('No workouts found for date:', targetDate);
+          setExistingWorkout(null);
+        }
+      } catch (error) {
+        console.error('Error checking for existing workout:', error);
+        setExistingWorkout(null);
+      } finally {
+        setIsLoadingExistingWorkout(false);
+      }
+    };
+
+    // Always check for existing workout when date changes or force reload
+    checkForExistingWorkout();
+  }, [targetDate, authReady, forceReload]);
 
   // Load user templates once auth is ready
   useEffect(() => {
@@ -228,16 +311,19 @@ export default function WorkoutSheet({
         exercises,
         notes: workoutNotes,
         duration_minutes: duration,
-        date: new Date().toISOString().split('T')[0]
+        date: targetDate // Use the target date instead of today
       };
 
       console.log('Saving workout:', workoutData);
       const savedWorkout = await saveCompletedWorkout(workoutData);
 
       if (savedWorkout) {
-        setIsWorkoutCompleted(true);
+        // Show success message
         alert(`Workout "${workoutName}" completed and saved! 🎉`);
         console.log('Workout saved:', savedWorkout);
+
+        // Force reload of workout data for this date
+        setForceReload(prev => prev + 1);
       } else {
         throw new Error('Failed to save workout');
       }
@@ -297,14 +383,192 @@ export default function WorkoutSheet({
     setStartTime(new Date());
     setIsWorkoutCompleted(false);
     setSelectedTemplate("");
+    // Temporarily clear existing workout to show the workout creation interface
+    setExistingWorkout(null);
   };
 
+  const startNewWorkoutOnSameDay = () => {
+    // This function is for when we want to start a new workout on a day that already has one
+    startNewWorkout();
+  };
+
+  // ===== UTILITY FUNCTIONS =====
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const formatDuration = (minutes?: number) => {
+    if (!minutes) return 'N/A';
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+
+    if (hours > 0) {
+      return `${hours}h ${remainingMinutes}m`;
+    }
+    return `${remainingMinutes}m`;
+  };
+
+  // Show loading state while checking for existing workout
+  if (isLoadingExistingWorkout) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
+  // If there's an existing workout for this date, show it
+  if (existingWorkout) {
+    return (
+      <div className={`max-w-4xl mx-auto p-6 space-y-6 ${className}`}>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push('/gym')}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Gym
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-green-600">Workout Completed!</h1>
+            </div>
+          </div>
+
+          <Button
+            onClick={startNewWorkoutOnSameDay}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Dumbbell className="h-4 w-4 mr-2" />
+            Start New Workout
+          </Button>
+        </div>
+
+        {/* Workout Summary Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Dumbbell className="h-5 w-5" />
+              {existingWorkout.name}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-gray-500" />
+                <span className="text-sm font-medium">Date:</span>
+                <span className="text-sm">{formatDate(existingWorkout.date)}</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-gray-500" />
+                <span className="text-sm font-medium">Duration:</span>
+                <span className="text-sm">{formatDuration(existingWorkout.duration_minutes)}</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Dumbbell className="h-4 w-4 text-gray-500" />
+                <span className="text-sm font-medium">Exercises:</span>
+                <Badge variant="secondary">{existingWorkout.exercises.length}</Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Exercise Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Exercise Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {existingWorkout.exercises.map((exercise, index) => (
+              <div key={index} className="border rounded-lg p-4">
+                <h3 className="font-semibold text-lg mb-3">{exercise.name}</h3>
+
+                {exercise.sets && exercise.sets.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-3 gap-4 text-sm font-medium text-gray-600 border-b pb-2">
+                      <span>Set</span>
+                      <span>Weight (lbs)</span>
+                      <span>Reps</span>
+                    </div>
+
+                    {exercise.sets.map((set: any, setIndex: number) => (
+                      <div
+                        key={setIndex}
+                        className={`grid grid-cols-3 gap-4 text-sm py-1 ${set.completed ? 'text-green-600 font-medium' : 'text-gray-400'
+                          }`}
+                      >
+                        <span>#{setIndex + 1}</span>
+                        <span>{set.weight || 0}</span>
+                        <span>{set.reps || 0}</span>
+                      </div>
+                    ))}
+
+                    <div className="text-xs text-gray-500 mt-2">
+                      {exercise.sets.filter((set: any) => set.completed).length} of {exercise.sets.length} sets completed
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">No sets recorded</p>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* Workout Notes */}
+        {existingWorkout.notes && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Workout Notes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-700 whitespace-pre-wrap">{existingWorkout.notes}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex gap-4 justify-center">
+          <Button
+            variant="outline"
+            onClick={() => router.push('/gym/workouts')}
+          >
+            View All Workouts
+          </Button>
+
+          <Button
+            onClick={startNewWorkout}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Dumbbell className="h-4 w-4 mr-2" />
+            Start New Workout
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Otherwise, show the normal workout creation interface
   return (
     <div className={`max-w-6xl mx-auto p-6 space-y-6 ${className}`}>
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold">Workout Tracker</h2>
+          <h2 className="text-2xl font-bold">
+            Workout Tracker
+          </h2>
           {startTime && !isWorkoutCompleted && (
             <p className="text-sm text-gray-600">
               Started: {startTime.toLocaleTimeString()}
