@@ -1,20 +1,28 @@
-const express = require('express');
-const cors = require('cors');
-// Load environment variables from a .env file into process.env
-require('dotenv').config();
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import routes from './routes/index.js';
+
+// Load environment variables
+dotenv.config();
 
 const app = express();
-// Enable CORS for all routes (helps the frontend communicate with the backend)
-app.use(cors());
-// Enable parsing of JSON request bodies (e.g., from POST requests)
+
+// Enable CORS with specific configuration
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:3001'], // Allow both frontend and backend
+  credentials: true,
+  optionsSuccessStatus: 200
+}));
+
+// Enable parsing of JSON request bodies
 app.use(express.json());
 
-// TESTING
-app.get('/api/status', (req, res) => {
-  res.json({ status: 'Server is up!' });
+// Use the routes
+app.use('/api', routes);
+
+// Start server
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
-
-
-const PORT = process.env.PORT || 5000;
-// Start the Express server and listen on the specified port
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

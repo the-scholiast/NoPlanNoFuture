@@ -1,7 +1,24 @@
-import express from 'express'
-import supabase, { verifyToken } from '../supabaseAdmin.js'
+import express from 'express';
+import { createClient } from '@supabase/supabase-js';
 
-const router = express.Router()
+const router = express.Router();
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+// =============================================
+// AUTHENTICATION HELPER
+// =============================================
+
+const verifyToken = async (token) => {
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    throw new Error('Invalid token');
+  }
+  return user;
+};
 
 // =============================================
 // MIDDLEWARE FOR AUTHENTICATION
@@ -347,7 +364,7 @@ router.delete('/workout-templates/:id', authenticateUser, async (req, res) => {
 // GET /api/workouts - Get completed workouts
 router.get('/workouts', authenticateUser, async (req, res) => {
   try {
-    const { limit } = req.query
+    const { limit, date } = req.query
 
     let query = supabase
       .from('workouts')
@@ -355,7 +372,12 @@ router.get('/workouts', authenticateUser, async (req, res) => {
       .eq('user_id', req.user.id)
       .order('date', { ascending: false })
 
-    if (limit) {
+    // If date is specified, filter by that specific date
+    if (date) {
+      query = query.eq('date', date)
+    }
+
+    if (limit && !date) { // Only apply limit if not filtering by date
       query = query.limit(parseInt(limit))
     }
 
@@ -367,6 +389,32 @@ router.get('/workouts', authenticateUser, async (req, res) => {
   } catch (error) {
     console.error('Error fetching workouts:', error)
     res.status(500).json({ error: 'Failed to fetch workouts' })
+  }
+})
+
+// GET /api/workouts/:id - Get specific completed workout
+router.get('/workouts/:id', authenticateUser, async (req, res) => {
+  try {
+    const { id } = req.params
+
+    const { data, error } = await supabase
+      .from('workouts')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', req.user.id)
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Workout not found' })
+      }
+      throw error
+    }
+
+    res.json(data)
+  } catch (error) {
+    console.error('Error fetching workout:', error)
+    res.status(500).json({ error: 'Failed to fetch workout' })
   }
 })
 
@@ -388,7 +436,7 @@ router.post('/workouts', authenticateUser, async (req, res) => {
         exercises,
         notes: notes || null,
         duration_minutes: duration_minutes || null,
-        date: date || new Date().toISOString()
+        date: date || new Date().toISOString().split('T')[0]
       })
       .select()
       .single()
@@ -525,7 +573,7 @@ router.get('/stats', authenticateUser, async (req, res) => {
     // Get workouts this week
     const oneWeekAgo = new Date()
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
-    
+
     const { count: workoutsThisWeek } = await supabase
       .from('workouts')
       .select('*', { count: 'exact', head: true })
@@ -535,7 +583,7 @@ router.get('/stats', authenticateUser, async (req, res) => {
     // Get workouts this month
     const oneMonthAgo = new Date()
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
-    
+
     const { count: workoutsThisMonth } = await supabase
       .from('workouts')
       .select('*', { count: 'exact', head: true })
@@ -556,4 +604,4 @@ router.get('/stats', authenticateUser, async (req, res) => {
   }
 })
 
-export default router
+export default router;
