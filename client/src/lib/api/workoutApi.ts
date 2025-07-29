@@ -1,3 +1,5 @@
+// client/src/lib/api/workoutApi.ts
+
 import { supabase } from '@/lib/supabaseClient'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
@@ -82,7 +84,7 @@ async function apiCall(endpoint: string, options: RequestInit = {}) {
 }
 
 // =============================================
-// TYPE DEFINITIONS (keeping your existing format)
+// TYPE DEFINITIONS
 // =============================================
 
 export interface WorkoutTemplate {
@@ -149,21 +151,8 @@ export async function getWorkoutTemplates(): Promise<WorkoutTemplate[]> {
     }))
   } catch (error) {
     console.error('Error fetching workout templates:', error)
-    // Return some fallback templates for testing
-    return [
-      {
-        name: "Push Day Template",
-        exercises: ["Bench Press", "Overhead Press", "Incline Press", "Tricep Dips", "Lateral Raises"]
-      },
-      {
-        name: "Pull Day Template",
-        exercises: ["Pull-ups", "Deadlifts", "Bent-over Rows", "Lat Pulldowns", "Bicep Curls"]
-      },
-      {
-        name: "Leg Day Template",
-        exercises: ["Squats", "Leg Press", "Lunges", "Leg Curls", "Calf Raises"]
-      }
-    ]
+    // Return empty array instead of fallback templates
+    return []
   }
 }
 
@@ -176,27 +165,17 @@ export async function createWorkoutTemplate(template: {
   is_public?: boolean
 }): Promise<WorkoutTemplate | null> {
   try {
-    // Transform to backend format
-    const backendTemplate = {
-      name: template.name,
-      exercises: template.exercises.map((exerciseName, index) => ({
-        id: `temp-${index}`,
-        name: exerciseName,
-        sets: []
-      })),
-      is_public: template.is_public || false
-    }
-
     const data = await apiCall('/workout-templates', {
       method: 'POST',
-      body: JSON.stringify(backendTemplate)
+      body: JSON.stringify(template)
     })
 
-    // Transform back to frontend format
     return {
       id: data.id,
       name: data.name,
-      exercises: data.exercises?.map((ex: any) => ex.name) || [],
+      exercises: Array.isArray(data.exercises)
+        ? data.exercises.map((ex: any) => typeof ex === 'string' ? ex : ex.name)
+        : [],
       is_public: data.is_public,
       created_at: data.created_at,
       updated_at: data.updated_at
@@ -207,56 +186,47 @@ export async function createWorkoutTemplate(template: {
   }
 }
 
-// =============================================
-// EXERCISE DATABASE
-// =============================================
-
 /**
- * Get all exercises from the database
+ * Update an existing workout template
  */
-export async function getExerciseDatabase(): Promise<string[]> {
+export async function updateWorkoutTemplate(
+  id: string,
+  updates: Partial<WorkoutTemplate>
+): Promise<WorkoutTemplate | null> {
   try {
-    const data = await apiCall('/exercises')
-    return data.map((exercise: ExerciseDatabase) => exercise.name) || []
+    const data = await apiCall(`/workout-templates/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates)
+    })
+
+    return {
+      id: data.id,
+      name: data.name,
+      exercises: Array.isArray(data.exercises)
+        ? data.exercises.map((ex: any) => typeof ex === 'string' ? ex : ex.name)
+        : [],
+      is_public: data.is_public,
+      created_at: data.created_at,
+      updated_at: data.updated_at
+    }
   } catch (error) {
-    console.error('Error fetching exercise database:', error)
-    // Fallback to basic exercises if API fails
-    return [
-      // Chest exercises
-      "Bench Press", "Incline Bench Press", "Decline Bench Press", "Dumbbell Bench Press",
-      "Cable Flyes", "Dumbbell Flyes", "Push-ups", "Diamond Push-ups",
-
-      // Shoulder exercises
-      "Overhead Press", "Military Press", "Push Press", "Seated Shoulder Press",
-      "Lateral Raises", "Front Raises", "Rear Delt Flyes", "Upright Rows",
-
-      // Leg exercises
-      "Squat", "Front Squat", "Back Squat", "Bulgarian Split Squat",
-      "Leg Press", "Leg Curls", "Leg Extensions", "Calf Raises",
-      "Lunges", "Walking Lunges", "Reverse Lunges", "Jump Lunges",
-
-      // Back exercises
-      "Deadlift", "Romanian Deadlift", "Sumo Deadlift", "Stiff Leg Deadlift",
-      "Pull-ups", "Chin-ups", "Lat Pulldowns", "Wide Grip Pulldowns",
-      "Bent-over Rows", "Barbell Rows", "Dumbbell Rows", "Cable Rows",
-
-      // Arm exercises
-      "Tricep Dips", "Close Grip Bench Press", "Tricep Extensions",
-      "Bicep Curls", "Hammer Curls", "Preacher Curls", "Cable Curls"
-    ]
+    console.error('Error updating workout template:', error)
+    return null
   }
 }
 
 /**
- * Search exercises by name
+ * Delete a workout template
  */
-export async function searchExercises(searchTerm: string): Promise<string[]> {
+export async function deleteWorkoutTemplate(id: string): Promise<boolean> {
   try {
-    const data = await apiCall(`/exercises?search=${encodeURIComponent(searchTerm)}`)
-    return data.map((exercise: ExerciseDatabase) => exercise.name) || []
+    await apiCall(`/workout-templates/${id}`, {
+      method: 'DELETE'
+    })
+    return true
   } catch (error) {
-    console.error('Error searching exercises:', error)
-    return []
+    console.error('Error deleting workout template:', error)
+    return false
   }
 }
 
@@ -265,29 +235,56 @@ export async function searchExercises(searchTerm: string): Promise<string[]> {
 // =============================================
 
 /**
+ * Get user's completed workouts
+ */
+export async function getCompletedWorkouts(limit?: number): Promise<CompletedWorkout[]> {
+  try {
+    const url = limit ? `/completed-workouts?limit=${limit}` : '/completed-workouts'
+    const data = await apiCall(url)
+
+    return data.map((workout: any) => ({
+      id: workout.id,
+      name: workout.name,
+      template_id: workout.template_id,
+      exercises: workout.exercises || [],
+      notes: workout.notes,
+      duration_minutes: workout.duration_minutes,
+      date: workout.date,
+      created_at: workout.created_at
+    }))
+  } catch (error) {
+    console.error('Error fetching completed workouts:', error)
+    return []
+  }
+}
+
+/**
  * Save a completed workout
  */
 export async function saveCompletedWorkout(workout: {
   name: string
+  template_id?: string
   exercises: Exercise[]
   notes?: string
   duration_minutes?: number
+  date: string
 }): Promise<CompletedWorkout | null> {
   try {
-    const workoutData = {
-      name: workout.name,
-      exercises: workout.exercises,
-      notes: workout.notes || '',
-      duration_minutes: workout.duration_minutes || 0,
-      date: new Date().toISOString()
-    }
-
-    const data = await apiCall('/workouts', {
+    const data = await apiCall('/completed-workouts', {
       method: 'POST',
-      body: JSON.stringify(workoutData)
+      body: JSON.stringify(workout)
     })
 
-    return data
+    return {
+      id: data.id,
+      name: data.name,
+      template_id: data.template_id,
+      exercises: data.exercises || [],
+      notes: data.notes,
+      duration_minutes: data.duration_minutes,
+      date: data.date,
+      created_at: data.created_at
+    }
   } catch (error) {
     console.error('Error saving completed workout:', error)
     return null
@@ -295,15 +292,84 @@ export async function saveCompletedWorkout(workout: {
 }
 
 /**
- * Get completed workouts for the authenticated user
+ * Update a completed workout
  */
-export async function getCompletedWorkouts(limit?: number): Promise<CompletedWorkout[]> {
+export async function updateCompletedWorkout(
+  id: string,
+  updates: Partial<CompletedWorkout>
+): Promise<CompletedWorkout | null> {
   try {
-    const endpoint = limit ? `/workouts?limit=${limit}` : '/workouts'
-    const data = await apiCall(endpoint)
+    const data = await apiCall(`/completed-workouts/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates)
+    })
+
+    return {
+      id: data.id,
+      name: data.name,
+      template_id: data.template_id,
+      exercises: data.exercises || [],
+      notes: data.notes,
+      duration_minutes: data.duration_minutes,
+      date: data.date,
+      created_at: data.created_at
+    }
+  } catch (error) {
+    console.error('Error updating completed workout:', error)
+    return null
+  }
+}
+
+/**
+ * Delete a completed workout
+ */
+export async function deleteCompletedWorkout(id: string): Promise<boolean> {
+  try {
+    await apiCall(`/completed-workouts/${id}`, {
+      method: 'DELETE'
+    })
+    return true
+  } catch (error) {
+    console.error('Error deleting completed workout:', error)
+    return false
+  }
+}
+
+// =============================================
+// EXERCISE DATABASE
+// =============================================
+
+/**
+ * Get all exercises from the database (built-in + user custom)
+ */
+export async function getExerciseDatabase(): Promise<ExerciseDatabase[]> {
+  try {
+    const data = await apiCall('/exercises')
     return data || []
   } catch (error) {
-    console.error('Error fetching completed workouts:', error)
+    console.error('Error fetching exercise database:', error)
     return []
+  }
+}
+
+/**
+ * Create a custom exercise
+ */
+export async function createCustomExercise(name: string): Promise<ExerciseDatabase | null> {
+  try {
+    const data = await apiCall('/exercises', {
+      method: 'POST',
+      body: JSON.stringify({ name })
+    })
+
+    return {
+      id: data.id,
+      name: data.name,
+      is_custom: data.is_custom,
+      created_by: data.created_by
+    }
+  } catch (error) {
+    console.error('Error creating custom exercise:', error)
+    return null
   }
 }

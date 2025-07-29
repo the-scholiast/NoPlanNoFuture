@@ -1,11 +1,11 @@
 // Display last visited gym page for user.
 // Default current Day page.
+import WorkoutSheet from '@/components/gym/WorkoutSheet';
 
-export default function Page() {
-
+export default function WorkoutPage() {
   return (
-    <div className="bg-red-500 text-white p-4">
-      Testing gym
+    <div className="container mx-auto">
+      <WorkoutSheet />
     </div>
   );
 }
