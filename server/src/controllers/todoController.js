@@ -75,22 +75,27 @@ export const deleteTodo = async (userId, todoId) => {
 
 // Bulk deletion functionality
 export const bulkDeleteTodos = async (userId, { section, completed }) => {
+  // Build the base delete query, ensuring only the user's todos can be deleted
   let query = supabase
     .from('todos')
     .delete()
     .eq('user_id', userId);
 
+  // Apply section filter if specified
   if (section) {
     query = query.eq('section', section);
   }
-
+  
+  // Apply completion status filter if specified 
   if (completed !== undefined) {
     query = query.eq('completed', completed);
   }
 
+  // Execute the delete query and return the deleted records for counting
   const { data, error } = await query.select();
 
   if (error) throw error;
 
+  // Return success confirmation with count of deleted items
   return { success: true, deleted: data?.length || 0 };
 };
