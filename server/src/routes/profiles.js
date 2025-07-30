@@ -6,7 +6,7 @@ import { getProfile, updateProfile } from '../controllers/profileController.js';
 const router = express.Router();
 
 // Endpoint retrieves the profile information for the authenticated user
-router.get('/', authenticateUser, async (req, res, next) => {
+router.get('/profile', authenticateUser, async (req, res, next) => {
   try {
     // Retrieve profile data for the authenticated user
     const profile = await getProfile(req.user.id);
@@ -19,7 +19,7 @@ router.get('/', authenticateUser, async (req, res, next) => {
 });
 
 // Endpoint updates the profile information for the authenticated user
-router.patch('/', authenticateUser, async (req, res, next) => {
+router.patch('/profile', authenticateUser, async (req, res, next) => {
   try {
     // Update the user's profile using their authenticated ID and the provided update data
     const profile = await updateProfile(req.user.id, req.body);
