@@ -1,3 +1,5 @@
+// Currently not implemented
+
 import { supabase } from '../utils/supabase.js';
 
 export const getProfile = async (userId) => {
