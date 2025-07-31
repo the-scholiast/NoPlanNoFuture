@@ -1,4 +1,4 @@
-import { supabase } from "../utils/supabase";
+import { supabase } from "../utils/supabase.js";
 import { ValidationError } from '../utils/errors.js';
 
 // Query the workout_templates table in Supabase
@@ -24,7 +24,7 @@ export const createWorkoutTemplate = async (userId, templateData) => {
 
   // Insert the new workout template into the database
   const { data, error } = await supabase
-    .from('workout_tempaltes')
+    .from('workout_templates') // Fixed typo: was 'workout_tempaltes'
     .insert({
       user_id: userId,
       name,
@@ -40,7 +40,7 @@ export const createWorkoutTemplate = async (userId, templateData) => {
 }
 
 // Updates an existing workout template for a specific user
-export const updateWorkoutTemplate = async (userId, tempalteId, updates) => {
+export const updateWorkoutTemplate = async (userId, templateId, updates) => { // Fixed typo: was 'tempalteId'
   const { data, error } = await supabase
     .from('workout_templates')
     .update(updates)
@@ -68,11 +68,52 @@ export const deleteWorkoutTemplate = async (userId, templateId) => {
   return { success: true };
 };
 
+// Creates a new workout in the database for a specific user
+export const createWorkout = async (userId, workoutData) => {
+  const { name, exercises, date, duration, notes } = workoutData;
+
+  if (!name || !exercises) {
+    throw new ValidationError('Name and exercises are required');
+  }
+
+  // Insert the new workout into the database
+  const { data, error } = await supabase
+    .from('workouts')
+    .insert({
+      user_id: userId,
+      name,
+      exercises,
+      date: date || new Date().toISOString().split('T')[0], // Default to today if no date provided
+      duration,
+      notes
+    })
+    .select() // Return the inserted workout
+    .single(); // Return as an object instead of an array
+
+  if (error) throw error;
+
+  return data;
+};
+
+// Retrieves a single workout by ID for a specific user
+export const getWorkoutById = async (userId, workoutId) => {
+  const { data, error } = await supabase
+    .from('workouts')
+    .select('*')
+    .eq('id', workoutId) // Match the specific workout by ID
+    .eq('user_id', userId) // Ensure user owns the workout
+    .single(); // Return as an object instead of an array
+
+  if (error) throw error;
+
+  return data;
+};
+
 // Retrieves workouts for a specific user with optional filtering and limiting
 export const getWorkouts = async (userId, { limit, date }) => {
   // Build the base query for workouts
   let query = supabase
-    .from('workouts') 
+    .from('workouts')
     .select('*')
     .eq('user_id', userId) // Filter by the provided user ID
     .order('date', { ascending: false }); // Sort by date, newest first
@@ -98,15 +139,15 @@ export const getWorkouts = async (userId, { limit, date }) => {
 // Updates an existing workout for a specific user
 export const updateWorkout = async (userId, workoutId, updates) => {
   const { data, error } = await supabase
-    .from('workouts') 
-    .update(updates) 
+    .from('workouts')
+    .update(updates)
     .eq('id', workoutId) // Match the specific workout by ID
     .eq('user_id', userId) // Ensure user owns the workout 
     .select()
     .single();
-  
+
   if (error) throw error;
-  
+
   return data;
 };
 
@@ -117,8 +158,8 @@ export const deleteWorkout = async (userId, workoutId) => {
     .delete() // Perform delete operation
     .eq('id', workoutId) // Match the specific workout by ID
     .eq('user_id', userId); // Ensure user owns the workout
-  
+
   if (error) throw error;
-  
+
   return { success: true };
 };
