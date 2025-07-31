@@ -9,6 +9,8 @@ import {
   bulkDeleteTodos
 } from '../controllers/todoController.js';
 
+const router = express.Router();
+
 // Endpoint fetches all todo items belonging to the currently authenticated user
 router.get('/', authenticateUser, async (req, res, next) => {
   try {
