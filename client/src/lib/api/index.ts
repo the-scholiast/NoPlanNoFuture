@@ -6,6 +6,7 @@ export * from '../services/workoutTemplatesOperations'
 export * from '../services/completedWorkoutOperations'
 export * from '../services/exercisesOperations'
 export * from '../services/workoutStats'
+export * from '../services/userProfileOperations'
 
 // Hook exports
 export * from '@/hooks/useWorkoutApi'

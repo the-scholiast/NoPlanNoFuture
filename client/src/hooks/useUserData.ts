@@ -12,15 +12,18 @@ import {
   saveCompletedWorkout,
   updateCompletedWorkout,
   deleteCompletedWorkout,
-  getExercises,
+  getExerciseDatabase,
   searchExercises,
   createCustomExercise,
   getWorkoutStats,
-  type UserProfile,
+  getSimpleWorkoutStats
+} from '@/lib/api'
+import { 
   type WorkoutTemplate,
   type CompletedWorkout,
   type ExerciseDatabase
-} from '@/lib/api/userDataApi'
+} from '@/types/workoutTypes'
+import { type UserProfile } from '@/lib/api'
 import { useAuth } from './useAuth'
 
 // =============================================
@@ -40,7 +43,7 @@ export function useExercises() {
     try {
       setLoading(true)
       setError(null)
-      const data = await getExercises()
+      const data = await getExerciseDatabase()
       setExercises(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load exercises')
@@ -112,7 +115,7 @@ export function useWorkoutStats() {
     try {
       setLoading(true)
       setError(null)
-      const data = await getWorkoutStats()
+      const data = await getSimpleWorkoutStats() // Use the simple stats function
       setStats(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load stats')
@@ -128,7 +131,6 @@ export function useWorkoutStats() {
     refetch: loadStats
   }
 } 
-
 
 // =============================================
 // USER PROFILE HOOK
@@ -186,10 +188,10 @@ export function useUserProfile() {
 }
 
 // =============================================
-// WORKOUT TEMPLATES HOOK
+// WORKOUT TEMPLATES HOOK 
 // =============================================
 
-export function useWorkoutTemplates() {
+export function useWorkoutTemplatesAlt() {
   const { user } = useAuth()
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
   const [loading, setLoading] = useState(true)

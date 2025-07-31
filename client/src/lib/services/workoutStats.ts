@@ -10,13 +10,31 @@ export interface WorkoutStats {
   favoriteExercises: string[]
 }
 
-// Get workout statistics for the user
+export interface SimpleWorkoutStats {
+  totalWorkouts: number
+  totalTemplates: number
+  workoutsThisWeek: number
+  workoutsThisMonth: number
+}
+
+// Get detailed workout statistics for the user
 export async function getWorkoutStats(): Promise<WorkoutStats | null> {
   try {
     const data = await apiCall('/stats')
     return data
   } catch (error) {
     console.error('Error fetching workout stats:', error)
+    return null
+  }
+}
+
+// Get simple workout statistics for dashboard
+export async function getSimpleWorkoutStats(): Promise<SimpleWorkoutStats | null> {
+  try {
+    const data = await apiCall('/stats/simple')
+    return data
+  } catch (error) {
+    console.error('Error fetching simple workout stats:', error)
     return null
   }
 }

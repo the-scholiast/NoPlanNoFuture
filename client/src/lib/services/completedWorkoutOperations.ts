@@ -1,9 +1,9 @@
 import { apiCall } from '../api/client'
 import { transformCompletedWorkout } from '../api/transformers'
-import { 
-  CompletedWorkout, 
-  SaveCompletedWorkoutRequest, 
-  UpdateCompletedWorkoutRequest 
+import {
+  CompletedWorkout,
+  SaveCompletedWorkoutRequest,
+  UpdateCompletedWorkoutRequest
 } from '@/types/workoutTypes'
 
 // Get user's completed workouts with optional limit
