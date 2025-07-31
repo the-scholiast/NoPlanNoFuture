@@ -43,6 +43,10 @@ export interface CompletedWorkout {
   created_at?: string; // Timestamp when the workout was created
 }
 
+// =============================================
+// API request/response types
+// =============================================
+
 // Request types for creating/updating
 export interface CreateWorkoutTemplateRequest {
   name: string;
@@ -76,7 +80,7 @@ export interface CreateCustomExerciseRequest {
   name: string;
 }
 
-// Response wrapper types (Not implemented currently)
+// Response wrapper types
 export interface ApiResponse<T> {
   data: T;
   success: boolean;
@@ -87,4 +91,71 @@ export interface ApiError {
   error: string;
   message?: string;
   status?: number;
+}
+
+// =============================================
+// Component prop types
+// =============================================
+
+// Props for the main WorkoutSheet component
+export interface WorkoutSheetProps {
+  className?: string; // Optional CSS class name for styling
+}
+
+// Props for the CompletedWorkoutView component
+export interface CompletedWorkoutViewProps {
+  workout: CompletedWorkout; // The completed workout to display
+  onStartNewWorkout: () => void; // Callback to start a new workout
+  router: any; // Router instance for navigation (consider using NextRouter type)
+  className?: string; // Optional CSS class name
+}
+
+// Props for the ActiveWorkoutEditor component
+export interface ActiveWorkoutEditorProps {
+  workoutName: string; // Current workout name
+  onWorkoutNameChange: (name: string) => void; // Callback when workout name changes
+  workoutNotes: string; // Current workout notes
+  onWorkoutNotesChange: (notes: string) => void; // Callback when workout notes change
+  workoutDuration: number; // Current workout duration in minutes
+  onWorkoutDurationChange: (duration: number) => void; // Callback when duration changes
+  exercises: Exercise[]; // Current exercises array
+  onExercisesChange: (exercises: Exercise[]) => void; // Callback when exercises change
+  templates: WorkoutTemplate[]; // Available templates
+  selectedTemplate: string; // Selected template name
+  onTemplateSelect: (templateName: string) => void; // Callback when template is selected
+  isRefreshingTemplates: boolean; // Whether templates are currently being refreshed
+  onRefreshTemplates: () => void; // Callback to refresh templates
+  templatesLoaded: boolean; // Whether templates have been loaded
+  isWorkoutCompleted: boolean; // Whether workout is completed
+  authReady: boolean; // Whether auth is ready
+  isSaving: boolean; // Whether currently saving
+  startTime: Date | null; // Start time of the workout
+  onCompleteWorkout: () => void; // Callback to complete workout
+  onSaveAsTemplate: () => void; // Callback to save as template
+  onStartNewWorkout: () => void; // Callback to start new workout
+  className?: string; // Optional CSS class name
+}
+
+// Additional component prop types
+export interface ExerciseEditorProps {
+  exercise: Exercise;
+  onExerciseChange: (exercise: Exercise) => void;
+  onRemoveExercise: () => void;
+  className?: string;
+}
+
+export interface SetEditorProps {
+  set: Set;
+  onSetChange: (set: Set) => void;
+  onRemoveSet: () => void;
+  className?: string;
+}
+
+export interface WorkoutTemplateCardProps {
+  template: WorkoutTemplate;
+  onSelect: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  isSelected: boolean;
+  className?: string;
 }

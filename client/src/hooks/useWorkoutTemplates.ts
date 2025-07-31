@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react';
-import { getWorkoutTemplates, createWorkoutTemplate } from '@/lib/api/workoutApi';
+import { getWorkoutTemplates, createWorkoutTemplate } from '@/lib/api/';
 import type { WorkoutTemplate, Exercise } from '@/types/workoutTypes';
 
 // Custom hook for managing workout templates
