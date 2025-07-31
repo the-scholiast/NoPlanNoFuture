@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Search, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { searchExercises, createCustomExercise } from '@/lib/api/userDataApi';
+import { searchExercises, createCustomExercise } from '@/lib/api/';
 
 interface ExerciseInputProps {
   onExerciseAdd: (exerciseName: string) => void;
