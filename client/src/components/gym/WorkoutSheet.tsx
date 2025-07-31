@@ -12,7 +12,7 @@ import CompletedWorkoutView from './CompletedWorkoutView';
 import ActiveWorkoutEditor from './ActiveWorkoutEditor';
 import LoadingSpinner from '../ui/LoadingSpinner';
 // Types
-import type { WorkoutSheetProps } from '@/app/types/workout';
+import type { WorkoutSheetProps } from '@/types/workoutTypes';
 
 // Main container component that orchestrates the workout tracking experience
 export default function WorkoutSheet({ className }: WorkoutSheetProps) {

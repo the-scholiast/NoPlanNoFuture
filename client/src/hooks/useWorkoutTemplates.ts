@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getWorkoutTemplates, createWorkoutTemplate } from '@/lib/api/workoutApi';
-import type { WorkoutTemplate, Exercise } from '@/app/types/workout';
+import type { WorkoutTemplate, Exercise } from '@/types/workoutTypes';
 
 // Custom hook for managing workout templates
 // Handles loading, refreshing, and selecting workout templates

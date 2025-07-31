@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react';
-import type { Exercise, Set } from '@/app/types/workout';
+import type { Exercise, Set } from '@/types/workoutTypes';
 
 // Custom hook for managing workout state
 // Handles exercises, sets, and workout completion logic
@@ -23,7 +23,7 @@ export function useWorkoutState() {
       ]
     };
     setExercises(prev => [...prev, newExercise]);
-    
+
     // Start the timer if this is the first exercise
     if (!startTime) {
       setStartTime(new Date());
@@ -123,7 +123,7 @@ export function useWorkoutState() {
     workoutDuration,
     startTime,
     isWorkoutCompleted,
-    
+
     // Setters
     setExercises,
     setWorkoutName,
@@ -131,7 +131,7 @@ export function useWorkoutState() {
     setWorkoutDuration,
     setStartTime,
     setIsWorkoutCompleted,
-    
+
     // Actions
     addExercise,
     removeExercise,

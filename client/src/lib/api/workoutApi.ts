@@ -22,7 +22,7 @@ async function getAuthHeaders() {
         throw new Error('No authentication session - please login again')
       }
 
-      console.log('✅ Session refreshed successfully')
+      console.log('Session refreshed successfully')
       return {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${refreshedSession.access_token}`
@@ -49,7 +49,7 @@ async function getAuthHeaders() {
       }
     }
 
-    console.log('✅ Using valid token:', session.access_token.substring(0, 20) + '...')
+    console.log('Using valid token:', session.access_token.substring(0, 20) + '...')
 
     return {
       'Content-Type': 'application/json',

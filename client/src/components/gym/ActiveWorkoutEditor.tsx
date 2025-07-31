@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Textarea } from '../ui/textarea';
 import ExerciseInput from './ExerciseInput';
-import type { ActiveWorkoutEditorProps } from '@/app/types/workout';
+import type { ActiveWorkoutEditorProps } from '@/types/workoutTypes';
 
 // This component manages the active workout state and provides a complete interface for tracking workout progress
 export default function ActiveWorkoutEditor({
@@ -308,7 +308,7 @@ export default function ActiveWorkoutEditor({
                     <TableRow key={set.id}>
                       {/* Set Number */}
                       <TableCell>{index + 1}</TableCell>
-                      
+
                       {/* Weight Input */}
                       <TableCell>
                         <Input
@@ -319,7 +319,7 @@ export default function ActiveWorkoutEditor({
                           disabled={isWorkoutCompleted}
                         />
                       </TableCell>
-                      
+
                       {/* Reps Input */}
                       <TableCell>
                         <Input
@@ -330,7 +330,7 @@ export default function ActiveWorkoutEditor({
                           disabled={isWorkoutCompleted}
                         />
                       </TableCell>
-                      
+
                       {/* Completion Toggle */}
                       <TableCell>
                         <div className="flex items-center justify-center">
@@ -344,7 +344,7 @@ export default function ActiveWorkoutEditor({
                           </Button>
                         </div>
                       </TableCell>
-                      
+
                       {/* Remove Set Button */}
                       {!isWorkoutCompleted && (
                         <TableCell>

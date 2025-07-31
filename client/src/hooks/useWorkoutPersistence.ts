@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { saveCompletedWorkout, getCompletedWorkoutsByDate } from '@/lib/api/workoutApi';
-import type { CompletedWorkout, Exercise } from '@/app/types/workout';
+import type { CompletedWorkout, Exercise } from '@/types/workoutTypes';
 
 // Custom hook for managing workout persistence
 // Handles saving workouts and loading existing workouts by date

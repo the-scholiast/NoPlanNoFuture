@@ -223,7 +223,7 @@ export default function ExerciseInput({
           {showSuggestions && suggestions.length > 0 && (
             <div 
               ref={suggestionsRef}
-              className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto mt-1"
+              className="absolute top-full left-0 right-0 bg-background border border-gray-200 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto mt-1"
             >
               {suggestions.map((exercise, index) => (
                 <button

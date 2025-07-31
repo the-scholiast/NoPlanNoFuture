@@ -5,7 +5,7 @@ import { ArrowLeft, Calendar, Clock, Dumbbell, FileText } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
-import type { CompletedWorkoutViewProps } from '@/app/types/workout'; 
+import type { CompletedWorkoutViewProps } from '@/types/workoutTypes';
 
 // Displays a completed workout with all its details including:
 // - Workout summary (name, date, duration, exercise count)
@@ -74,7 +74,7 @@ export default function CompletedWorkoutView({
           {/* Success Title */}
           <div>
             <h1 className="text-3xl font-bold text-green-600">
-              Workout Completed! 
+              Workout Completed!
             </h1>
           </div>
         </div>
@@ -178,8 +178,8 @@ export default function CompletedWorkoutView({
                       <div
                         key={setIndex}
                         className={`grid grid-cols-3 gap-4 text-sm py-2 px-1 rounded transition-colors ${set.completed
-                            ? 'text-green-600 font-medium bg-green-50'
-                            : 'text-gray-400 bg-gray-50'
+                          ? 'text-green-600 font-medium bg-green-50'
+                          : 'text-gray-400 bg-gray-50'
                           }`}
                       >
                         <span className="font-semibold">#{setIndex + 1}</span>
