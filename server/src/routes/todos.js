@@ -10,7 +10,7 @@ import {
 } from '../controllers/todoController.js';
 
 // Endpoint fetches all todo items belonging to the currently authenticated user
-router.get('/todos', authenticateUser, async (req, res, next) => {
+router.get('/', authenticateUser, async (req, res, next) => {
   try {
     // Extract user ID from the authenticated user object (set by authenticateUser middleware)
     const todos = await getAllTodos(req.user.id);
@@ -21,7 +21,7 @@ router.get('/todos', authenticateUser, async (req, res, next) => {
 });
 
 // Endpoint creates a new todo for the authenticated user
-router.post('/todos', authenticateUser, async (req, res, next) => {
+router.post('/', authenticateUser, async (req, res, next) => {
   try {
     // Create new todo using authenticated user's ID and request body data
     const todo = await createTodo(req.user.id, req.body);
@@ -34,7 +34,7 @@ router.post('/todos', authenticateUser, async (req, res, next) => {
 });
 
 // Endpoint allows partial updates to a todo item
-router.patch('/todos/:id', authenticateUser, async (req, res, next) => {
+router.patch('/:id', authenticateUser, async (req, res, next) => {
   try {
     // Update the todo using authenticated user's ID, todo ID from URL params, and update data from body
     const todo = await updateTodo(req.user.id, req.params.id, req.body);
@@ -46,7 +46,7 @@ router.patch('/todos/:id', authenticateUser, async (req, res, next) => {
 });
 
 // Endpoint deletes a todo item from the database
-router.delete('/todos/:id', authenticateUser, async (req, res, next) => {
+router.delete('/:id', authenticateUser, async (req, res, next) => {
   try {
     // Delete the todo using authenticated user's ID and todo ID from URL params
     const result = await deleteTodo(req.user.id, req.params.id);
@@ -60,7 +60,7 @@ router.delete('/todos/:id', authenticateUser, async (req, res, next) => {
 });
 
 // Endpoint allows deletion of multiple todo items in a single request
-router.post('/todos/bulk-delete', authenticateUser, async (req, res, next) => {
+router.post('/bulk-delete', authenticateUser, async (req, res, next) => {
   try {
     // Perform bulk deletion using authenticated user's ID and deletion criteria from request body
     const result = await bulkDeleteTodos(req.user.id, req.body);

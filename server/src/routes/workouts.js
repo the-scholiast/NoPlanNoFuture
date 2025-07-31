@@ -16,7 +16,7 @@ import {
 const router = express.Router();
 
 // GET endpoint to retrieve workout templates for the authenticated user
-router.get('/workout-templates', authenticateUser, async (req, res, next) => {
+router.get('/', authenticateUser, async (req, res, next) => {
   try {
     // Call the database function to fetch workout templates specific to the current user
     // req.user.id is populated by the authenticateUser middleware
@@ -30,7 +30,7 @@ router.get('/workout-templates', authenticateUser, async (req, res, next) => {
 });
 
 // POST endpoint to create a new workout template for the authenticated user
-router.post('/workout-templates', authenticateUser, async (req, res, next) => {
+router.post('/', authenticateUser, async (req, res, next) => {
   try {
     // Create a new workout template using the user's ID and the request body data
     // req.body contains the template data sent by the client
@@ -44,7 +44,7 @@ router.post('/workout-templates', authenticateUser, async (req, res, next) => {
 });
 
 // PATCH endpoint to update an existing workout template for the authenticated user
-router.patch('/workout-templates/:id', authenticateUser, async (req, res, next) => {
+router.patch('/:id', authenticateUser, async (req, res, next) => {
   try {
     // Update a specific workout template using:
     // - req.user.id: ensures user can only update their own templates
@@ -60,7 +60,7 @@ router.patch('/workout-templates/:id', authenticateUser, async (req, res, next) 
 });
 
 // DELETE endpoint to remove a workout template for the authenticated user
-router.delete('/workout-templates/:id', authenticateUser, async (req, res, next) => {
+router.delete('/:id', authenticateUser, async (req, res, next) => {
   try {
     // Delete a specific workout template using:
     // - req.user.id: ensures user can only delete their own templates
@@ -77,7 +77,7 @@ router.delete('/workout-templates/:id', authenticateUser, async (req, res, next)
 // Completed workouts routes
 
 // GET endpoint to retrieve all completed workouts for the authenticated user
-router.get('/workouts', authenticateUser, async (req, res, next) => {
+router.get('/', authenticateUser, async (req, res, next) => {
   try {
     // Fetch completed workouts with optional query parameters for filtering/pagination
     // req.query may contain filters
@@ -91,7 +91,7 @@ router.get('/workouts', authenticateUser, async (req, res, next) => {
 });
 
 // GET endpoint to retrieve a specific completed workout by ID
-router.get('/workouts/:id', authenticateUser, async (req, res, next) => {
+router.get('/:id', authenticateUser, async (req, res, next) => {
   try {
     // Fetch a single workout using:
     // - req.user.id: ensures user can only access their own workouts
@@ -106,7 +106,7 @@ router.get('/workouts/:id', authenticateUser, async (req, res, next) => {
 });
 
 // POST endpoint to create a new completed workout record
-router.post('/workouts', authenticateUser, async (req, res, next) => {
+router.post('/', authenticateUser, async (req, res, next) => {
   try {
     // Create a new workout record using the user's ID and workout data
     // req.body contains workout details 
@@ -120,7 +120,7 @@ router.post('/workouts', authenticateUser, async (req, res, next) => {
 });
 
 // PATCH endpoint to update an existing completed workout
-router.patch('/workouts/:id', authenticateUser, async (req, res, next) => {
+router.patch('/:id', authenticateUser, async (req, res, next) => {
   try {
     // Update a specific workout using:
     // - req.user.id: ensures user can only update their own workouts
@@ -136,7 +136,7 @@ router.patch('/workouts/:id', authenticateUser, async (req, res, next) => {
 });
 
 // DELETE endpoint to remove a completed workout record
-router.delete('workouts/:id', authenticateUser, async (req, res, next) => {
+router.delete('/:id', authenticateUser, async (req, res, next) => {
   try {
     // Delete a specific workout using:
     // - req.user.id: ensures user can only delete their own workouts

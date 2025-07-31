@@ -6,7 +6,7 @@ import { getExercises, createExercise } from '../controllers/exerciseController.
 const router = express.Router();
 
 // GET /exercises - Retrieves exercises with optional search functionality
-router.get('/exercises', authenticateUser, async (req, res, next) => {
+router.get('/', authenticateUser, async (req, res, next) => {
   try {
     // Get exercises with optional search filtering from query parameters
     const exercises = await getExercises(req.query.search);
@@ -19,7 +19,7 @@ router.get('/exercises', authenticateUser, async (req, res, next) => {
 });
 
 // POST /exercises - Creates a new custom exercise for the authenticated user
-router.post('/exercises', authenticateUser, async (req, res, next) => {
+router.post('/', authenticateUser, async (req, res, next) => {
   try {
     // Create custom exercise using authenticated user's ID and request body data
     const exercise = await createExercise(req.user.id, req.body);
