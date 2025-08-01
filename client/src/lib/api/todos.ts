@@ -1,41 +1,11 @@
 import { supabase } from '@/lib/supabaseClient'
+import { TaskData, CreateTaskData } from '@/types/todoTypes';
 
-// =============================================
-// TYPE DEFINITIONS
-// =============================================
-
-export interface Task {
-  id: string;
-  title: string;
-  completed: boolean;
-  createdAt: Date;
-  section: 'daily' | 'today' | 'upcoming';
-  priority?: 'low' | 'medium' | 'high';
-  startDate?: string;
-  endDate?: string;
-  startTime?: string;
-  endTime?: string;
-}
-
-export interface CreateTaskData {
-  title: string;
-  section: 'daily' | 'today' | 'upcoming';
-  priority: 'low' | 'medium' | 'high';
-  startDate?: string;
-  endDate?: string;
-  startTime?: string;
-  endTime?: string;
-}
-
-// =============================================
 // API FUNCTIONS
-// =============================================
 
 export const todoApi = {
-  /**
-   * Fetch all todos from the database
-   */
-  getAll: async (): Promise<Task[]> => {
+  // Fetch all todos from the database
+  getAll: async (): Promise<TaskData[]> => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('No authenticated user')
@@ -53,13 +23,14 @@ export const todoApi = {
         id: todo.id,
         title: todo.title,
         completed: todo.completed,
-        createdAt: new Date(todo.created_at),
-        section: todo.section as 'daily' | 'today' | 'upcoming',
-        priority: todo.priority as 'low' | 'medium' | 'high' | undefined,
-        startDate: todo.start_date || undefined,
-        endDate: todo.end_date || undefined,
-        startTime: todo.start_time || undefined,
-        endTime: todo.end_time || undefined,
+        created_at: todo.created_at || new Date().toISOString(),
+        section: todo.section,
+        priority: todo.priority,
+        description: todo.description,
+        start_date: todo.start_date,
+        end_date: todo.end_date,
+        start_time: todo.start_time,
+        end_time: todo.end_time
       }))
     } catch (error) {
       console.error('Failed to fetch todos:', error);
@@ -67,10 +38,8 @@ export const todoApi = {
     }
   },
 
-  /**
-   * Create a new todo
-   */
-  create: async (todoData: CreateTaskData): Promise<Task> => {
+  // Create a new todo
+  create: async (todoData: CreateTaskData): Promise<TaskData> => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('No authenticated user')
@@ -82,10 +51,10 @@ export const todoApi = {
           title: todoData.title,
           section: todoData.section,
           priority: todoData.priority,
-          start_date: todoData.startDate || null,
-          end_date: todoData.endDate || null,
-          start_time: todoData.startTime || null,
-          end_time: todoData.endTime || null,
+          start_date: todoData.start_date || null,
+          end_date: todoData.end_date || null,
+          start_time: todoData.start_time || null,
+          end_time: todoData.end_time || null,
         })
         .select()
         .single()
@@ -97,13 +66,13 @@ export const todoApi = {
         id: data.id,
         title: data.title,
         completed: data.completed,
-        createdAt: new Date(data.created_at),
+        created_at: data.created_at,
         section: data.section as 'daily' | 'today' | 'upcoming',
-        priority: data.priority as 'low' | 'medium' | 'high' | undefined,
-        startDate: data.start_date || undefined,
-        endDate: data.end_date || undefined,
-        startTime: data.start_time || undefined,
-        endTime: data.end_time || undefined,
+        priority: data.priority as 'low' | 'medium' | 'high',
+        start_date: data.start_date || undefined,
+        end_date: data.end_date || undefined,
+        start_time: data.start_time || undefined,
+        end_time: data.end_time || undefined,
       }
     } catch (error) {
       console.error('Failed to create todo:', error);
@@ -111,10 +80,8 @@ export const todoApi = {
     }
   },
 
-  /**
-   * Create multiple todos at once
-   */
-  createMany: async (todosData: CreateTaskData[]): Promise<Task[]> => {
+  // Create multiple todos at once
+  createMany: async (todosData: CreateTaskData[]): Promise<TaskData[]> => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('No authenticated user')
@@ -124,10 +91,10 @@ export const todoApi = {
         title: todo.title,
         section: todo.section,
         priority: todo.priority,
-        start_date: todo.startDate || null,
-        end_date: todo.endDate || null,
-        start_time: todo.startTime || null,
-        end_time: todo.endTime || null,
+        start_date: todo.start_date || null,
+        end_date: todo.end_date || null,
+        start_time: todo.start_time || null,
+        end_time: todo.end_time || null,
       }))
 
       const { data, error } = await supabase
@@ -142,13 +109,13 @@ export const todoApi = {
         id: todo.id,
         title: todo.title,
         completed: todo.completed,
-        createdAt: new Date(todo.created_at),
+        created_at: todo.created_at,
         section: todo.section as 'daily' | 'today' | 'upcoming',
         priority: todo.priority as 'low' | 'medium' | 'high' | undefined,
-        startDate: todo.start_date || undefined,
-        endDate: todo.end_date || undefined,
-        startTime: todo.start_time || undefined,
-        endTime: todo.end_time || undefined,
+        start_date: todo.start_date || undefined,
+        end_date: todo.end_date || undefined,
+        start_time: todo.start_time || undefined,
+        end_time: todo.end_time || undefined,
       }))
     } catch (error) {
       console.error('Failed to create multiple todos:', error);
@@ -156,10 +123,8 @@ export const todoApi = {
     }
   },
 
-  /**
-   * Update an existing todo
-   */
-  update: async (id: string, updates: Partial<Omit<Task, 'id' | 'createdAt'>>): Promise<Task> => {
+  // Update an existing todo
+  update: async (id: string, updates: Partial<Omit<TaskData, 'id' | 'created_at'>>): Promise<TaskData> => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('No authenticated user')
@@ -170,10 +135,10 @@ export const todoApi = {
       if (updates.completed !== undefined) dbUpdates.completed = updates.completed
       if (updates.section !== undefined) dbUpdates.section = updates.section
       if (updates.priority !== undefined) dbUpdates.priority = updates.priority
-      if (updates.startDate !== undefined) dbUpdates.start_date = updates.startDate
-      if (updates.endDate !== undefined) dbUpdates.end_date = updates.endDate
-      if (updates.startTime !== undefined) dbUpdates.start_time = updates.startTime
-      if (updates.endTime !== undefined) dbUpdates.end_time = updates.endTime
+      if (updates.start_date !== undefined) dbUpdates.start_date = updates.start_date
+      if (updates.end_date !== undefined) dbUpdates.end_date = updates.end_date
+      if (updates.start_time !== undefined) dbUpdates.start_time = updates.start_time
+      if (updates.end_time !== undefined) dbUpdates.end_time = updates.end_time
 
       const { data, error } = await supabase
         .from('todos')
@@ -190,13 +155,13 @@ export const todoApi = {
         id: data.id,
         title: data.title,
         completed: data.completed,
-        createdAt: new Date(data.created_at),
+        created_at: data.created_at,
         section: data.section as 'daily' | 'today' | 'upcoming',
         priority: data.priority as 'low' | 'medium' | 'high' | undefined,
-        startDate: data.start_date || undefined,
-        endDate: data.end_date || undefined,
-        startTime: data.start_time || undefined,
-        endTime: data.end_time || undefined,
+        start_date: data.start_date || undefined,
+        end_date: data.end_date || undefined,
+        start_time: data.start_time || undefined,
+        end_time: data.end_time || undefined,
       }
     } catch (error) {
       console.error('Failed to update todo:', error);
@@ -204,9 +169,7 @@ export const todoApi = {
     }
   },
 
-  /**
-   * Delete a specific todo
-   */
+  // Delete a specific todo
   delete: async (id: string): Promise<{ success: boolean }> => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -227,9 +190,7 @@ export const todoApi = {
     }
   },
 
-  /**
-   * Delete completed todos in a specific section
-   */
+  // Delete completed todos in a specific section
   deleteCompleted: async (section: 'daily' | 'today' | 'upcoming'): Promise<{ success: boolean; deleted: number }> => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -252,9 +213,7 @@ export const todoApi = {
     }
   },
 
-  /**
-   * Delete all todos in a specific section
-   */
+  // Delete all todos in a specific section
   deleteAll: async (section: 'daily' | 'today' | 'upcoming'): Promise<{ success: boolean; deleted: number }> => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -276,17 +235,13 @@ export const todoApi = {
     }
   },
 
-  /**
-   * Toggle the completed status of a todo
-   */
-  toggleComplete: async (id: string, currentStatus: boolean): Promise<Task> => {
+  // Toggle the completed status of a todo
+  toggleComplete: async (id: string, currentStatus: boolean): Promise<TaskData> => {
     return todoApi.update(id, { completed: !currentStatus });
   },
 
-  /**
-   * Update only the title of a todo
-   */
-  updateTitle: async (id: string, title: string): Promise<Task> => {
+  // Update only the title of a todo
+  updateTitle: async (id: string, title: string): Promise<TaskData> => {
     return todoApi.update(id, { title });
   }
 };
@@ -296,23 +251,17 @@ export const todoApi = {
 // =============================================
 
 export const todoEvents = {
-  /**
-   * Dispatch event when todos are added
-   */
+  // Dispatch event when todos are added
   dispatchTodoAdded: () => {
     window.dispatchEvent(new CustomEvent('todoAdded'));
   },
 
-  /**
-   * Dispatch event when todos are updated
-   */
+  // Dispatch event when todos are updated
   dispatchTodoUpdated: () => {
     window.dispatchEvent(new CustomEvent('todoUpdated'));
   },
 
-  /**
-   * Listen for todo events
-   */
+  // Listen for todo events
   onTodoChange: (callback: () => void) => {
     const handleTodoAdded = () => callback();
     const handleTodoUpdated = () => callback();
@@ -327,49 +276,3 @@ export const todoEvents = {
     };
   }
 };
-
-// =============================================
-// PLACEHOLDER DATA (for fallback)
-// =============================================
-
-export const placeholderTodos: Task[] = [
-  {
-    id: '1',
-    title: 'Morning Exercise',
-    completed: false,
-    createdAt: new Date(),
-    section: 'daily',
-    priority: 'high',
-    startTime: '07:00',
-    endTime: '08:00'
-  },
-  {
-    id: '2',
-    title: 'Review Daily Goals',
-    completed: true,
-    createdAt: new Date(),
-    section: 'daily',
-    priority: 'medium'
-  },
-  {
-    id: '3',
-    title: 'Team Meeting',
-    completed: false,
-    createdAt: new Date(),
-    section: 'today',
-    priority: 'high',
-    startDate: new Date().toISOString().split('T')[0],
-    startTime: '10:00',
-    endTime: '11:00'
-  },
-  {
-    id: '4',
-    title: 'Project Deadline',
-    completed: false,
-    createdAt: new Date(),
-    section: 'upcoming',
-    priority: 'high',
-    startDate: '2025-02-01',
-    endDate: '2025-02-01'
-  }
-];
