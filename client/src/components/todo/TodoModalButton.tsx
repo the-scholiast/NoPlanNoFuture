@@ -4,12 +4,14 @@ import React, { useState, useEffect } from 'react';
 import { CheckSquare, Check, Calendar, Clock, Star, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { todoApi, Task } from '@/lib/api/todos';
+import { todoApi} from '@/lib/api/todos';
+import { TaskData } from '@/types/todoTypes';
 
 export default function TodoModalButton() {
   const [isOpen, setIsOpen] = useState(false);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<TaskData[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Load tasks when modal opens
   useEffect(() => {
@@ -21,10 +23,12 @@ export default function TodoModalButton() {
   const loadTasks = async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await todoApi.getAll();
       setTasks(data);
     } catch (error) {
       console.error('Failed to load tasks:', error);
+      setError('Failed to load tasks. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -43,10 +47,24 @@ export default function TodoModalButton() {
       const task = tasks.find(t => t.id === taskId);
       if (!task) return;
 
+      // Optimistically update the UI
+      setTasks(prevTasks =>
+        prevTasks.map(t =>
+          t.id === taskId ? { ...t, completed: !t.completed } : t
+        )
+      );
+
+      // Update the backend
       await todoApi.update(taskId, { completed: !task.completed });
-      await loadTasks(); // Reload tasks
     } catch (error) {
       console.error('Failed to update task:', error);
+      // Revert the optimistic update on error
+      setTasks(prevTasks =>
+        prevTasks.map(t =>
+          t.id === taskId ? { ...t, completed: !t.completed } : t
+        )
+      );
+      setError('Failed to update task. Please try again.');
     }
   };
 
@@ -61,7 +79,29 @@ export default function TodoModalButton() {
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString();
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch {
+      return dateString; // Return original if parsing fails
+    }
+  };
+
+  const getSectionTitle = (sectionKey: string) => {
+    switch (sectionKey) {
+      case 'today': return 'Today';
+      case 'daily': return 'Daily';
+      case 'upcoming': return 'Upcoming';
+      default: return sectionKey.charAt(0).toUpperCase() + sectionKey.slice(1);
+    }
+  };
+
+  const getSectionEmoji = (sectionKey: string) => {
+    switch (sectionKey) {
+      case 'today': return '📅';
+      case 'daily': return '🔄';
+      case 'upcoming': return '📋';
+      default: return '📝';
+    }
   };
 
   return (
@@ -107,6 +147,21 @@ export default function TodoModalButton() {
 
               {/* Content */}
               <div className="p-6">
+                {/* Error Display */}
+                {error && (
+                  <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
+                    <p className="text-red-700 dark:text-red-300 text-sm">{error}</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setError(null)}
+                      className="mt-2"
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                )}
+
                 {loading ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="text-muted-foreground">Loading tasks...</div>
@@ -115,7 +170,8 @@ export default function TodoModalButton() {
                   <div className="space-y-4">
                     {(['today', 'daily', 'upcoming'] as const).map((sectionKey) => {
                       const sectionTasks = groupedTasks[sectionKey];
-                      const sectionTitle = sectionKey.charAt(0).toUpperCase() + sectionKey.slice(1);
+                      const sectionTitle = getSectionTitle(sectionKey);
+                      const sectionEmoji = getSectionEmoji(sectionKey);
 
                       return (
                         <div
@@ -124,7 +180,8 @@ export default function TodoModalButton() {
                         >
                           {/* Section Header */}
                           <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-semibold text-lg text-pink-900 dark:text-pink-100">
+                            <h3 className="font-semibold text-lg text-pink-900 dark:text-pink-100 flex items-center gap-2">
+                              <span>{sectionEmoji}</span>
                               {sectionTitle}
                             </h3>
                             {sectionTasks.length > 0 && (
@@ -138,8 +195,8 @@ export default function TodoModalButton() {
                           <div className="space-y-3">
                             {sectionTasks.length === 0 ? (
                               <div className="text-center py-6 text-pink-600 dark:text-pink-400">
-                                <div className="text-2xl mb-2">📝</div>
-                                <p className="text-sm">No tasks</p>
+                                <div className="text-2xl mb-2">{sectionEmoji}</div>
+                                <p className="text-sm">No tasks in {sectionTitle.toLowerCase()}</p>
                               </div>
                             ) : (
                               sectionTasks.map((task) => (
@@ -154,8 +211,8 @@ export default function TodoModalButton() {
                                       className="flex-shrink-0 mt-0.5"
                                     >
                                       <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${task.completed
-                                          ? 'bg-pink-500 border-pink-500'
-                                          : 'border-pink-300 hover:border-pink-500 dark:border-pink-600 dark:hover:border-pink-400'
+                                        ? 'bg-pink-500 border-pink-500'
+                                        : 'border-pink-300 hover:border-pink-500 dark:border-pink-600 dark:hover:border-pink-400'
                                         }`}>
                                         {task.completed && (
                                           <Check className="w-3 h-3 text-white" />
@@ -165,8 +222,8 @@ export default function TodoModalButton() {
 
                                     <div className="flex-1 min-w-0">
                                       <div className={`font-medium text-sm ${task.completed
-                                          ? 'line-through text-muted-foreground'
-                                          : 'text-pink-900 dark:text-pink-100'
+                                        ? 'line-through text-muted-foreground'
+                                        : 'text-pink-900 dark:text-pink-100'
                                         }`}>
                                         {task.title}
                                       </div>
@@ -182,22 +239,22 @@ export default function TodoModalButton() {
                                         )}
 
                                         {/* Date information */}
-                                        {(task.startDate || task.endDate) && (
+                                        {(task.start_date || task.end_date) && (
                                           <Badge variant="outline" className="text-xs border-pink-300 text-pink-700 dark:border-pink-600 dark:text-pink-300">
                                             <Calendar className="w-3 h-3 mr-1" />
-                                            {task.startDate && formatDate(task.startDate)}
-                                            {task.startDate && task.endDate && task.startDate !== task.endDate && ' - '}
-                                            {task.endDate && task.endDate !== task.startDate && formatDate(task.endDate)}
+                                            {task.start_date && formatDate(task.start_date)}
+                                            {task.start_date && task.end_date && task.start_date !== task.end_date && ' - '}
+                                            {task.end_date && task.end_date !== task.start_date && formatDate(task.end_date)}
                                           </Badge>
                                         )}
 
                                         {/* Time information */}
-                                        {(task.startTime || task.endTime) && (
+                                        {(task.start_time || task.end_time) && (
                                           <Badge variant="outline" className="text-xs border-pink-300 text-pink-700 dark:border-pink-600 dark:text-pink-300">
                                             <Clock className="w-3 h-3 mr-1" />
-                                            {task.startTime}
-                                            {task.startTime && task.endTime && ' - '}
-                                            {task.endTime}
+                                            {task.start_time}
+                                            {task.start_time && task.end_time && ' - '}
+                                            {task.end_time}
                                           </Badge>
                                         )}
                                       </div>
@@ -210,6 +267,19 @@ export default function TodoModalButton() {
                         </div>
                       );
                     })}
+                  </div>
+                )}
+
+                {/* Refresh Button */}
+                {!loading && (
+                  <div className="mt-6 text-center">
+                    <Button
+                      variant="outline"
+                      onClick={loadTasks}
+                      className="w-full bg-pink-50 hover:bg-pink-100 dark:bg-pink-950/30 dark:hover:bg-pink-950/50 border-pink-200 dark:border-pink-800"
+                    >
+                      Refresh Tasks
+                    </Button>
                   </div>
                 )}
               </div>
