@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 export default function HomePage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white">
-      <h1 className="text-2xl font-bold mb-4">Meow meow meow meow meow</h1>
+      <h1 className="text-2xl font-bold mb-4">No Meow no meow-meow</h1>
       <Image
         src="/images/banner.png"
         alt="Banner"
@@ -13,7 +13,10 @@ export default function HomePage() {
         height={150}
         priority
       />
-      <Input></Input>
+      <div> Sentence of the day: Blowing solves everything :D
+        <Input placeholder='Say something...' className='mt-3'></Input>
+
+      </div>
     </div>
   );
 }
