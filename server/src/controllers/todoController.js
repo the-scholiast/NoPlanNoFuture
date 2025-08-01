@@ -17,7 +17,7 @@ export const getAllTodos = async (userId) => {
 
 // Creates a new todo in the database
 export const createTodo = async (userId, todoData) => {
-  const { title, section, priority, startDate, endDate, startTime, endTime } = todoData;
+  const { title, section, priority, startDate, endDate, startTime, endTime, description } = todoData;
 
   if (!title || !section) {
     throw new ValidationError('Title and section are required');
@@ -30,6 +30,7 @@ export const createTodo = async (userId, todoData) => {
       title,
       section,
       priority: priority || null,
+      description: description || "",
       start_date: startDate || null,
       end_date: endDate || null,
       start_time: startTime || null,
