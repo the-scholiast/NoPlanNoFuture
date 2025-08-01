@@ -1,9 +1,38 @@
 {
+  "name": "noplanfuture-app",
+  "version": "1.0.0",
+  "description": "Full-stack fitness tracking app with Next.js and Express",
+  "scripts": {
+    "preinstall": "echo 'Setting up NoPlanNoFuture app...'",
+    "install:all": "npm install && npm run install:client && npm run install:server",
+    "install:client": "cd client && npm install",
+    "install:server": "cd server && npm install",
+    
+    "dev": "npm run install:all && concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    
+    "start": "npm run install:all && concurrently \"npm run start:server\" \"npm run start:client\"",
+    "start:client": "cd client && npm run build && npm run start",
+    "start:server": "cd server && npm run start",
+    
+    "build": "npm run install:all && cd client && npm run build",
+    "lint": "cd client && npm run lint",
+    "clean": "rm -rf node_modules client/node_modules server/node_modules",
+    "reset": "npm run clean && npm run install:all"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.50.5",
     "next": "^15.3.5",
     "next-themes": "^0.4.6",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
-  }
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "workspaces": [
+    "client",
+    "server"
+  ]
 }
