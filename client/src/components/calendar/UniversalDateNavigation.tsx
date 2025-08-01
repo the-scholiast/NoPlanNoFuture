@@ -178,8 +178,8 @@ export default function UniversalDateNavigation({ className }: UniversalDateNavi
       params.set('month', month)
     }
 
-    // Include day for day mode
-    if (mode === 'day') {
+    // Include day for week and day modes (this is the key change!)
+    if (mode === 'week' || mode === 'day') {
       params.set('day', day)
     }
 

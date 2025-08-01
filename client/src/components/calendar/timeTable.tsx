@@ -28,19 +28,24 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
     setIsMounted(true);
   }, []);
 
-
-  // Sync with URL parameters
+  // Sync with URL parameters - now includes day parameter
   useEffect(() => {
     const year = searchParams.get('year')
     const month = searchParams.get('month')
+    const day = searchParams.get('day') // Add day parameter
 
-    if (year && month) {
+    if (year && month && day) {
+      // Create date with specific day for accurate week calculation
+      const urlDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+      setCurrentDate(urlDate)
+    } else if (year && month) {
+      // Fallback to first day of month if day is missing
       const urlDate = new Date(parseInt(year), parseInt(month) - 1, 1)
       setCurrentDate(urlDate)
     } else if (selectedDate) {
       setCurrentDate(selectedDate)
     }
-  }, [searchParams, selectedDate])
+  }, [searchParams, selectedDate]) // This will now trigger when day parameter changes
 
   /** 
    * Generates a complete day's worth of time slots in 30-minute increments
@@ -255,7 +260,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
     };
   }, [hasInitialized]);
 
-  // Get week dates only if mounted and selectedDate is available
+  // Get week dates using currentDate (which now updates when URL params change)
   let weekDates: Date[] | undefined;
   if (isMounted && currentDate) {
     weekDates = getWeekDates(currentDate);
