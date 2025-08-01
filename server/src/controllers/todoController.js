@@ -1,5 +1,4 @@
 import { supabase } from '../utils/supabase.js';
-import { transformTodoFromDB, transformTodoToDB } from '../utils/transformers.js';
 import { ValidationError } from '../utils/errors.js';
 
 // Fetches all todos for a specific user from the Supabase todos table
@@ -12,12 +11,12 @@ export const getAllTodos = async (userId) => {
 
   if (error) throw error;
 
-  return data.map(transformTodoFromDB);
+  return data;
 };
 
 // Creates a new todo in the database
 export const createTodo = async (userId, todoData) => {
-  const { title, section, priority, startDate, endDate, startTime, endTime } = todoData;
+  const { title, section, priority, startDate, endDate, startTime, endTime, description } = todoData;
 
   if (!title || !section) {
     throw new ValidationError('Title and section are required');
@@ -30,6 +29,7 @@ export const createTodo = async (userId, todoData) => {
       title,
       section,
       priority: priority || null,
+      description: description || "",
       start_date: startDate || null,
       end_date: endDate || null,
       start_time: startTime || null,
@@ -40,16 +40,15 @@ export const createTodo = async (userId, todoData) => {
 
   if (error) throw error;
 
-  return transformTodoFromDB(data);
+  return data;
 };
 
 // Updates an existing todo's fields
 export const updateTodo = async (userId, todoId, updates) => {
-  const dbUpdates = transformTodoToDB(updates);
 
   const { data, error } = await supabase
     .from('todos')
-    .update(dbUpdates)
+    .update(updates)
     .eq('id', todoId)
     .eq('user_id', userId)
     .select()
@@ -57,7 +56,7 @@ export const updateTodo = async (userId, todoId, updates) => {
 
   if (error) throw error;
 
-  return transformTodoFromDB(data);
+  return data;
 };
 
 // Deletes a specific todo
