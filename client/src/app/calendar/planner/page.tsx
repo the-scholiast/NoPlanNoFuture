@@ -1,8 +1,12 @@
-export default function Page() {
+import React from 'react';
+import RadialPlanner from '../../../components/RadialPlanner/RadialPlanner';
 
-  return (
-    <div className="bg-red-500 text-white p-4">
-      Testing planner
-    </div>
-  );
+function App() {
+    return (
+        <div className="App">
+            <RadialPlanner />
+        </div>
+    );
 }
+
+export default App;
