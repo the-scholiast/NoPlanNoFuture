@@ -1,5 +1,7 @@
 'use client';
 import React, { useState } from 'react';
+import { useTheme } from 'next-themes';
+
 
 interface Task {
     title: string;
@@ -11,6 +13,8 @@ interface Task {
 }
 
 const RadialPlanner: React.FC = () => {
+    const { theme } = useTheme();
+    const isDarkMode = theme === 'dark';
     const [tasks, setTasks] = useState<Task[]>([]);
     const [formVisible, setFormVisible] = useState<boolean>(false);
     const [newTask, setNewTask] = useState<Task>({ title: '', start: 0, end: 1, remarks: '', hourGroup: 'AM' });
@@ -81,7 +85,7 @@ const RadialPlanner: React.FC = () => {
                 return digits;
             }
             if (digits.length === 3) return `${digits[0]}:${digits.slice(1)}`;
-            if (digits.length >= 4) return `${digits.slice(0, -2)}:${digits.slice(-2)}`;
+            if (digits.length >= 4) return `${digits.slice(0, 2)}:${digits.slice(2, 4)}`;
         }
 
         return cleaned;
@@ -122,43 +126,87 @@ const RadialPlanner: React.FC = () => {
         if (actualHour === 24) actualHour = 0;
 
         if (actualHour >= 5 && actualHour < 7) {
-            return '#ff7b7b';
+            // Early morning 5-7AM
+            return isDarkMode ? '#4FD1C7' : '#FBB6CE'; // Teal/Pink
         } else if (actualHour >= 7 && actualHour < 11) {
-            return '#87ceeb';
+            // Morning 7-11AM  
+            return isDarkMode ? '#68D391' : '#90CDF4'; // Green/Blue
         } else if (actualHour >= 11 && actualHour < 17) {
-            return '#ffd700';
+            // Afternoon 11AM-5PM
+            return isDarkMode ? '#F6AD55' : '#A78BFA'; // Orange/Purple
         } else if (actualHour >= 17 && actualHour < 20) {
-            return '#ff8c42';
+            // Evening 5-8PM
+            return isDarkMode ? '#FC8181' : '#34D399'; // Red/Emerald
         } else {
-            return '#2e2e5f';
+            // Night (other times)
+            return isDarkMode ? '#9F7AEA' : '#F687B3'; // Purple/Pink
+        }
+    };
+
+    // Helper function to wrap text
+    const wrapText = (text: string, maxWidth: number) => {
+        if (text.length <= maxWidth) return [text];
+
+        const words = text.split(' ');
+        const lines = [];
+        let currentLine = '';
+
+        for (const word of words) {
+            if ((currentLine + word).length <= maxWidth) {
+                currentLine += (currentLine ? ' ' : '') + word;
+            } else {
+                if (currentLine) lines.push(currentLine);
+                currentLine = word;
+            }
+        }
+        if (currentLine) lines.push(currentLine);
+
+        return lines.length > 2 ? [lines[0], lines[1] + '...'] : lines;
+    };
+
+    // Helper function to get text color based on background
+    const getTextColor = (backgroundColor: string) => {
+        // Simple contrast check
+        const darkColors = ['#4FD1C7', '#68D391', '#F6AD55', '#FC8181', '#9F7AEA'];
+        const lightColors = ['#FBB6CE', '#90CDF4', '#A78BFA', '#34D399', '#F687B3'];
+
+        if (isDarkMode) {
+            return darkColors.includes(backgroundColor) ? '#1A202C' : '#FFFFFF';
+        } else {
+            return lightColors.includes(backgroundColor) ? '#1A202C' : '#2D3748';
         }
     };
 
     const getOptimalTextPosition = (startAngle: number, endAngle: number, radius: number, isInnerRing: boolean) => {
         let midAngle = (startAngle + endAngle) / 2;
-
-        // For tasks that cross the 11-1 position (around -π/2 to π/2), adjust text position
         const span = Math.abs(endAngle - startAngle);
 
-        // If the task spans across the top (12 o'clock position), move text away from center
+        // Calculate arc length to determine text size and positioning
+        const arcLength = span * radius;
+
+        // For tasks that cross the 11-1 position (around -π/2 to π/2), adjust text position
         if (span > Math.PI) {
             // For large spans, place text at the bottom of the arc
             midAngle = midAngle + Math.PI;
         } else if (midAngle > -Math.PI / 3 && midAngle < Math.PI / 3) {
             // For tasks near 12 o'clock, move text slightly outward
-            const textRadius = isInnerRing ? radius * 0.7 : (radius + innerRadius) / 2 + 10;
+            const textRadius = isInnerRing ? radius * 0.8 : (radius + innerRadius) / 2 + 15;
             return {
                 x: center + textRadius * Math.cos(midAngle),
                 y: center + textRadius * Math.sin(midAngle),
-                angle: midAngle
+                angle: midAngle,
+                arcLength,
+                shouldRotate: span < Math.PI / 3 // Rotate text for narrow arcs
             };
         }
 
-        const textRadius = isInnerRing ? radius * 0.5 : (radius + innerRadius) / 2;
+        const textRadius = isInnerRing ? radius * 0.6 : (radius + innerRadius) / 2;
         return {
             x: center + textRadius * Math.cos(midAngle),
             y: center + textRadius * Math.sin(midAngle),
-            angle: midAngle
+            angle: midAngle,
+            arcLength,
+            shouldRotate: span < Math.PI / 3
         };
     };
 
@@ -217,6 +265,15 @@ const RadialPlanner: React.FC = () => {
             const avgTime = (portion.start + portion.end) / 2;
             const colorTimeGroup = portionIndex === 0 ? 'AM' : 'PM';
             const taskColor = getTimeColor(avgTime, colorTimeGroup === 'AM');
+            const textColor = getTextColor(taskColor);
+
+            const baseFontSize = duration > 2 ? 11 : duration > 1 ? 10 : 9;
+            const fontSize = Math.min(baseFontSize, Math.max(8, textPos.arcLength / 8));
+            const maxCharsPerLine = Math.floor(textPos.arcLength / (fontSize * 0.6));
+            const textLines = wrapText(task.title, maxCharsPerLine);
+
+            const textRotation = textPos.shouldRotate ?
+                `rotate(${(textPos.angle * 180 / Math.PI)}, ${textPos.x}, ${textPos.y})` : '';
 
             elements.push(
                 <g key={`cross-task-${originalIndex}-${portionIndex}`}>
@@ -224,20 +281,28 @@ const RadialPlanner: React.FC = () => {
                         d={pathData}
                         fill={taskColor}
                         strokeWidth={0}
-                        opacity="1.0"
+                        opacity="0.9"
                     />
-                    <text
-                        x={textPos.x}
-                        y={textPos.y}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        fontSize="10"
-                        fill="white"
-                        fontWeight="bold"
-                        style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)', cursor: 'default' }}
-                    >
-                        {task.title}
-                    </text>
+                    <g transform={textRotation}>
+                        {textLines.map((line, lineIndex) => (
+                            <text
+                                key={`cross-text-${originalIndex}-${portionIndex}-${lineIndex}`}
+                                x={textPos.x}
+                                y={textPos.y + (lineIndex - (textLines.length - 1) / 2) * (fontSize + 2)}
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                fontSize={fontSize}
+                                fill={textColor}
+                                fontWeight="600"
+                                style={{
+                                    textShadow: isDarkMode ? '1px 1px 2px rgba(0,0,0,0.8)' : '1px 1px 2px rgba(255,255,255,0.8)',
+                                    cursor: 'default'
+                                }}
+                            >
+                                {line}
+                            </text>
+                        ))}
+                    </g>
                 </g>
             );
         });
@@ -255,7 +320,7 @@ const RadialPlanner: React.FC = () => {
                 y1={outerConnectionY}
                 x2={innerConnectionX}
                 y2={innerConnectionY}
-                stroke="white"
+                stroke={isDarkMode ? "white" : "#2d3748"}
                 strokeWidth="2"
                 opacity="0.8"
             />
@@ -265,8 +330,8 @@ const RadialPlanner: React.FC = () => {
     };
 
     const renderTasks = () => {
+        console.log("=== rendering tasks ===");
         const elements: React.ReactElement[] = [];
-
 
         const sortedTasks = [...tasks].sort((a, b) => {
             const aRing = a.hourGroup === 'AM' ? 'outer' : 'inner';
@@ -331,9 +396,17 @@ const RadialPlanner: React.FC = () => {
             const avgTime = (startHour + endHour) / 2;
             const colorTimeGroup = task.hourGroup;
             const taskColor = getTimeColor(avgTime, colorTimeGroup === 'AM');
+            const textColor = getTextColor(taskColor);
 
-            // Determine font size based on task duration
-            const fontSize = duration > 2 ? 11 : duration > 1 ? 10 : 9;
+            // Calculate font size and text wrapping based on arc length
+            const baseFontSize = duration > 3 ? 12 : duration > 2 ? 11 : duration > 1 ? 10 : 9;
+            const fontSize = Math.min(baseFontSize, Math.max(8, textPos.arcLength / 8));
+            const maxCharsPerLine = Math.floor(textPos.arcLength / (fontSize * 0.6));
+            const textLines = wrapText(task.title, maxCharsPerLine);
+
+            // Determine if text should be rotated
+            const textRotation = textPos.shouldRotate ?
+                `rotate(${(textPos.angle * 180 / Math.PI)}, ${textPos.x}, ${textPos.y})` : '';
 
             elements.push(
                 <g key={`task-${originalIndex}`}>
@@ -341,20 +414,28 @@ const RadialPlanner: React.FC = () => {
                         d={pathData}
                         fill={taskColor}
                         strokeWidth={0}
-                        opacity="1.0"
+                        opacity="0.9"
                     />
-                    <text
-                        x={textPos.x}
-                        y={textPos.y}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        fontSize={fontSize}
-                        fill="white"
-                        fontWeight="bold"
-                        style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)', cursor: 'default' }}
-                    >
-                        {task.title}
-                    </text>
+                    <g transform={textRotation}>
+                        {textLines.map((line, lineIndex) => (
+                            <text
+                                key={`text-${originalIndex}-${lineIndex}`}
+                                x={textPos.x}
+                                y={textPos.y + (lineIndex - (textLines.length - 1) / 2) * (fontSize + 2)}
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                fontSize={fontSize}
+                                fill={textColor}
+                                fontWeight="600"
+                                style={{
+                                    textShadow: isDarkMode ? '1px 1px 2px rgba(0,0,0,0.8)' : '1px 1px 2px rgba(255,255,255,0.8)',
+                                    cursor: 'default'
+                                }}
+                            >
+                                {line}
+                            </text>
+                        ))}
+                    </g>
                 </g>
             );
         });
@@ -385,7 +466,7 @@ const RadialPlanner: React.FC = () => {
                     y1={outerY}
                     x2={innerX}
                     y2={innerY}
-                    stroke="white"
+                    stroke={isDarkMode ? "white" : "#2d3748"}
                     strokeWidth={strokeWidth}
                     opacity="0.7"
                 />
@@ -417,7 +498,7 @@ const RadialPlanner: React.FC = () => {
                     y1={outerY}
                     x2={innerX}
                     y2={innerY}
-                    stroke="white"
+                    stroke={isDarkMode ? "white" : "#2d3748"}
                     strokeWidth={strokeWidth}
                     opacity="0.9"
                 />
@@ -441,7 +522,7 @@ const RadialPlanner: React.FC = () => {
                 return Math.max(0, (duration - 1) * 8);
             }), 0)
         );
-        const numberRadius = maxTaskRadius + 30;
+        const numberRadius = maxTaskRadius + 50;
 
         for (let hour = 1; hour <= 12; hour++) {
             const angle = ((hour === 12 ? 0 : hour) / 12) * 2 * Math.PI + offset;
@@ -456,7 +537,7 @@ const RadialPlanner: React.FC = () => {
                     textAnchor="middle"
                     dominantBaseline="middle"
                     fontSize="16"
-                    fill="white"
+                    fill={isDarkMode ? '#ffffff' : '#2d3748'}
                     fontWeight="bold"
                 >
                     {hour}
@@ -491,105 +572,139 @@ const RadialPlanner: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-4">
-            <h1 className="text-3xl font-bold mb-6">Radial Day Planner</h1>
+        <div className={`flex flex-col items-center justify-center min-h-screen p-4 ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'}`}>
+            <div className="flex items-center gap-4 mb-6">
+                <h1
+                    className="text-3xl font-bold"
+                    style={{ color: isDarkMode ? '#63b1bf' : '#ff8c42' }}
+                >
+                    Radial Day Planner
+                </h1>
+            </div>
 
             <button
-                className="bg-blue-500 px-6 py-3 rounded-lg hover:bg-blue-600 mb-6 text-lg font-semibold transition-colors"
+                className="bg-blue-500 px-6 py-3 rounded-lg hover:bg-blue-600 mb-6 text-lg font-semibold transition-colors text-white"
                 onClick={() => setFormVisible(true)}
             >
                 Add Task
             </button>
 
             {formVisible && (
-                <div className="bg-white text-black p-6 rounded-lg shadow-lg mb-6 w-96">
-                    <h3 className="text-lg font-bold mb-4">Add New Task</h3>
+                <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
+                    <div className="bg-white text-black p-6 rounded-lg shadow-lg w-96">
+                        <h3 className="text-lg font-bold mb-4">Add New Task</h3>
 
-                    <label className="block mb-2 font-semibold">Title</label>
-                    <input
-                        type="text"
-                        className="w-full border px-3 py-2 mb-3 rounded"
-                        value={newTask.title}
-                        onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                        placeholder="Enter task title"
-                    />
+                        <label className="block mb-2 font-semibold">Title</label>
+                        <input
+                            type="text"
+                            className="w-full border px-3 py-2 mb-3 rounded"
+                            value={newTask.title}
+                            onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                            placeholder="Enter task title"
+                        />
 
-                    <label className="block mb-2 font-semibold">Time Period</label>
-                    <select
-                        className="w-full border px-3 py-2 mb-3 rounded"
-                        value={newTask.hourGroup}
-                        onChange={(e) => setNewTask({ ...newTask, hourGroup: e.target.value as 'AM' | 'PM' })}
-                    >
-                        <option value="AM">AM (Morning)</option>
-                        <option value="PM">PM (Afternoon/Evening)</option>
-                    </select>
-
-                    <div className="flex gap-3 mb-3">
-                        <div className="flex-1">
-                            <label className="block mb-2 font-semibold">Start Time</label>
-                            <input
-                                type="text"
-                                className="w-full border px-3 py-2 rounded"
-                                value={startTime}
-                                onChange={(e) => handleTimeInput(e.target.value, setStartTime)}
-                                placeholder="9 or 9:30"
-                            />
-                            <small className="text-gray-600">Format: H or H:MM (1-12)</small>
-                        </div>
-                        <div className="flex-1">
-                            <label className="block mb-2 font-semibold">End Time</label>
-                            <input
-                                type="text"
-                                className="w-full border px-3 py-2 rounded"
-                                value={endTime}
-                                onChange={(e) => handleTimeInput(e.target.value, setEndTime)}
-                                placeholder="10 or 10:30"
-                            />
-                            <small className="text-gray-600">Format: H or H:MM (1-12)</small>
-                        </div>
-                    </div>
-
-                    {timeError && (
-                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-3">
-                            {timeError}
-                        </div>
-                    )}
-
-                    <label className="block mb-2 font-semibold">Notes</label>
-                    <textarea
-                        className="w-full border px-3 py-2 mb-4 rounded"
-                        rows={3}
-                        value={newTask.remarks}
-                        onChange={(e) => setNewTask({ ...newTask, remarks: e.target.value })}
-                        placeholder="Optional notes about this task"
-                    />
-
-                    <div className="flex justify-between gap-3">
-                        <button
-                            className="bg-green-500 px-4 py-2 rounded hover:bg-green-600 text-white font-semibold flex-1 transition-colors disabled:bg-gray-400"
-                            onClick={addTask}
-                            disabled={!newTask.title.trim()}
+                        <label className="block mb-2 font-semibold">Time Period</label>
+                        <select
+                            className="w-full border px-3 py-2 mb-3 rounded"
+                            value={newTask.hourGroup}
+                            onChange={(e) => setNewTask({ ...newTask, hourGroup: e.target.value as 'AM' | 'PM' })}
                         >
-                            Add Task
-                        </button>
-                        <button
-                            className="bg-red-500 px-4 py-2 rounded hover:bg-red-600 text-white font-semibold flex-1 transition-colors"
-                            onClick={() => {
-                                setFormVisible(false);
-                                setTimeError("");
-                            }}
-                        >
-                            Cancel
-                        </button>
+                            <option value="AM">AM (Morning)</option>
+                            <option value="PM">PM (Afternoon/Evening)</option>
+                        </select>
+
+                        <div className="flex gap-3 mb-3">
+                            <div className="flex-1">
+                                <label className="block mb-2 font-semibold">Start Time</label>
+                                <input
+                                    type="text"
+                                    className="w-full border px-3 py-2 rounded"
+                                    value={startTime}
+                                    onChange={(e) => handleTimeInput(e.target.value, setStartTime)}
+                                    placeholder="9 or 9:30"
+                                />
+                                <small className="text-gray-600">Format: H or H:MM (1-12)</small>
+                            </div>
+                            <div className="flex-1">
+                                <label className="block mb-2 font-semibold">End Time</label>
+                                <input
+                                    type="text"
+                                    className="w-full border px-3 py-2 rounded"
+                                    value={endTime}
+                                    onChange={(e) => handleTimeInput(e.target.value, setEndTime)}
+                                    placeholder="10 or 10:30"
+                                />
+                                <small className="text-gray-600">Format: H or H:MM (1-12)</small>
+                            </div>
+                        </div>
+
+                        {timeError && (
+                            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-3">
+                                {timeError}
+                            </div>
+                        )}
+
+                        <label className="block mb-2 font-semibold">Notes</label>
+                        <textarea
+                            className="w-full border px-3 py-2 mb-4 rounded"
+                            rows={3}
+                            value={newTask.remarks}
+                            onChange={(e) => setNewTask({ ...newTask, remarks: e.target.value })}
+                            placeholder="Optional notes about this task"
+                        />
+
+                        <div className="flex justify-between gap-3">
+                            <button
+                                className="bg-green-500 px-4 py-2 rounded hover:bg-green-600 text-white font-semibold flex-1 transition-colors disabled:bg-gray-400"
+                                onClick={addTask}
+                                disabled={!newTask.title.trim()}
+                            >
+                                Add Task
+                            </button>
+                            <button
+                                className="bg-red-500 px-4 py-2 rounded hover:bg-red-600 text-white font-semibold flex-1 transition-colors"
+                                onClick={() => {
+                                    setFormVisible(false);
+                                    setTimeError("");
+                                }}
+                            >
+                                Cancel
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
 
             <div className="flex flex-col lg:flex-row items-start gap-8">
-                <svg width="400" height="400" className="bg-gray-800 rounded-full shadow-lg" viewBox="0 0 400 400">
-                    <circle cx="200" cy="200" r={outerRadius} fill="#4a5568" stroke="#2d3748" strokeWidth="2" />
-                    <circle cx="200" cy="200" r={innerRadius} fill="#2d3748" stroke="#1a202c" strokeWidth="2" />
-                    <circle cx="200" cy="200" r="4" fill="#e2e8f0" />
+                <svg
+                    width="400"
+                    height="400"
+                    className={`${isDarkMode ? 'bg-gray-800' : 'bg-white border border-gray-300'} rounded-full shadow-lg`}
+                    viewBox="0 0 400 400">
+
+                    <circle
+                        cx="200"
+                        cy="200"
+                        r={outerRadius}
+                        fill={isDarkMode ? '#4a5568' : '#e2e8f0'}
+                        stroke={isDarkMode ? '#2d3748' : '#cbd5e0'}
+                        strokeWidth="2"
+                    />
+                    <circle
+                        cx="200"
+                        cy="200"
+                        r={innerRadius}
+                        fill={isDarkMode ? '#2d3748' : '#f7fafc'}
+                        stroke={isDarkMode ? '#1a202c' : '#a0aec0'}
+                        strokeWidth="2"
+                    />
+                    <circle
+                        cx="200"
+                        cy="200"
+                        r="4"
+                        fill={isDarkMode ? '#e2e8f0' : '#2d3748'}
+                    />
+
                     {renderTasks()}
                     {renderTimeMarks()}
                     {renderInnerHourMarks()}
@@ -597,15 +712,11 @@ const RadialPlanner: React.FC = () => {
                 </svg>
 
                 {tasks.length > 0 && (
-                    <div className="bg-gray-800 p-4 rounded-lg shadow-lg min-w-[500px]">
+                    <div className={`p-4 rounded-lg shadow-lg min-w-[500px] ${isDarkMode ? 'bg-gray-800' : 'bg-white border border-gray-300'}`}>
                         <h3 className="text-lg font-bold mb-3">Tasks</h3>
                         <div className="space-y-1">
                             {tasks.map((task, index) => (
-                                <div key={index} className="bg-gray-700 p-3 rounded flex items-center hover:bg-gray-600 transition-colors">
-                                    <div
-                                        className="w-4 h-4 rounded-full mr-3 flex-shrink-0"
-                                        style={{ backgroundColor: getTimeColor((task.start + task.end) / 2, task.hourGroup === 'AM') }}
-                                    />
+                                <div key={index} className={`p-3 rounded flex items-center transition-colors ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'}`}>
                                     <div className="flex-shrink-0 w-32 text-sm font-medium">
                                         {formatTime(task.start, task.hourGroup)}
                                     </div>
@@ -619,13 +730,13 @@ const RadialPlanner: React.FC = () => {
                                         {task.title}
                                     </div>
                                     {task.remarks && (
-                                        <div className="text-sm text-gray-400 flex-1 min-w-0 mx-3" title={task.remarks}>
+                                        <div className={`text-sm flex-1 min-w-0 mx-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} title={task.remarks}>
                                             {task.remarks}
                                         </div>
                                     )}
                                     <button
                                         onClick={() => deleteTask(index)}
-                                        className="text-red-400 hover:text-red-300 ml-3 flex-shrink-0"
+                                        className={`ml-3 flex-shrink-0 ${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-500'}`}
                                     >
                                         ✕
                                     </button>
