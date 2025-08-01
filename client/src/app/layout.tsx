@@ -48,10 +48,13 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         <NavSidebar />
         <SidebarInset>
           <main className="p-6">
-            {/* Universal Breadcrumb - conditionally rendered */}
-            {shouldShowBreadcrumb(pathname) && (
+            {shouldShowBreadcrumb(pathname) ? (
               <div className="mb-2 flex justify-between">
                 <UniversalBreadcrumb />
+                <TodoModalButton />
+              </div>
+            ) : (
+              <div className="mb-2 flex justify-end">
                 <TodoModalButton />
               </div>
             )}
