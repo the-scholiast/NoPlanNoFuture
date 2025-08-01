@@ -6,59 +6,44 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-// ===== TYPE DEFINITIONS =====
-interface TaskData {
-  id: string;
-  task: string;
-  section: 'daily' | 'today' | 'upcoming';
-  priority: 'low' | 'medium' | 'high';
-  startDate: string;
-  endDate: string;
-  startTime: string;
-  endTime: string;
-  isSelected: boolean;
-}
-
-interface AddTaskModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onAddTasks: (tasks: TaskData[]) => void;
-}
+import { TaskData, AddTaskModalProps, CreateTaskData, InternalTaskData } from '@/types/todoTypes';
+import { apiCall } from '@/lib/api';
 
 export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTaskModalProps) {
   // ===== STATE MANAGEMENT =====
-  const [tasks, setTasks] = useState<TaskData[]>([
+  const [tasks, setTasks] = useState<InternalTaskData[]>([
     {
       id: '1',
-      task: '',
+      title: '',
       section: 'daily',
       priority: 'low',
-      startDate: '',
-      endDate: '',
-      startTime: '',
-      endTime: '',
-      isSelected: false
+      description: '',
+      start_date: '',
+      end_date: '',
+      start_time: '',
+      end_time: ''
     }
   ]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // ===== HELPER FUNCTIONS =====
+  // HELPER FUNCTIONS
   const addNewTask = () => {
-    const newTask: TaskData = {
-      id: Date.now().toString(),
-      task: '',
+    const newTask: InternalTaskData = {
+      id: "temp",
+      title: '',
       section: 'daily',
       priority: 'low',
-      startDate: '',
-      endDate: '',
-      startTime: '',
-      endTime: '',
-      isSelected: false
+      description: '',
+      start_date: '',
+      end_date: '',
+      start_time: '',
+      end_time: ''
     };
     setTasks(prev => [...prev, newTask]);
   };
 
-  const updateTask = (id: string, field: keyof TaskData, value: any) => {
+  const updateTask = (id: string, field: keyof InternalTaskData, value: any) => {
     setTasks(prev => prev.map(task =>
       task.id === id ? { ...task, [field]: value } : task
     ));
@@ -70,45 +55,119 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
     }
   };
 
-  const toggleTaskSelection = (id: string) => {
-    setTasks(prev => prev.map(task =>
-      task.id === id ? { ...task, isSelected: !task.isSelected } : task
-    ));
-  };
+  // API FUNCTIONS
+  const createTaskInBackend = async (taskData: CreateTaskData) => {
+    try {
+      const response = await apiCall('/todos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(taskData)
+      });
+      return response;
+    } catch (error) {
+      console.error('Failed to create task:', error);
+      throw error;
+    }
+  }
 
-  const handleApply = () => {
-    // Only pass selected tasks to be applied
-    const selectedTasks = tasks.filter(task => task.isSelected && task.task.trim() !== '');
-    onAddTasks(selectedTasks);
+  const createMultipleTasksInBackend = async (tasksData: CreateTaskData[]) => {
+    try {
+      const createdTasks = await Promise.all(
+        tasksData.map(taskData => createTaskInBackend(taskData))
+      );
+      return createdTasks;
+    } catch (error) {
+      console.error('Failed to create multiple tasks:', error);
+      throw error;
+    }
+  }
 
-    // Reset the modal state
-    setTasks([{
-      id: '1',
-      task: '',
-      section: 'daily',
-      priority: 'low',
-      startDate: '',
-      endDate: '',
-      startTime: '',
-      endTime: '',
-      isSelected: false
-    }]);
-    onOpenChange(false);
+  const handleApply = async () => {
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      // Filter tasks with valid task names (no need to check isSelected anymore)
+      const validTasks = tasks.filter(task => task.title.trim() !== '');
+
+      if (validTasks.length === 0) {
+        setError('Please add at least one task with a valid name.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Transform tasks to the format expected by the backend
+      const tasksToCreate: CreateTaskData[] = validTasks.map(task => ({
+        title: task.title.trim(),
+        section: task.section,
+        priority: task.priority,
+        description: task.description?.trim() || undefined,
+        start_date: task.start_date || undefined,
+        end_date: task.end_date || undefined,
+        start_time: task.start_time || undefined,
+        end_time: task.end_time || undefined,
+      }));
+
+      // Send to backend
+      const createdTasks = await createMultipleTasksInBackend(tasksToCreate);
+
+      // Convert backend response to TaskData format for the parent component
+      const taskDataArray: TaskData[] = createdTasks.map(backendTask => ({
+        id: backendTask.id,
+        title: backendTask.title,
+        completed: false,
+        created_at: backendTask.created_at || new Date().toISOString(),
+        section: backendTask.section,
+        priority: backendTask.priority,
+        description: backendTask.description,
+        start_date: backendTask.start_date,
+        end_date: backendTask.end_date,
+        start_time: backendTask.start_time,
+        end_time: backendTask.end_time
+      }));
+
+      // Pass the created tasks to the parent component
+      onAddTasks(taskDataArray);
+
+      // Reset the modal state
+      setTasks([{
+        id: '1',
+        title: '',
+        section: 'daily',
+        priority: 'low',
+        description: '',
+        start_date: '',
+        end_date: '',
+        start_time: '',
+        end_time: ''
+      }]);
+
+      onOpenChange(false);
+
+    } catch (error) {
+      console.error('Error creating tasks:', error);
+      setError(error instanceof Error ? error.message : 'Failed to create tasks. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCancel = () => {
     // Reset the modal state
     setTasks([{
       id: '1',
-      task: '',
+      title: '',
       section: 'daily',
       priority: 'low',
-      startDate: '',
-      endDate: '',
-      startTime: '',
-      endTime: '',
-      isSelected: false
+      description: '',
+      start_date: '',
+      end_date: '',
+      start_time: '',
+      end_time: ''
     }]);
+    setError(null);
     onOpenChange(false);
   };
 
@@ -119,27 +178,19 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
           <DialogTitle>Add Tasks</DialogTitle>
         </DialogHeader>
 
+        {error && (
+          <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md">
+            {error}
+          </div>
+        )}
+
         <div className="space-y-4">
           {/* Task List */}
           {tasks.map((task, index) => (
             <div key={task.id} className="p-4 border rounded-lg bg-muted/30 space-y-4">
-              {/* Header Row with Checkbox and Remove Button */}
+              {/* Header Row with Task Label and Remove Button */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  {/* Custom Checkbox */}
-                  <button
-                    onClick={() => toggleTaskSelection(task.id)}
-                    className="flex-shrink-0"
-                  >
-                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${task.isSelected
-                        ? 'bg-primary border-primary'
-                        : 'border-muted-foreground hover:border-primary'
-                      }`}>
-                      {task.isSelected && (
-                        <div className="w-2 h-2 bg-primary-foreground rounded-sm" />
-                      )}
-                    </div>
-                  </button>
                   <span className="text-sm font-medium">Task {index + 1}</span>
                 </div>
 
@@ -150,6 +201,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
                     size="icon"
                     className="h-6 w-6 text-muted-foreground hover:text-destructive"
                     onClick={() => removeTask(task.id)}
+                    disabled={isSubmitting}
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -160,9 +212,22 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
               <div>
                 <Input
                   placeholder="Enter task name..."
-                  value={task.task}
-                  onChange={(e) => updateTask(task.id, 'task', e.target.value)}
+                  value={task.title}
+                  onChange={(e) => updateTask(task.id, 'title', e.target.value)}
                   className="w-full"
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              {/* Description Input */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Description (Optional)</label>
+                <Input
+                  placeholder="Enter task description..."
+                  value={task.description}
+                  onChange={(e) => updateTask(task.id, 'description', e.target.value)}
+                  className="w-full"
+                  disabled={isSubmitting}
                 />
               </div>
 
@@ -170,7 +235,11 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium mb-2 block">Section</label>
-                  <Select value={task.section} onValueChange={(value) => updateTask(task.id, 'section', value)}>
+                  <Select
+                    value={task.section}
+                    onValueChange={(value) => updateTask(task.id, 'section', value)}
+                    disabled={isSubmitting}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
@@ -184,7 +253,11 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
 
                 <div>
                   <label className="text-sm font-medium mb-2 block">Priority</label>
-                  <Select value={task.priority} onValueChange={(value) => updateTask(task.id, 'priority', value)}>
+                  <Select
+                    value={task.priority}
+                    onValueChange={(value) => updateTask(task.id, 'priority', value)}
+                    disabled={isSubmitting}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
@@ -203,9 +276,10 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
                   <label className="text-sm font-medium mb-2 block">Start Date</label>
                   <Input
                     type="date"
-                    value={task.startDate}
-                    onChange={(e) => updateTask(task.id, 'startDate', e.target.value)}
+                    value={task.start_date}
+                    onChange={(e) => updateTask(task.id, 'start_date', e.target.value)}
                     className="w-full"
+                    disabled={isSubmitting}
                   />
                 </div>
 
@@ -213,9 +287,10 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
                   <label className="text-sm font-medium mb-2 block">End Date</label>
                   <Input
                     type="date"
-                    value={task.endDate}
-                    onChange={(e) => updateTask(task.id, 'endDate', e.target.value)}
+                    value={task.end_date}
+                    onChange={(e) => updateTask(task.id, 'end_date', e.target.value)}
                     className="w-full"
+                    disabled={isSubmitting}
                   />
                 </div>
               </div>
@@ -226,9 +301,10 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
                   <label className="text-sm font-medium mb-2 block">Start Time</label>
                   <Input
                     type="time"
-                    value={task.startTime}
-                    onChange={(e) => updateTask(task.id, 'startTime', e.target.value)}
+                    value={task.start_time}
+                    onChange={(e) => updateTask(task.id, 'start_time', e.target.value)}
                     className="w-full"
+                    disabled={isSubmitting}
                   />
                 </div>
 
@@ -236,9 +312,10 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
                   <label className="text-sm font-medium mb-2 block">End Time</label>
                   <Input
                     type="time"
-                    value={task.endTime}
-                    onChange={(e) => updateTask(task.id, 'endTime', e.target.value)}
+                    value={task.end_time}
+                    onChange={(e) => updateTask(task.id, 'end_time', e.target.value)}
                     className="w-full"
+                    disabled={isSubmitting}
                   />
                 </div>
               </div>
@@ -250,6 +327,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
             variant="outline"
             onClick={addNewTask}
             className="w-full border-dashed"
+            disabled={isSubmitting}
           >
             + Add Another Task
           </Button>
@@ -257,11 +335,18 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
 
         {/* Footer */}
         <div className="flex justify-end gap-3 pt-4 border-t">
-          <Button variant="outline" onClick={handleCancel}>
+          <Button
+            variant="outline"
+            onClick={handleCancel}
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
-          <Button onClick={handleApply}>
-            Apply
+          <Button
+            onClick={handleApply}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Creating...' : 'Apply'}
           </Button>
         </div>
       </DialogContent>
