@@ -1,5 +1,6 @@
 'use client'
 
+import { useSearchParams } from 'next/navigation'
 import { Card } from "../ui/card"
 import { Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "../ui/table"
 import { useEffect, useRef, useState } from "react"
@@ -11,6 +12,8 @@ interface TimeTableProps {
 export default function TimeTable({ selectedDate }: TimeTableProps) {
   // Single reference to the Table element
   const tableRef = useRef<HTMLTableElement>(null);
+  const searchParams = useSearchParams();
+  const [currentDate, setCurrentDate] = useState(selectedDate || new Date());
 
   // State to track scroll position and initialization status
   const [savedScrollPosition, setSavedScrollPosition] = useState<number | null>(null);
@@ -24,6 +27,20 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+
+  // Sync with URL parameters
+  useEffect(() => {
+    const year = searchParams.get('year')
+    const month = searchParams.get('month')
+
+    if (year && month) {
+      const urlDate = new Date(parseInt(year), parseInt(month) - 1, 1)
+      setCurrentDate(urlDate)
+    } else if (selectedDate) {
+      setCurrentDate(selectedDate)
+    }
+  }, [searchParams, selectedDate])
 
   /** 
    * Generates a complete day's worth of time slots in 30-minute increments
@@ -240,8 +257,8 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
 
   // Get week dates only if mounted and selectedDate is available
   let weekDates: Date[] | undefined;
-  if (isMounted && selectedDate) {
-    weekDates = getWeekDates(selectedDate);
+  if (isMounted && currentDate) {
+    weekDates = getWeekDates(currentDate);
   } else if (isMounted) {
     weekDates = getWeekDates(new Date());
   }

@@ -1,15 +1,22 @@
 'use client'
 
-import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import TimeTable from '@/components/calendar/TimeTable'
-import DateNavigation from "@/components/calendar/UniversalDateNavigation"
 
 export default function WeekPage() {
+  const searchParams = useSearchParams()
   const [selectedDate, setSelectedDate] = useState(new Date())
 
-  const handleDateChange = (date: Date) => {
-    setSelectedDate(date)
-  }
+  useEffect(() => {
+    const year = searchParams.get('year')
+    const month = searchParams.get('month')
+
+    if (year && month) {
+      const urlDate = new Date(parseInt(year), parseInt(month) - 1, 1)
+      setSelectedDate(urlDate)
+    }
+  }, [searchParams])
 
   return (
     <>
