@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabaseClient'
 import { TaskData, CreateTaskData } from '@/types/todoTypes';
+import { transformTaskData } from './transformers';
 
 // API FUNCTIONS
 
@@ -19,19 +20,7 @@ export const todoApi = {
       if (error) throw error
 
       // Transform database format to Task format
-      return (data || []).map(todo => ({
-        id: todo.id,
-        title: todo.title,
-        completed: todo.completed,
-        created_at: todo.created_at || new Date().toISOString(),
-        section: todo.section,
-        priority: todo.priority,
-        description: todo.description,
-        start_date: todo.start_date,
-        end_date: todo.end_date,
-        start_time: todo.start_time,
-        end_time: todo.end_time
-      }))
+      return (data || []).map(transformTaskData)
     } catch (error) {
       console.error('Failed to fetch todos:', error);
       throw error;
