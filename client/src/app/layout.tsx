@@ -29,7 +29,12 @@ const geistMono = Geist_Mono({
 function shouldShowBreadcrumb(pathname: string): boolean {
   // Show breadcrumb on calendar and gym routes (but not root section pages)
   return (pathname.startsWith('/calendar') && pathname !== '/calendar') ||
-         (pathname.startsWith('/gym') && pathname !== '/gym')
+    (pathname.startsWith('/gym') && pathname !== '/gym')
+}
+
+// Helper function to not show Todo modal button and Add task button on home page
+function hideTodoButtons(pathname: string): boolean {
+  return pathname != '/'
 }
 
 // Create a client component for the layout content
@@ -48,17 +53,21 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         <NavSidebar />
         <SidebarInset>
           <main className="p-6">
-            {shouldShowBreadcrumb(pathname) ? (
-              <div className="mb-2 flex justify-between">
-                <UniversalBreadcrumb />
-                <TodoModalButton />
-              </div>
-            ) : (
-              <div className="mb-2 flex justify-end">
-                <TodoModalButton />
+            {hideTodoButtons(pathname) && (
+              <div>
+                {shouldShowBreadcrumb(pathname) ? (
+                  <div className="mb-2 flex justify-between">
+                    <UniversalBreadcrumb />
+                    <TodoModalButton />
+                  </div>
+                ) : (
+                  <div className="mb-2 flex justify-end">
+                    <TodoModalButton />
+                  </div>
+                )}
               </div>
             )}
-            
+
             {/* Header with Date Navigation and Add Button aligned */}
             <div className="flex items-center justify-between mb-6">
               {/* Left spacer for balance */}
@@ -68,14 +77,17 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               <UniversalDateNavigation />
 
               {/* Right: Add Button */}
-              <Button
-                className="h-12 w-12 rounded-full shadow-lg"
-                size="icon"
-                onClick={() => setIsAddModalOpen(true)}
-                type="button"
-              >
-                <Plus className="h-6 w-6" />
-              </Button>
+              {hideTodoButtons(pathname) && (
+                <Button
+                  className="h-12 w-12 rounded-full shadow-lg"
+                  size="icon"
+                  onClick={() => setIsAddModalOpen(true)}
+                  type="button"
+                >
+                  <Plus className="h-6 w-6" />
+                </Button>
+              )}
+
             </div>
 
             {children}
