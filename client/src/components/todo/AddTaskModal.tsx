@@ -7,39 +7,28 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TaskData, AddTaskModalProps, CreateTaskData, InternalTaskData } from '@/types/todoTypes';
-import { apiCall } from '@/lib/api';
+import { todoApi } from '@/lib/api/todos';
+import { transformCreateTaskData } from '@/lib/api/transformers';
 
 export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTaskModalProps) {
-  // ===== STATE MANAGEMENT =====
-  const [tasks, setTasks] = useState<InternalTaskData[]>([
-    {
-      id: '1',
-      title: '',
-      section: 'daily',
-      priority: 'low',
-      description: '',
-      start_date: '',
-      end_date: '',
-      start_time: '',
-      end_time: ''
-    }
-  ]);
+  const placeholderTask : InternalTaskData = {
+    id: '1',
+    title: '',
+    section: 'daily',
+    priority: 'low',
+    description: '',
+    start_date: '',
+    end_date: '',
+    start_time: '',
+    end_time: ''
+  }
+  const [tasks, setTasks] = useState<InternalTaskData[]>([placeholderTask]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // HELPER FUNCTIONS
   const addNewTask = () => {
-    const newTask: InternalTaskData = {
-      id: "temp",
-      title: '',
-      section: 'daily',
-      priority: 'low',
-      description: '',
-      start_date: '',
-      end_date: '',
-      start_time: '',
-      end_time: ''
-    };
+    const newTask: InternalTaskData = placeholderTask;
     setTasks(prev => [...prev, newTask]);
   };
 
@@ -55,41 +44,12 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
     }
   };
 
-  // API FUNCTIONS
-  const createTaskInBackend = async (taskData: CreateTaskData) => {
-    try {
-      const response = await apiCall('/todos', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(taskData)
-      });
-      return response;
-    } catch (error) {
-      console.error('Failed to create task:', error);
-      throw error;
-    }
-  }
-
-  const createMultipleTasksInBackend = async (tasksData: CreateTaskData[]) => {
-    try {
-      const createdTasks = await Promise.all(
-        tasksData.map(taskData => createTaskInBackend(taskData))
-      );
-      return createdTasks;
-    } catch (error) {
-      console.error('Failed to create multiple tasks:', error);
-      throw error;
-    }
-  }
-
   const handleApply = async () => {
     setError(null);
     setIsSubmitting(true);
 
     try {
-      // Filter tasks with valid task names (no need to check isSelected anymore)
+      // Filter tasks with valid task names
       const validTasks = tasks.filter(task => task.title.trim() !== '');
 
       if (validTasks.length === 0) {
@@ -98,51 +58,17 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
         return;
       }
 
-      // Transform tasks to the format expected by the backend
-      const tasksToCreate: CreateTaskData[] = validTasks.map(task => ({
-        title: task.title.trim(),
-        section: task.section,
-        priority: task.priority,
-        description: task.description?.trim() || undefined,
-        start_date: task.start_date || undefined,
-        end_date: task.end_date || undefined,
-        start_time: task.start_time || undefined,
-        end_time: task.end_time || undefined,
-      }));
+      // Transform InternalTaskData to CreateTaskData format
+      const tasksToCreate: CreateTaskData[] = validTasks.map(transformCreateTaskData);
 
       // Send to backend
-      const createdTasks = await createMultipleTasksInBackend(tasksToCreate);
-
-      // Convert backend response to TaskData format for the parent component
-      const taskDataArray: TaskData[] = createdTasks.map(backendTask => ({
-        id: backendTask.id,
-        title: backendTask.title,
-        completed: false,
-        created_at: backendTask.created_at || new Date().toISOString(),
-        section: backendTask.section,
-        priority: backendTask.priority,
-        description: backendTask.description,
-        start_date: backendTask.start_date,
-        end_date: backendTask.end_date,
-        start_time: backendTask.start_time,
-        end_time: backendTask.end_time
-      }));
+      const createdTasks: TaskData[] = await todoApi.createMany(tasksToCreate);
 
       // Pass the created tasks to the parent component
-      onAddTasks(taskDataArray);
+      onAddTasks(createdTasks);
 
       // Reset the modal state
-      setTasks([{
-        id: '1',
-        title: '',
-        section: 'daily',
-        priority: 'low',
-        description: '',
-        start_date: '',
-        end_date: '',
-        start_time: '',
-        end_time: ''
-      }]);
+      setTasks([placeholderTask]);
 
       onOpenChange(false);
 
@@ -156,17 +82,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
 
   const handleCancel = () => {
     // Reset the modal state
-    setTasks([{
-      id: '1',
-      title: '',
-      section: 'daily',
-      priority: 'low',
-      description: '',
-      start_date: '',
-      end_date: '',
-      start_time: '',
-      end_time: ''
-    }]);
+    setTasks([placeholderTask]);
     setError(null);
     onOpenChange(false);
   };
