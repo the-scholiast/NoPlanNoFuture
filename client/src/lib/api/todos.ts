@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabaseClient'
 import { TaskData, CreateTaskData } from '@/types/todoTypes';
-import { transformTaskData } from './transformers';
+import { transformTaskData, formatCreateTaskData, updateTaskData } from './transformers';
 
 // API FUNCTIONS
 
@@ -35,34 +35,14 @@ export const todoApi = {
 
       const { data, error } = await supabase
         .from('todos')
-        .insert({
-          user_id: user.id,
-          title: todoData.title,
-          section: todoData.section,
-          priority: todoData.priority,
-          start_date: todoData.start_date || null,
-          end_date: todoData.end_date || null,
-          start_time: todoData.start_time || null,
-          end_time: todoData.end_time || null,
-        })
+        .insert(formatCreateTaskData(todoData, user.id))
         .select()
         .single()
 
       if (error) throw error
 
       // Transform to Task format
-      return {
-        id: data.id,
-        title: data.title,
-        completed: data.completed,
-        created_at: data.created_at,
-        section: data.section as 'daily' | 'today' | 'upcoming',
-        priority: data.priority as 'low' | 'medium' | 'high',
-        start_date: data.start_date || undefined,
-        end_date: data.end_date || undefined,
-        start_time: data.start_time || undefined,
-        end_time: data.end_time || undefined,
-      }
+      return transformTaskData(data)
     } catch (error) {
       console.error('Failed to create todo:', error);
       throw error;
@@ -75,16 +55,7 @@ export const todoApi = {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('No authenticated user')
 
-      const todosToInsert = todosData.map(todo => ({
-        user_id: user.id,
-        title: todo.title,
-        section: todo.section,
-        priority: todo.priority,
-        start_date: todo.start_date || null,
-        end_date: todo.end_date || null,
-        start_time: todo.start_time || null,
-        end_time: todo.end_time || null,
-      }))
+      const todosToInsert = todosData.map(todo => formatCreateTaskData(todo, user.id))
 
       const { data, error } = await supabase
         .from('todos')
@@ -94,18 +65,7 @@ export const todoApi = {
       if (error) throw error
 
       // Transform to Task format
-      return (data || []).map(todo => ({
-        id: todo.id,
-        title: todo.title,
-        completed: todo.completed,
-        created_at: todo.created_at,
-        section: todo.section as 'daily' | 'today' | 'upcoming',
-        priority: todo.priority as 'low' | 'medium' | 'high' | undefined,
-        start_date: todo.start_date || undefined,
-        end_date: todo.end_date || undefined,
-        start_time: todo.start_time || undefined,
-        end_time: todo.end_time || undefined,
-      }))
+      return (data || []).map(transformTaskData)
     } catch (error) {
       console.error('Failed to create multiple todos:', error);
       throw error;
@@ -119,15 +79,7 @@ export const todoApi = {
       if (!user) throw new Error('No authenticated user')
 
       // Transform updates to database format
-      const dbUpdates: any = {}
-      if (updates.title !== undefined) dbUpdates.title = updates.title
-      if (updates.completed !== undefined) dbUpdates.completed = updates.completed
-      if (updates.section !== undefined) dbUpdates.section = updates.section
-      if (updates.priority !== undefined) dbUpdates.priority = updates.priority
-      if (updates.start_date !== undefined) dbUpdates.start_date = updates.start_date
-      if (updates.end_date !== undefined) dbUpdates.end_date = updates.end_date
-      if (updates.start_time !== undefined) dbUpdates.start_time = updates.start_time
-      if (updates.end_time !== undefined) dbUpdates.end_time = updates.end_time
+      const dbUpdates = updateTaskData(updates)
 
       const { data, error } = await supabase
         .from('todos')
@@ -140,18 +92,7 @@ export const todoApi = {
       if (error) throw error
 
       // Transform to Task format
-      return {
-        id: data.id,
-        title: data.title,
-        completed: data.completed,
-        created_at: data.created_at,
-        section: data.section as 'daily' | 'today' | 'upcoming',
-        priority: data.priority as 'low' | 'medium' | 'high' | undefined,
-        start_date: data.start_date || undefined,
-        end_date: data.end_date || undefined,
-        start_time: data.start_time || undefined,
-        end_time: data.end_time || undefined,
-      }
+      return transformTaskData(data)
     } catch (error) {
       console.error('Failed to update todo:', error);
       throw error;
