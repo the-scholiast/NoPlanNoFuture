@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { CheckSquare, Check, Calendar, Clock, Star, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { todoApi} from '@/lib/api/todos';
+import { todoApi } from '@/lib/api/todos';
 import { TaskData } from '@/types/todoTypes';
 
 export default function TodoModalButton() {
@@ -186,7 +186,7 @@ export default function TodoModalButton() {
                             </h3>
                             {sectionTasks.length > 0 && (
                               <Badge variant="secondary" className="bg-pink-200 text-pink-800 dark:bg-pink-800 dark:text-pink-200">
-                                {sectionTasks.filter(t => !t.completed).length}/{sectionTasks.length}
+                                {sectionTasks.filter(t => t.completed).length}/{sectionTasks.length}
                               </Badge>
                             )}
                           </div>
@@ -233,7 +233,6 @@ export default function TodoModalButton() {
                                         {/* Priority badge */}
                                         {task.priority && (
                                           <Badge className={`text-xs ${getPriorityColor(task.priority)}`}>
-                                            <Star className="w-3 h-3 mr-1" />
                                             {task.priority}
                                           </Badge>
                                         )}
@@ -267,19 +266,6 @@ export default function TodoModalButton() {
                         </div>
                       );
                     })}
-                  </div>
-                )}
-
-                {/* Refresh Button */}
-                {!loading && (
-                  <div className="mt-6 text-center">
-                    <Button
-                      variant="outline"
-                      onClick={loadTasks}
-                      className="w-full bg-pink-50 hover:bg-pink-100 dark:bg-pink-950/30 dark:hover:bg-pink-950/50 border-pink-200 dark:border-pink-800"
-                    >
-                      Refresh Tasks
-                    </Button>
                   </div>
                 )}
               </div>
