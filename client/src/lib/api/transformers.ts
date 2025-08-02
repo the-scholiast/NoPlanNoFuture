@@ -56,6 +56,20 @@ export function transformTaskData(data: any): TaskData {
   }
 }
 
+// Transform data to CreateTaskData
+export function transformCreateTaskData(data: any): CreateTaskData {
+  return {
+    title: data.title.trim(),
+    section: data.section,
+    priority: data.priority,
+    description: data.description?.trim() || undefined,
+    start_date: data.start_date || undefined,
+    end_date: data.end_date || undefined,
+    start_time: data.start_time || undefined,
+    end_time: data.end_time || undefined,
+  }
+}
+
 // Transform CreateTaskData to backend format with userID
 export function formatCreateTaskData(data: CreateTaskData, user: string) {
   return {
