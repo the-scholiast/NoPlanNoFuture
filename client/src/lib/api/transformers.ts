@@ -55,3 +55,31 @@ export function transformTaskData(data: any): TaskData {
     end_time: data.end_time || undefined
   }
 }
+
+// Transform CreateTaskData to backend format with userID
+export function formatCreateTaskData(data: CreateTaskData, user: string) {
+  return {
+    user_id: user,
+    title: data.title,
+    section: data.section,
+    priority: data.priority,
+    description: data.description || null,
+    start_date: data.start_date || null,
+    end_date: data.end_date || null,
+    start_time: data.start_time || null,
+    end_time: data.end_time || null,
+  }
+}
+
+// Obtain only the updated keys and values
+export function updateTaskData(updates: Partial<Omit<TaskData, 'id' | 'created_at'>>) {
+  const dbUpdates: any = {}
+
+  Object.entries(updates).forEach(([key, value]) => {
+    if (value !== undefined) {
+      dbUpdates[key] = value
+    }
+  })
+
+  return dbUpdates
+}
