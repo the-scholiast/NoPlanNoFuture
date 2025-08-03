@@ -14,6 +14,7 @@ import UniversalDateNavigation from "@/components/calendar/UniversalDateNavigati
 import UniversalBreadcrumb from "@/components/calendar/UniversalBreadcrumb";
 import { usePathname } from "next/navigation";
 import TodoModalButton from "@/components/todo/TodoModalButton";
+import Providers from "@/components/QueryProviders";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -112,10 +113,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <LayoutContent>{children}</LayoutContent>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <Providers>
+          <LayoutContent>{children}</LayoutContent>
+        </Providers>
       </body>
     </html>
   );
