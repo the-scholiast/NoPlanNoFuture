@@ -165,15 +165,6 @@ export const todoApi = {
     }
   },
 
-  // Toggle the completed status of a todo
-  toggleComplete: async (id: string, currentStatus: boolean): Promise<TaskData> => {
-    return todoApi.update(id, { completed: !currentStatus });
-  },
-
-  // Update only the title of a todo
-  updateTitle: async (id: string, title: string): Promise<TaskData> => {
-    return todoApi.update(id, { title });
-  }
 };
 
 // =============================================
