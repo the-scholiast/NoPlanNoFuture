@@ -1,37 +1,74 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
-import { CheckSquare, Check, Calendar, Clock, Star, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckSquare, Check, Calendar, Clock, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { todoApi } from '@/lib/api/todos';
 import { TaskData } from '@/types/todoTypes';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export default function TodoModalButton() {
   const [isOpen, setIsOpen] = useState(false);
-  const [tasks, setTasks] = useState<TaskData[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient(); // Gets access to the cache manager
 
-  // Load tasks when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      loadTasks();
-    }
-  }, [isOpen]);
+  // Fetch tasks with useQuery
+  const {
+    data: tasks = [],
+    isLoading: loading,
+    error
+  } = useQuery({
+    queryKey: ['tasks'],
+    queryFn: () => todoApi.getAll(),
+    enabled: isOpen, // Only run query when modal is open
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    retry: 3,
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000)
+  });
 
-  const loadTasks = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await todoApi.getAll();
-      setTasks(data);
-    } catch (error) {
-      console.error('Failed to load tasks:', error);
-      setError('Failed to load tasks. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+  // Mutation for toggling task completion
+  const toggleTaskMutation = useMutation({
+    mutationFn: async ({ taskId, completed }: { taskId: string; completed: boolean }) => {
+      return await todoApi.update(taskId, { completed });
+    },
+    onMutate: async ({ taskId, completed }) => {
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await queryClient.cancelQueries({ queryKey: ['tasks'] });
+
+      // Snapshot the previous value
+      const previousTasks = queryClient.getQueryData(['tasks']);
+
+      // Optimistically update to the new value
+      queryClient.setQueryData(['tasks'], (old: TaskData[] = []) =>
+        old.map(task =>
+          task.id === taskId ? { ...task, completed } : task
+        )
+      );
+
+      // Return a context object with the snapshotted value
+      return { previousTasks };
+    },
+    onError: (err, variables, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousTasks) {
+        queryClient.setQueryData(['tasks'], context.previousTasks);
+      }
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure we have the latest data
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+
+  // Toggle task completion
+  const toggleTask = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    toggleTaskMutation.mutate({
+      taskId,
+      completed: !task.completed
+    });
   };
 
   // Group tasks by section
@@ -39,33 +76,6 @@ export default function TodoModalButton() {
     today: tasks.filter(task => task.section === 'today'),
     daily: tasks.filter(task => task.section === 'daily'),
     upcoming: tasks.filter(task => task.section === 'upcoming')
-  };
-
-  // Toggle task completion
-  const toggleTask = async (taskId: string) => {
-    try {
-      const task = tasks.find(t => t.id === taskId);
-      if (!task) return;
-
-      // Optimistically update the UI
-      setTasks(prevTasks =>
-        prevTasks.map(t =>
-          t.id === taskId ? { ...t, completed: !t.completed } : t
-        )
-      );
-
-      // Update the backend
-      await todoApi.update(taskId, { completed: !task.completed });
-    } catch (error) {
-      console.error('Failed to update task:', error);
-      // Revert the optimistic update on error
-      setTasks(prevTasks =>
-        prevTasks.map(t =>
-          t.id === taskId ? { ...t, completed: !t.completed } : t
-        )
-      );
-      setError('Failed to update task. Please try again.');
-    }
   };
 
   const getPriorityColor = (priority?: string) => {
@@ -147,14 +157,18 @@ export default function TodoModalButton() {
 
               {/* Content */}
               <div className="p-6">
-                {/* Error Display */}
-                {error && (
+                {/* Error Display - handle both query and mutation errors */}
+                {(error || toggleTaskMutation.error) && (
                   <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
-                    <p className="text-red-700 dark:text-red-300 text-sm">{error}</p>
+                    <p className="text-red-700 dark:text-red-300 text-sm">
+                      {error?.message || toggleTaskMutation.error?.message || 'An error occurred'}
+                    </p>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setError(null)}
+                      onClick={() => {
+                        toggleTaskMutation.reset(); // Clear mutation error
+                      }}
                       className="mt-2"
                     >
                       Dismiss
@@ -208,7 +222,8 @@ export default function TodoModalButton() {
                                   <div className="flex items-start gap-3">
                                     <button
                                       onClick={() => toggleTask(task.id)}
-                                      className="flex-shrink-0 mt-0.5"
+                                      disabled={toggleTaskMutation.isPending}
+                                      className="flex-shrink-0 mt-0.5 disabled:opacity-50"
                                     >
                                       <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${task.completed
                                         ? 'bg-pink-500 border-pink-500'
