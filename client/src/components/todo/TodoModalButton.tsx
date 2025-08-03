@@ -28,11 +28,10 @@ export default function TodoModalButton() {
 
   // Mutation for toggling task completion
   const toggleTaskMutation = useMutation({
-    mutationFn: async ({ taskId, completed }: { taskId: string; completed: boolean }) => {
-      return await todoApi.update(taskId, { completed });
-    },
+    mutationFn: ({ taskId, completed }: { taskId: string; completed: boolean }) => 
+      todoApi.update(taskId, { completed }),
     onMutate: async ({ taskId, completed }) => {
-      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      // Cancel any outgoing refetches (so they don't overwrite optimistic update)
       await queryClient.cancelQueries({ queryKey: ['tasks'] });
 
       // Snapshot the previous value
