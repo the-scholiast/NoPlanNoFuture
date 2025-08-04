@@ -4,12 +4,12 @@ import React, { useState } from 'react';
 import { Settings, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { TaskData } from '@/types/todoTypes';
 import { todoApi } from '@/lib/api/todos';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import EditTaskModal from './EditTaskModal';
+import { useTodo } from '@/contexts/TodoContext';
 
 // ===== TYPE DEFINITIONS =====
 interface TodoSection {
@@ -26,26 +26,21 @@ interface TodoBoardProps {
 export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   const queryClient = useQueryClient();
   
+  // Use TodoContext instead of direct API calls
+  const { 
+    dailyTasks, 
+    todayTasks, 
+    upcomingTasks, 
+    isLoading, 
+    error,
+    refetch 
+  } = useTodo();
+  
   // State for UI interactions
   const [newTaskInputs, setNewTaskInputs] = useState<{[key: string]: string}>({});
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<TaskData | null>(null);
-
-  // ===== DATA FETCHING =====
-  const {
-    data: allTasks = [],
-    isLoading,
-    error
-  } = useQuery({
-    queryKey: ['tasks'],
-    queryFn: () => todoApi.getAll(),
-    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-    retry: 3,
-    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000)
-  });
-
-  const incompleteTasks = allTasks.filter(task => !task.completed);
 
   // ===== MUTATIONS =====
   
@@ -58,7 +53,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
         priority: 'low' // default priority
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      refetch(); // Use context refetch instead of queryClient
     },
   });
 
@@ -66,46 +61,16 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   const updateTaskMutation = useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<TaskData> }) =>
       todoApi.update(id, updates),
-    onMutate: async ({ id, updates }) => {
-      await queryClient.cancelQueries({ queryKey: ['tasks'] });
-      const previousTasks = queryClient.getQueryData(['tasks']);
-      
-      queryClient.setQueryData(['tasks'], (old: TaskData[] = []) =>
-        old.map(task => task.id === id ? { ...task, ...updates } : task)
-      );
-      
-      return { previousTasks };
-    },
-    onError: (err, variables, context) => {
-      if (context?.previousTasks) {
-        queryClient.setQueryData(['tasks'], context.previousTasks);
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    onSuccess: () => {
+      refetch(); // Use context refetch
     },
   });
 
   // Delete task mutation
   const deleteTaskMutation = useMutation({
     mutationFn: (taskId: string) => todoApi.delete(taskId),
-    onMutate: async (taskId) => {
-      await queryClient.cancelQueries({ queryKey: ['tasks'] });
-      const previousTasks = queryClient.getQueryData(['tasks']);
-      
-      queryClient.setQueryData(['tasks'], (old: TaskData[] = []) =>
-        old.filter(task => task.id !== taskId)
-      );
-      
-      return { previousTasks };
-    },
-    onError: (err, variables, context) => {
-      if (context?.previousTasks) {
-        queryClient.setQueryData(['tasks'], context.previousTasks);
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    onSuccess: () => {
+      refetch(); // Use context refetch
     },
   });
 
@@ -114,7 +79,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     mutationFn: (section: 'daily' | 'today' | 'upcoming') => 
       todoApi.deleteCompleted(section),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      refetch(); // Use context refetch
     },
   });
 
@@ -123,35 +88,35 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     mutationFn: (section: 'daily' | 'today' | 'upcoming') => 
       todoApi.deleteAll(section),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      refetch(); // Use context refetch
     },
   });
 
-  // ===== ORGANIZE TASKS BY SECTION =====
+  // ===== ORGANIZE TASKS BY SECTION (using context data) =====
   const sections: TodoSection[] = [
     {
       title: "Daily",
       sectionKey: 'daily',
-      tasks: incompleteTasks.filter(task => task.section === 'daily'),
+      tasks: dailyTasks, // From context
       showAddButton: false
     },
     {
       title: "Today", 
       sectionKey: 'today',
-      tasks: incompleteTasks.filter(task => task.section === 'today'),
+      tasks: todayTasks, // From context - automatically filtered by date
       showAddButton: false
     },
     {
       title: "Upcoming",
       sectionKey: 'upcoming',
-      tasks: incompleteTasks.filter(task => task.section === 'upcoming'),
+      tasks: upcomingTasks, // From context - automatically filtered by date
       showAddButton: false
     }
   ];
 
   // ===== TASK MANAGEMENT FUNCTIONS =====
   const handleAddTasks = (newTasks: TaskData[]) => {
-    queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    refetch(); // Use context refetch
     
     // Call the optional callback
     if (onAddTasks) {
@@ -164,16 +129,28 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     if (taskTitle.trim() === "") return;
 
     const section = sections[sectionIndex];
-    createTaskMutation.mutate({
+    
+    let taskData = {
       title: taskTitle.trim(),
-      section: section.sectionKey
-    });
+      section: section.sectionKey,
+      // Add date logic for dynamic sections
+      ...(section.sectionKey === 'today' && {
+        start_date: new Date().toISOString().split('T')[0] // Today's date
+      }),
+      ...(section.sectionKey === 'upcoming' && {
+        start_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0] // Tomorrow's date as default
+      })
+    };
+
+    createTaskMutation.mutate(taskData);
 
     // Clear input
     setNewTaskInputs(prev => ({ ...prev, [sectionIndex]: "" }));
   };
 
   const toggleTask = (taskId: string) => {
+    // Find task in all sections since context provides filtered arrays
+    const allTasks = [...dailyTasks, ...todayTasks, ...upcomingTasks];
     const task = allTasks.find(t => t.id === taskId);
     if (!task) return;
 
@@ -207,7 +184,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   };
 
   const handleTaskUpdated = () => {
-    queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    refetch(); // Use context refetch
   };
 
   const handleInputKeyPress = (e: React.KeyboardEvent, sectionIndex: number) => {
@@ -275,127 +252,121 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
             <CardContent className="flex-1">
               {/* Task List */}
               <div className="space-y-2 mb-4">
-                {section.tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="group flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
-                  >
-                    {/* Checkbox */}
-                    <button
-                      onClick={() => toggleTask(task.id)}
-                      disabled={updateTaskMutation.isPending}
-                      className="flex-shrink-0"
-                    >
-                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-                        task.completed 
-                          ? 'bg-primary border-primary' 
-                          : 'border-muted-foreground hover:border-primary'
-                      }`}>
-                        {task.completed && (
-                          <div className="w-2 h-2 bg-primary-foreground rounded-sm" />
-                        )}
-                      </div>
-                    </button>
-
-                    {/* Task Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="space-y-1">
-                        <div
-                          className={`text-sm font-medium cursor-pointer ${
-                            task.completed ? 'line-through text-muted-foreground' : ''
-                          }`}
-                          onClick={() => toggleTaskExpansion(task.id)}
-                        >
-                          {task.title}
-                        </div>
-
-                        {/* Task Description - Shows when expanded */}
-                        {expandedTask === task.id && task.description && (
-                          <div className="text-xs text-muted-foreground mt-1 p-2 bg-muted/30 rounded break-words overflow-hidden">
-                            {task.description}
-                          </div>
-                        )}
-
-                        {/* Priority Badge */}
-                        {task.priority && (
-                          <div className="flex items-center gap-2">
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                              task.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
-                              task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
-                              'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                            }`}>
-                              {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Date and Time Information */}
-                        {(task.start_date || task.end_date || task.start_time || task.end_time) && (
-                          <div className="space-y-1">
-                            {/* Dates */}
-                            {(task.start_date || task.end_date) && (
-                              <div className="text-xs text-muted-foreground">
-                                📅 {task.start_date && new Date(task.start_date).toLocaleDateString()}
-                                {task.start_date && task.end_date && ' - '}
-                                {task.end_date && task.end_date !== task.start_date && new Date(task.end_date).toLocaleDateString()}
-                              </div>
-                            )}
-
-                            {/* Times */}
-                            {(task.start_time || task.end_time) && (
-                              <div className="text-xs text-muted-foreground">
-                                🕐 {task.start_time}
-                                {task.start_time && task.end_time && ' - '}
-                                {task.end_time}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Task Actions */}
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                        onClick={() => openEditModal(task)}
-                        disabled={updateTaskMutation.isPending}
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                        onClick={() => deleteTask(task.id)}
-                        disabled={deleteTaskMutation.isPending}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
+                {section.tasks.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p className="text-sm">
+                      {section.sectionKey === 'today' 
+                        ? 'No tasks scheduled for today'
+                        : section.sectionKey === 'upcoming'
+                        ? 'No upcoming tasks'
+                        : 'No daily tasks'
+                      }
+                    </p>
                   </div>
-                ))}
-              </div>
+                ) : (
+                  section.tasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className="group flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
+                    >
+                      {/* Checkbox */}
+                      <button
+                        onClick={() => toggleTask(task.id)}
+                        disabled={updateTaskMutation.isPending}
+                        className="flex-shrink-0"
+                      >
+                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                          task.completed 
+                            ? 'bg-primary border-primary' 
+                            : 'border-muted-foreground hover:border-primary'
+                        }`}>
+                          {task.completed && (
+                            <div className="w-2 h-2 bg-primary-foreground rounded-sm" />
+                          )}
+                        </div>
+                      </button>
 
-              {/* Add Task Input */}
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Add a task..."
-                  value={newTaskInputs[sectionIndex] || ""}
-                  onChange={(e) => setNewTaskInputs(prev => ({ ...prev, [sectionIndex]: e.target.value }))}
-                  onKeyDown={(e) => handleInputKeyPress(e, sectionIndex)}
-                  className="text-sm"
-                  disabled={createTaskMutation.isPending}
-                />
-                <Button
-                  onClick={() => addTask(sectionIndex)}
-                  disabled={createTaskMutation.isPending || !newTaskInputs[sectionIndex]?.trim()}
-                  size="sm"
-                >
-                  Add
-                </Button>
+                      {/* Task Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="space-y-1">
+                          <div
+                            className={`text-sm font-medium cursor-pointer ${
+                              task.completed ? 'line-through text-muted-foreground' : ''
+                            }`}
+                            onClick={() => toggleTaskExpansion(task.id)}
+                          >
+                            {task.title}
+                          </div>
+
+                          {/* Task Description - Shows when expanded */}
+                          {expandedTask === task.id && task.description && (
+                            <div className="text-xs text-muted-foreground mt-1 p-2 bg-muted/30 rounded break-words overflow-hidden">
+                              {task.description}
+                            </div>
+                          )}
+
+                          {/* Priority Badge */}
+                          {task.priority && (
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                task.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
+                                task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
+                                'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                              }`}>
+                                {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Date and Time Information */}
+                          {(task.start_date || task.end_date || task.start_time || task.end_time) && (
+                            <div className="space-y-1">
+                              {/* Dates */}
+                              {(task.start_date || task.end_date) && (
+                                <div className="text-xs text-muted-foreground">
+                                  📅 {task.start_date && new Date(task.start_date).toLocaleDateString()}
+                                  {task.start_date && task.end_date && ' - '}
+                                  {task.end_date && task.end_date !== task.start_date && new Date(task.end_date).toLocaleDateString()}
+                                </div>
+                              )}
+
+                              {/* Times */}
+                              {(task.start_time || task.end_time) && (
+                                <div className="text-xs text-muted-foreground">
+                                  🕐 {task.start_time}
+                                  {task.start_time && task.end_time && ' - '}
+                                  {task.end_time}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Task Actions */}
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                          onClick={() => openEditModal(task)}
+                          disabled={updateTaskMutation.isPending}
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                          onClick={() => deleteTask(task.id)}
+                          disabled={deleteTaskMutation.isPending}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
