@@ -36,17 +36,17 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     error
   } = useQuery({
     queryKey: ['tasks'],
-    queryFn: () => todoApi.getCompleted(),
+    queryFn: () => todoApi.getAll(),
     staleTime: 5 * 60 * 1000,
     retry: 3,
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
-  // Filter completed tasks and group by section
-  const completedTasks = allTasks.filter(task => task.completed);
-
   // Apply date filter to completed tasks
   const filteredCompletedTasks = useMemo(() => {
+    // First filter for completed tasks
+    const completedTasks = allTasks.filter(task => task.completed);
+
     if (!dateFilter.enabled) {
       return completedTasks;
     }
@@ -55,7 +55,7 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
       const taskDate = new Date(task.completed_at || task.created_at).toISOString().split('T')[0];
       return taskDate >= dateFilter.startDate && taskDate <= dateFilter.endDate;
     });
-  }, [completedTasks, dateFilter, allTasks]); // Added allTasks as dependency
+  }, [allTasks, dateFilter]);
 
   // Group filtered completed tasks by section
   const groupedCompletedTasks = useMemo(() => ({

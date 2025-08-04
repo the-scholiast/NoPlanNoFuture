@@ -39,11 +39,13 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     error
   } = useQuery({
     queryKey: ['tasks'],
-    queryFn: () => todoApi.getIncomplete(),
+    queryFn: () => todoApi.getAll(),
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
     retry: 3,
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000)
   });
+
+  const incompleteTasks = allTasks.filter(task => !task.completed);
 
   // ===== MUTATIONS =====
   
@@ -130,19 +132,19 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     {
       title: "Daily",
       sectionKey: 'daily',
-      tasks: allTasks.filter(task => task.section === 'daily'),
+      tasks: incompleteTasks.filter(task => task.section === 'daily'),
       showAddButton: false
     },
     {
       title: "Today", 
       sectionKey: 'today',
-      tasks: allTasks.filter(task => task.section === 'today'),
+      tasks: incompleteTasks.filter(task => task.section === 'today'),
       showAddButton: false
     },
     {
       title: "Upcoming",
       sectionKey: 'upcoming',
-      tasks: allTasks.filter(task => task.section === 'upcoming'),
+      tasks: incompleteTasks.filter(task => task.section === 'upcoming'),
       showAddButton: false
     }
   ];
