@@ -45,8 +45,49 @@ export const createTodo = async (userId, todoData) => {
   return data;
 };
 
+// Get incompleted tasks
+export const getIncompletedTodos = async (userId) => {
+  let query = supabase
+    .from('todos')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('completed', false)
+
+  const { data, error } = await query.order('completed_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+};
+
+// Get completed tasks
+export const getCompletedTodos = async (userId, dateRange) => {
+  let query = supabase
+    .from('todos')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('completed', true)
+    .not('completed_at', 'is', null);
+
+  if (dateRange) {
+    query = query.gte('completed_at', dateRange.start)
+      .lte('completed_at', dateRange.end);
+  }
+
+  const { data, error } = await query.order('completed_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+};
+
 // Updates an existing todo's fields
 export const updateTodo = async (userId, todoId, updates) => {
+  if ('completed' in updates) {
+    if (updates.completed_at) {
+      updates.completed_at = new Date().toISOString();
+    } else {
+      updates.completed_at = null;
+    }
+  }
 
   const { data, error } = await supabase
     .from('todos')
@@ -86,7 +127,7 @@ export const bulkDeleteTodos = async (userId, { section, completed }) => {
   if (section) {
     query = query.eq('section', section);
   }
-  
+
   // Apply completion status filter if specified 
   if (completed !== undefined) {
     query = query.eq('completed', completed);
