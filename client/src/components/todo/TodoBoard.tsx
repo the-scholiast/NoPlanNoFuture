@@ -25,28 +25,28 @@ interface TodoBoardProps {
 
 export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   const queryClient = useQueryClient();
-  
+
   // Use TodoContext instead of direct API calls
-  const { 
-    dailyTasks, 
-    todayTasks, 
-    upcomingTasks, 
-    isLoading, 
+  const {
+    dailyTasks,
+    todayTasks,
+    upcomingTasks,
+    isLoading,
     error,
-    refetch 
+    refetch
   } = useTodo();
-  
+
   // State for UI interactions
-  const [newTaskInputs, setNewTaskInputs] = useState<{[key: string]: string}>({});
+  const [newTaskInputs, setNewTaskInputs] = useState<{ [key: string]: string }>({});
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<TaskData | null>(null);
 
   // ===== MUTATIONS =====
-  
+
   // Create task mutation
   const createTaskMutation = useMutation({
-    mutationFn: (taskData: { title: string; section: 'daily' | 'today' | 'upcoming' }) => 
+    mutationFn: (taskData: { title: string; section: 'daily' | 'today' | 'upcoming' }) =>
       todoApi.create({
         title: taskData.title,
         section: taskData.section,
@@ -76,7 +76,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
 
   // Clear completed tasks mutation
   const clearCompletedMutation = useMutation({
-    mutationFn: (section: 'daily' | 'today' | 'upcoming') => 
+    mutationFn: (section: 'daily' | 'today' | 'upcoming') =>
       todoApi.deleteCompleted(section),
     onSuccess: () => {
       refetch(); // Use context refetch
@@ -85,7 +85,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
 
   // Clear all tasks mutation
   const clearAllMutation = useMutation({
-    mutationFn: (section: 'daily' | 'today' | 'upcoming') => 
+    mutationFn: (section: 'daily' | 'today' | 'upcoming') =>
       todoApi.deleteAll(section),
     onSuccess: () => {
       refetch(); // Use context refetch
@@ -101,7 +101,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
       showAddButton: false
     },
     {
-      title: "Today", 
+      title: "Today",
       sectionKey: 'today',
       tasks: todayTasks, // From context - automatically filtered by date
       showAddButton: false
@@ -117,7 +117,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   // ===== TASK MANAGEMENT FUNCTIONS =====
   const handleAddTasks = (newTasks: TaskData[]) => {
     refetch(); // Use context refetch
-    
+
     // Call the optional callback
     if (onAddTasks) {
       onAddTasks(newTasks);
@@ -129,7 +129,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     if (taskTitle.trim() === "") return;
 
     const section = sections[sectionIndex];
-    
+
     let taskData = {
       title: taskTitle.trim(),
       section: section.sectionKey,
@@ -255,11 +255,11 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                 {section.tasks.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <p className="text-sm">
-                      {section.sectionKey === 'today' 
+                      {section.sectionKey === 'today'
                         ? 'No tasks scheduled for today'
                         : section.sectionKey === 'upcoming'
-                        ? 'No upcoming tasks'
-                        : 'No daily tasks'
+                          ? 'No upcoming tasks'
+                          : 'No daily tasks'
                       }
                     </p>
                   </div>
@@ -275,11 +275,10 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                         disabled={updateTaskMutation.isPending}
                         className="flex-shrink-0"
                       >
-                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-                          task.completed 
-                            ? 'bg-primary border-primary' 
-                            : 'border-muted-foreground hover:border-primary'
-                        }`}>
+                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${task.completed
+                          ? 'bg-primary border-primary'
+                          : 'border-muted-foreground hover:border-primary'
+                          }`}>
                           {task.completed && (
                             <div className="w-2 h-2 bg-primary-foreground rounded-sm" />
                           )}
@@ -290,9 +289,8 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                       <div className="flex-1 min-w-0">
                         <div className="space-y-1">
                           <div
-                            className={`text-sm font-medium cursor-pointer ${
-                              task.completed ? 'line-through text-muted-foreground' : ''
-                            }`}
+                            className={`text-sm font-medium cursor-pointer ${task.completed ? 'line-through text-muted-foreground' : ''
+                              }`}
                             onClick={() => toggleTaskExpansion(task.id)}
                           >
                             {task.title}
@@ -308,11 +306,10 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                           {/* Priority Badge */}
                           {task.priority && (
                             <div className="flex items-center gap-2">
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                task.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${task.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
                                 task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
-                                'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                              }`}>
+                                  'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                }`}>
                                 {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
                               </span>
                             </div>
@@ -324,18 +321,18 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                               {/* Dates */}
                               {(task.start_date || task.end_date) && (
                                 <div className="text-xs text-muted-foreground">
-                                  📅 {task.start_date && new Date(task.start_date).toLocaleDateString()}
+                                  📅 {task.start_date && task.start_date.replace(/-/g, '/')}
                                   {task.start_date && task.end_date && ' - '}
-                                  {task.end_date && task.end_date !== task.start_date && new Date(task.end_date).toLocaleDateString()}
+                                  {task.end_date && task.end_date.replace(/-/g, '/')}
                                 </div>
                               )}
 
                               {/* Times */}
                               {(task.start_time || task.end_time) && (
                                 <div className="text-xs text-muted-foreground">
-                                  🕐 {task.start_time}
+                                  🕐 {task.start_time && task.start_time.substring(0, 5)}
                                   {task.start_time && task.end_time && ' - '}
-                                  {task.end_time}
+                                  {task.end_time && task.end_time.substring(0, 5)}
                                 </div>
                               )}
                             </div>
