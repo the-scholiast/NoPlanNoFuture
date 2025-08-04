@@ -33,7 +33,9 @@ export const createTodo = async (userId, todoData) => {
       start_date: start_date || null,
       end_date: end_date || null,
       start_time: start_time || null,
-      end_time: end_time || null
+      end_time: end_time || null,
+      completed: false,
+      completed_at: null
     })
     .select()
     .single();
