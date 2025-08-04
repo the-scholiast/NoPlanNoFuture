@@ -11,7 +11,7 @@ import { todoApi } from '@/lib/api/todos';
 import { transformCreateTaskData } from '@/lib/api/transformers';
 
 export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTaskModalProps) {
-  const placeholderTask : InternalTaskData = {
+  const placeholderTask: InternalTaskData = {
     id: '1',
     title: '',
     section: 'daily',
@@ -62,7 +62,9 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
       const tasksToCreate: CreateTaskData[] = validTasks.map(transformCreateTaskData);
 
       // Send to backend
-      const createdTasks: TaskData[] = await todoApi.createMany(tasksToCreate);
+      const createdTasks: TaskData[] = await Promise.all(
+        tasksToCreate.map(taskData => todoApi.create(taskData))
+      );
 
       // Pass the created tasks to the parent component
       onAddTasks(createdTasks);

@@ -39,7 +39,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     error
   } = useQuery({
     queryKey: ['tasks'],
-    queryFn: () => todoApi.getAll(),
+    queryFn: () => todoApi.getIncomplete(),
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
     retry: 3,
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000)

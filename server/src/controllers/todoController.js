@@ -53,7 +53,7 @@ export const getIncompletedTodos = async (userId) => {
     .eq('user_id', userId)
     .eq('completed', false)
 
-  const { data, error } = await query.order('completed_at', { ascending: false });
+  const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) throw error;
   return data;
@@ -66,7 +66,6 @@ export const getCompletedTodos = async (userId, dateRange) => {
     .select('*')
     .eq('user_id', userId)
     .eq('completed', true)
-    .not('completed_at', 'is', null);
 
   if (dateRange) {
     query = query.gte('completed_at', dateRange.start)
@@ -82,7 +81,7 @@ export const getCompletedTodos = async (userId, dateRange) => {
 // Updates an existing todo's fields
 export const updateTodo = async (userId, todoId, updates) => {
   if ('completed' in updates) {
-    if (updates.completed_at) {
+    if (updates.completed) {
       updates.completed_at = new Date().toISOString();
     } else {
       updates.completed_at = null;

@@ -1,4 +1,5 @@
 import TodoBoard from '@/components/todo/TodoBoard';
+import CompletedTasks from '@/components/todo/CompletedTasks';
 
 export default function Page() {
   return (
@@ -13,6 +14,7 @@ export default function Page() {
       </div>
 
       <TodoBoard />
+      <CompletedTasks />
     </div>
   );
 }

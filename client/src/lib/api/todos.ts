@@ -17,7 +17,7 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
     throw new Error('No authentication token available');
   }
 
-  const url = `${API_BASE_URL}/api/todos${endpoint}`;
+  const url = `${API_BASE_URL}/todos${endpoint}`;
   
   const response = await fetch(url, {
     ...options,

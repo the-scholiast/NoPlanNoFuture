@@ -44,7 +44,7 @@ export function transformTaskData(data: any): TaskData {
   return {
     id: data.id,
     title: data.title,
-    completed: data.completed,
+    completed: data.completed === true || data.completed === "TRUE" || data.completed === "true" || data.completed === 1,
     completed_at: data.completed_at || undefined,
     created_at: data.created_at || new Date().toISOString(),
     section: data.section,
