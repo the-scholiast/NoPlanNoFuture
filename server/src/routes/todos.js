@@ -3,6 +3,8 @@ import { authenticateUser } from '../middleware/auth.js';
 import { errorHandler } from '../middleware/errorHandler.js';
 import {
   getAllTodos,
+  getIncompletedTodos,
+  getCompletedTodos,
   createTodo,
   updateTodo,
   deleteTodo,
@@ -12,10 +14,32 @@ import {
 const router = express.Router();
 
 // Endpoint fetches all todo items belonging to the currently authenticated user
-router.get('/', authenticateUser, async (req, res, next) => {
+router.get('/all', authenticateUser, async (req, res, next) => {
   try {
     // Extract user ID from the authenticated user object (set by authenticateUser middleware)
     const todos = await getAllTodos(req.user.id);
+    res.json(todos);
+  } catch (error) {
+    next(error); // Passes the error to error handling middleware
+  }
+});
+
+// Endpoint fetches all incomplete todo items belonging to the currently authenticated user
+router.get('/incomplete', authenticateUser, async (req, res, next) => {
+  try {
+    // Extract user ID from the authenticated user object (set by authenticateUser middleware)
+    const todos = await getIncompletedTodos(req.user.id);
+    res.json(todos);
+  } catch (error) {
+    next(error); // Passes the error to error handling middleware
+  }
+});
+
+// Endpoint fetches all complete todo items belonging to the currently authenticated user (can also filter by date range)
+router.get('/complete', authenticateUser, async (req, res, next) => {
+  try {
+    // Extract user ID from the authenticated user object (set by authenticateUser middleware)
+    const todos = await getCompletedTodos(req.user.id);
     res.json(todos);
   } catch (error) {
     next(error); // Passes the error to error handling middleware
