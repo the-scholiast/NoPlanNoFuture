@@ -254,33 +254,6 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
 
   const totalCompletedTasks = filteredCompletedTasks.length;
 
-  if (totalCompletedTasks === 0) {
-    // Only show empty state if we're not loading and definitely have no completed tasks
-    if (isLoading) {
-      return (
-        <div className={`w-full p-6 bg-background flex items-center justify-center ${className}`}>
-          <div className="text-muted-foreground">Loading completed tasks...</div>
-        </div>
-      );
-    }
-
-    return (
-      <div className={`w-full p-6 ${className}`}>
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-              <Check className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <h3 className="text-lg font-semibold text-muted-foreground mb-2">No Completed Tasks</h3>
-            <p className="text-sm text-muted-foreground text-center">
-              Once you complete some tasks, they'll appear here for you to review.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className={`w-full space-y-4 ${className}`}>
       {/* Header with Filter */}
