@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useMemo } from 'react';
-import { Check, Trash2, RotateCcw, Calendar, Clock, ChevronDown, ChevronRight, Filter, X } from 'lucide-react';
+import { Check, Trash2, RotateCcw, Calendar, Clock, Filter, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { TaskData } from '@/types/todoTypes';
 import { todoApi } from '@/lib/api/todos';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTodo } from '@/contexts/TodoContext';
 
 interface CompletedTasksProps {
   className?: string;
@@ -17,52 +18,89 @@ interface CompletedTasksProps {
 
 export default function CompletedTasks({ className }: CompletedTasksProps) {
   const queryClient = useQueryClient();
+  const { allTasks, isLoading, error } = useTodo();
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
-  const [expandedSection, setExpandedSection] = useState<string | null>('today');
 
-  // Date filter state - default to show all
-  const today = new Date().toISOString().split('T')[0];
+  // Date filter state - default to current week
+  // Get current date in local timezone to avoid UTC offset issues
+  const today = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, []);
+
+  // Get current week (Monday to Sunday)
+  const currentWeek = useMemo(() => {
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert Sunday to 6, others to dayOfWeek - 1
+    
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - daysFromMonday);
+    
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
+    return {
+      start: formatDate(monday),
+      end: formatDate(sunday)
+    };
+  }, []);
+
+  // Get current month
+  const currentMonth = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
+    return {
+      start: formatDate(firstDay),
+      end: formatDate(lastDay)
+    };
+  }, []);
+  
   const [dateFilter, setDateFilter] = useState({
-    startDate: today,
-    endDate: today,
-    enabled: false
+    startDate: currentWeek.start,
+    endDate: currentWeek.end,
+    enabled: true
   });
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  // ===== DATA FETCHING =====
-  const {
-    data: allTasks = [],
-    isLoading,
-    error
-  } = useQuery({
-    queryKey: ['tasks'],
-    queryFn: () => todoApi.getAll(),
-    staleTime: 5 * 60 * 1000,
-    retry: 3,
-    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
-  });
+  // Get completed tasks from context
+  const allCompletedTasks = useMemo(() => {
+    return allTasks.filter(task => task.completed);
+  }, [allTasks]);
 
   // Apply date filter to completed tasks
   const filteredCompletedTasks = useMemo(() => {
-    // First filter for completed tasks
-    const completedTasks = allTasks.filter(task => task.completed);
-
     if (!dateFilter.enabled) {
-      return completedTasks;
+      return allCompletedTasks;
     }
 
-    return completedTasks.filter(task => {
+    return allCompletedTasks.filter(task => {
       const taskDate = new Date(task.completed_at || task.created_at).toISOString().split('T')[0];
       return taskDate >= dateFilter.startDate && taskDate <= dateFilter.endDate;
     });
-  }, [allTasks, dateFilter]);
-
-  // Group filtered completed tasks by section
-  const groupedCompletedTasks = useMemo(() => ({
-    daily: filteredCompletedTasks.filter(task => task.section === 'daily'),
-    today: filteredCompletedTasks.filter(task => task.section === 'today'),
-    upcoming: filteredCompletedTasks.filter(task => task.section === 'upcoming')
-  }), [filteredCompletedTasks]);
+  }, [allCompletedTasks, dateFilter]);
 
   // ===== MUTATIONS =====
 
@@ -112,31 +150,25 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     },
   });
 
-  // Mutation to clear all completed tasks in a section
-  const clearCompletedMutation = useMutation({
-    mutationFn: (section: 'daily' | 'today' | 'upcoming') =>
-      todoApi.deleteCompleted(section),
+  // Mutation to clear all completed tasks
+  const clearAllCompletedMutation = useMutation({
+    mutationFn: () => Promise.all([
+      todoApi.deleteCompleted('daily'),
+      todoApi.deleteCompleted('today'),
+      todoApi.deleteCompleted('upcoming')
+    ]),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
 
   // ===== HELPER FUNCTIONS =====
-  const getSectionTitle = (section: string) => {
+  const getSectionLabel = (section: string) => {
     switch (section) {
-      case 'daily': return 'Daily Tasks';
-      case 'today': return 'Today\'s Tasks';
-      case 'upcoming': return 'Upcoming Tasks';
-      default: return 'Tasks';
-    }
-  };
-
-  const getSectionEmoji = (section: string) => {
-    switch (section) {
-      case 'daily': return '🔄';
-      case 'today': return '📅';
-      case 'upcoming': return '⏳';
-      default: return '✅';
+      case 'daily': return '🔄 Daily';
+      case 'today': return '📅 Today';
+      case 'upcoming': return '⏳ Upcoming';
+      default: return '📝 Other';
     }
   };
 
@@ -168,16 +200,12 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     deleteTaskMutation.mutate(taskId);
   };
 
-  const handleClearCompleted = (section: 'daily' | 'today' | 'upcoming') => {
-    clearCompletedMutation.mutate(section);
+  const handleClearAllCompleted = () => {
+    clearAllCompletedMutation.mutate();
   };
 
   const toggleTaskExpansion = (taskId: string) => {
     setExpandedTask(expandedTask === taskId ? null : taskId);
-  };
-
-  const toggleSectionExpansion = (section: string) => {
-    setExpandedSection(expandedSection === section ? null : section);
   };
 
   const handleDateFilterChange = (field: 'startDate' | 'endDate', value: string) => {
@@ -195,10 +223,25 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
   };
 
   const resetDateFilter = () => {
-    const today = new Date().toISOString().split('T')[0];
     setDateFilter({
       startDate: today,
       endDate: today,
+      enabled: true
+    });
+  };
+
+  const setWeekFilter = () => {
+    setDateFilter({
+      startDate: currentWeek.start,
+      endDate: currentWeek.end,
+      enabled: true
+    });
+  };
+
+  const setMonthFilter = () => {
+    setDateFilter({
+      startDate: currentMonth.start,
+      endDate: currentMonth.end,
       enabled: true
     });
   };
@@ -213,15 +256,25 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
   const getFilterDisplayText = () => {
     if (!dateFilter.enabled) return 'All dates';
 
-    const startDate = new Date(dateFilter.startDate);
-    const endDate = new Date(dateFilter.endDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const startDate = new Date(dateFilter.startDate + 'T00:00:00');
+    const endDate = new Date(dateFilter.endDate + 'T00:00:00');
 
     // Check if it's today
     if (dateFilter.startDate === dateFilter.endDate &&
-      startDate.toDateString() === today.toDateString()) {
+      dateFilter.startDate === today) {
       return 'Today only';
+    }
+
+    // Check if it's current week
+    if (dateFilter.startDate === currentWeek.start && 
+        dateFilter.endDate === currentWeek.end) {
+      return 'This week';
+    }
+
+    // Check if it's current month
+    if (dateFilter.startDate === currentMonth.start && 
+        dateFilter.endDate === currentMonth.end) {
+      return 'This month';
     }
 
     // Check if it's the same date
@@ -339,20 +392,36 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
                         </div>
                       </div>
 
-                      <div className="flex gap-2">
+                      <div className="grid grid-cols-2 gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={resetDateFilter}
-                          className="flex-1"
+                          className="text-xs"
                         >
                           Today Only
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={setWeekFilter}
+                          className="text-xs"
+                        >
+                          This Week
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={setMonthFilter}
+                          className="text-xs"
+                        >
+                          This Month
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={clearDateFilter}
-                          className="flex-1"
+                          className="text-xs"
                         >
                           Show All
                         </Button>
@@ -367,150 +436,147 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
           <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
             ✅ {totalCompletedTasks}
           </Badge>
+
+          {/* Clear All Button */}
+          {totalCompletedTasks > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleClearAllCompleted}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Clear All
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Completed Tasks by Section */}
-      {(['today', 'daily', 'upcoming'] as const).map((sectionKey) => {
-        const sectionTasks = groupedCompletedTasks[sectionKey];
-        const sectionTitle = getSectionTitle(sectionKey);
-        const sectionEmoji = getSectionEmoji(sectionKey);
-        const isExpanded = expandedSection === sectionKey;
+      {/* All Completed Tasks in One Container */}
+      {totalCompletedTasks === 0 ? (
+        <Card>
+          <CardContent className="py-12">
+            <div className="text-center text-muted-foreground">
+              <Check className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No completed tasks found</p>
+              {dateFilter.enabled && (
+                <p className="text-sm mt-2">Try adjusting your date filter</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Check className="w-5 h-5 text-green-600" />
+              All Completed Tasks
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {filteredCompletedTasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
+                >
+                  {/* Completion Indicator */}
+                  <div className="w-5 h-5 bg-green-500 border-2 border-green-500 rounded flex items-center justify-center mt-0.5">
+                    <Check className="w-3 h-3 text-white" />
+                  </div>
 
-        if (sectionTasks.length === 0) return null;
-
-        return (
-          <Card key={sectionKey} className="overflow-hidden">
-            <CardHeader
-              className="cursor-pointer hover:bg-muted/50 transition-colors"
-              onClick={() => toggleSectionExpansion(sectionKey)}
-            >
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                  <span>{sectionEmoji}</span>
-                  {sectionTitle}
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">
-                    {sectionTasks.length} completed
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleClearCompleted(sectionKey);
-                    }}
-                    className="text-muted-foreground hover:text-destructive"
-                  >
-                    Clear All
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-
-            {isExpanded && (
-              <CardContent className="pt-0">
-                <div className="space-y-3">
-                  {sectionTasks.map((task) => (
-                    <div
-                      key={task.id}
-                      className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
-                    >
-                      {/* Completion Indicator */}
-                      <div className="w-5 h-5 bg-green-500 border-2 border-green-500 rounded flex items-center justify-center mt-0.5">
-                        <Check className="w-3 h-3 text-white" />
-                      </div>
-
-                      {/* Task Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="space-y-2">
-                          <div
-                            className="text-sm font-medium cursor-pointer line-through text-muted-foreground"
-                            onClick={() => toggleTaskExpansion(task.id)}
-                          >
-                            {task.title}
-                          </div>
-
-                          {/* Task Description - Shows when expanded */}
-                          {expandedTask === task.id && task.description && (
-                            <div className="text-xs text-muted-foreground p-2 bg-background rounded border">
-                              {task.description}
-                            </div>
-                          )}
-
-                          {/* Priority Badge */}
-                          {task.priority && (
-                            <div className="flex items-center gap-2">
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getPriorityColor(task.priority)}`}>
-                                {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-                              </span>
-                            </div>
-                          )}
-
-                          {/* Date and Time Information */}
-                          {(task.start_date || task.end_date || task.start_time || task.end_time) && (
-                            <div className="space-y-1">
-                              {/* Dates */}
-                              {(task.start_date || task.end_date) && (
-                                <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
-                                  {formatDate(task.start_date)}
-                                  {task.start_date && task.end_date && task.end_date !== task.start_date && ` - ${formatDate(task.end_date)}`}
-                                </div>
-                              )}
-
-                              {/* Times */}
-                              {(task.start_time || task.end_time) && (
-                                <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <Clock className="w-3 h-3" />
-                                  {formatTime(task.start_time)}
-                                  {task.start_time && task.end_time && ` - ${formatTime(task.end_time)}`}
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Completion Status */}
-                          <div className="text-xs text-muted-foreground">
-                            {task.completed_at ?
-                              `✅ Completed on ${formatDate(task.completed_at)}` :
-                              '✅ Marked as complete'
-                            }
-                          </div>
+                  {/* Task Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-2">
+                        <div
+                          className="text-sm font-medium cursor-pointer line-through text-muted-foreground flex-1"
+                          onClick={() => toggleTaskExpansion(task.id)}
+                        >
+                          {task.title}
                         </div>
+                        {/* Section Badge */}
+                        <Badge variant="outline" className="text-xs">
+                          {getSectionLabel(task.section)}
+                        </Badge>
                       </div>
 
-                      {/* Action Buttons */}
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleUncompleteTask(task.id)}
-                          className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
-                          title="Mark as incomplete"
-                        >
-                          <RotateCcw className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteTask(task.id)}
-                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                          title="Delete task"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                      {/* Task Description - Shows when expanded */}
+                      {expandedTask === task.id && task.description && (
+                        <div className="text-xs text-muted-foreground p-2 bg-background rounded border">
+                          {task.description}
+                        </div>
+                      )}
+
+                      {/* Priority Badge */}
+                      {task.priority && (
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getPriorityColor(task.priority)}`}>
+                            {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Date and Time Information */}
+                      {(task.start_date || task.end_date || task.start_time || task.end_time) && (
+                        <div className="space-y-1">
+                          {/* Dates */}
+                          {(task.start_date || task.end_date) && (
+                            <div className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {formatDate(task.start_date)}
+                              {task.start_date && task.end_date && task.end_date !== task.start_date && ` - ${formatDate(task.end_date)}`}
+                            </div>
+                          )}
+
+                          {/* Times */}
+                          {(task.start_time || task.end_time) && (
+                            <div className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {formatTime(task.start_time)}
+                              {task.start_time && task.end_time && ` - ${formatTime(task.end_time)}`}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Completion Status */}
+                      <div className="text-xs text-muted-foreground">
+                        {task.completed_at ?
+                          `✅ Completed on ${formatDate(task.completed_at)}` :
+                          '✅ Marked as complete'
+                        }
                       </div>
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleUncompleteTask(task.id)}
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
+                      title="Mark as incomplete"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteTask(task.id)}
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                      title="Delete task"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-              </CardContent>
-            )}
-          </Card>
-        );
-      })}
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
