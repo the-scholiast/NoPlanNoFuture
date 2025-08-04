@@ -40,3 +40,10 @@ export interface InternalTaskData {
   start_time?: string;
   end_time?: string;
 }
+
+export interface EditTaskModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  task: TaskData | null;
+  onTaskUpdated: () => void;
+}
