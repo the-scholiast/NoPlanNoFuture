@@ -54,11 +54,13 @@ export function TodoProvider({ children }: { children: ReactNode }) {
         isToday(task.start_date)
       ),
       
-      // Upcoming tasks: tasks with future dates BUT exclude daily tasks
+      // Upcoming tasks: tasks with future dates OR explicitly assigned to 'upcoming' section (but exclude daily tasks)
       upcomingTasks: incompleteTasks.filter(task => 
         !isDailyTask(task) && // Exclude daily tasks
-        task.start_date && 
-        isUpcoming(task.start_date)
+        (
+          (task.start_date && isUpcoming(task.start_date)) || // Future dated tasks
+          (!task.start_date && task.section === 'upcoming')   // Or tasks explicitly in upcoming section without dates
+        )
       )
     };
   }, [allTasks]);
