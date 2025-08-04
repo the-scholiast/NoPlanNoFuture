@@ -1,199 +1,109 @@
-import { supabase } from '@/lib/supabaseClient'
 import { TaskData, CreateTaskData } from '@/types/todoTypes';
-import { transformTaskData, formatCreateTaskData, updateTaskData } from './transformers';
 
-// API FUNCTIONS
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+// Helper function to get auth token from Supabase
+async function getAuthToken() {
+  const { supabase } = await import('@/lib/supabaseClient');
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token;
+}
+
+// Helper function to make authenticated API requests
+async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = await getAuthToken();
+  
+  if (!token) {
+    throw new Error('No authentication token available');
+  }
+
+  const url = `${API_BASE_URL}/api/todos${endpoint}`;
+  
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
+}
 
 export const todoApi = {
-  // Fetch all todos from the database
+  // Fetch all todos from the API
   getAll: async (): Promise<TaskData[]> => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('No authenticated user')
+    return apiRequest<TaskData[]>('/all');
+  },
 
-      const { data, error } = await supabase
-        .from('todos')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+  // Fetch incomplete todos
+  getIncomplete: async (): Promise<TaskData[]> => {
+    return apiRequest<TaskData[]>('/incomplete');
+  },
 
-      if (error) throw error
-
-      // Transform database format to Task format
-      return (data || []).map(transformTaskData)
-    } catch (error) {
-      console.error('Failed to fetch todos:', error);
-      throw error;
-    }
+  // Fetch completed todos
+  getCompleted: async (): Promise<TaskData[]> => {
+    return apiRequest<TaskData[]>('/complete');
   },
 
   // Create a new todo
   create: async (todoData: CreateTaskData): Promise<TaskData> => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('No authenticated user')
-
-      const { data, error } = await supabase
-        .from('todos')
-        .insert(formatCreateTaskData(todoData, user.id))
-        .select()
-        .single()
-
-      if (error) throw error
-
-      // Transform to Task format
-      return transformTaskData(data)
-    } catch (error) {
-      console.error('Failed to create todo:', error);
-      throw error;
-    }
+    return apiRequest<TaskData>('/', {
+      method: 'POST',
+      body: JSON.stringify(todoData),
+    });
   },
 
-  // Create multiple todos at once
-  createMany: async (todosData: CreateTaskData[]): Promise<TaskData[]> => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('No authenticated user')
-
-      const todosToInsert = todosData.map(todo => formatCreateTaskData(todo, user.id))
-
-      const { data, error } = await supabase
-        .from('todos')
-        .insert(todosToInsert)
-        .select()
-
-      if (error) throw error
-
-      // Transform to Task format
-      return (data || []).map(transformTaskData)
-    } catch (error) {
-      console.error('Failed to create multiple todos:', error);
-      throw error;
-    }
+  // Update a todo
+  update: async (id: string, updates: Partial<TaskData>): Promise<TaskData> => {
+    return apiRequest<TaskData>(`/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
   },
 
-  // Update an existing todo
-  update: async (id: string, updates: Partial<Omit<TaskData, 'id' | 'created_at'>>): Promise<TaskData> => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('No authenticated user')
-
-      // Transform updates to database format
-      const dbUpdates = updateTaskData(updates)
-
-      const { data, error } = await supabase
-        .from('todos')
-        .update(dbUpdates)
-        .eq('id', id)
-        .eq('user_id', user.id)
-        .select()
-        .single()
-
-      if (error) throw error
-
-      // Transform to Task format
-      return transformTaskData(data)
-    } catch (error) {
-      console.error('Failed to update todo:', error);
-      throw error;
-    }
-  },
-
-  // Delete a specific todo
+  // Delete a todo
   delete: async (id: string): Promise<{ success: boolean }> => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('No authenticated user')
-
-      const { error } = await supabase
-        .from('todos')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user.id)
-
-      if (error) throw error
-
-      return { success: true }
-    } catch (error) {
-      console.error('Failed to delete todo:', error);
-      throw error;
-    }
+    return apiRequest<{ success: boolean }>(`/${id}`, {
+      method: 'DELETE',
+    });
   },
 
-  // Delete completed todos in a specific section
-  deleteCompleted: async (section: 'daily' | 'today' | 'upcoming'): Promise<{ success: boolean; deleted: number }> => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('No authenticated user')
-
-      const { data, error } = await supabase
-        .from('todos')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('section', section)
-        .eq('completed', true)
-        .select()
-
-      if (error) throw error
-
-      return { success: true, deleted: data?.length || 0 }
-    } catch (error) {
-      console.error('Failed to delete completed todos:', error);
-      throw error;
-    }
+  // Bulk delete todos
+  bulkDelete: async (criteria: any): Promise<{ success: boolean; deletedCount: number }> => {
+    return apiRequest<{ success: boolean; deletedCount: number }>('/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify(criteria),
+    });
   },
 
-  // Delete all todos in a specific section
-  deleteAll: async (section: 'daily' | 'today' | 'upcoming'): Promise<{ success: boolean; deleted: number }> => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('No authenticated user')
-
-      const { data, error } = await supabase
-        .from('todos')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('section', section)
-        .select()
-
-      if (error) throw error
-
-      return { success: true, deleted: data?.length || 0 }
-    } catch (error) {
-      console.error('Failed to delete all todos:', error);
-      throw error;
-    }
+  // Helper methods for specific bulk operations
+  deleteCompleted: async (section: 'daily' | 'today' | 'upcoming'): Promise<{ success: boolean; deletedCount: number }> => {
+    return apiRequest<{ success: boolean; deletedCount: number }>('/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify({ 
+        filter: { 
+          completed: true, 
+          section 
+        } 
+      }),
+    });
   },
 
-};
-
-// =============================================
-// EVENT UTILITIES
-// =============================================
-
-export const todoEvents = {
-  // Dispatch event when todos are added
-  dispatchTodoAdded: () => {
-    window.dispatchEvent(new CustomEvent('todoAdded'));
+  deleteAll: async (section: 'daily' | 'today' | 'upcoming'): Promise<{ success: boolean; deletedCount: number }> => {
+    return apiRequest<{ success: boolean; deletedCount: number }>('/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify({ 
+        filter: { 
+          section 
+        } 
+      }),
+    });
   },
-
-  // Dispatch event when todos are updated
-  dispatchTodoUpdated: () => {
-    window.dispatchEvent(new CustomEvent('todoUpdated'));
-  },
-
-  // Listen for todo events
-  onTodoChange: (callback: () => void) => {
-    const handleTodoAdded = () => callback();
-    const handleTodoUpdated = () => callback();
-
-    window.addEventListener('todoAdded', handleTodoAdded);
-    window.addEventListener('todoUpdated', handleTodoUpdated);
-
-    // Return cleanup function
-    return () => {
-      window.removeEventListener('todoAdded', handleTodoAdded);
-      window.removeEventListener('todoUpdated', handleTodoUpdated);
-    };
-  }
 };
