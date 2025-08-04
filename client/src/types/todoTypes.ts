@@ -2,6 +2,7 @@ export interface TaskData {
   id: string;
   title: string;
   completed: boolean;
+  completed_at?: string 
   created_at: string;
   section: 'daily' | 'today' | 'upcoming';
   priority?: 'low' | 'medium' | 'high';
