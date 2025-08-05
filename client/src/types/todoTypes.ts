@@ -2,7 +2,7 @@ export interface TaskData {
   id: string;
   title: string;
   completed: boolean;
-  completed_at?: string 
+  completed_at?: string;
   created_at: string;
   section: 'daily' | 'today' | 'upcoming';
   priority?: 'low' | 'medium' | 'high';
@@ -11,6 +11,11 @@ export interface TaskData {
   end_date?: string;
   start_time?: string;
   end_time?: string;
+  is_recurring?: boolean;
+  parent_task_id?: string;
+  completion_count?: number;
+  last_completed_date?: string;
+  deleted_at?: string;
 }
 
 export interface CreateTaskData {
