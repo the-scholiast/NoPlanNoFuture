@@ -1,169 +1,139 @@
-'use client';
+'use client'
 
-import React, { useState } from 'react';
-import Image from 'next/image';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { useEffect } from 'react';
-import { supabase } from '@/lib/supabaseClient';
-import { useAuth } from '@/hooks/useAuth';
-import TodoBoard from '@/components/todo/TodoBoard';
-import { NavSidebar } from "@/components/navBar/navBar";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-
-interface Sentence {
-  id: number;
-  content: string;
-  created_at: string;
-  created_by?: string;
-}
+import { useState } from 'react'
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Trash2, Plus } from "lucide-react"
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
+import { NavSidebar } from "@/components/navBar/navBar"
+import { useAuth } from '@/hooks/useAuth'
+import TodoBoard from '@/components/todo/TodoBoard'
+import CompletedTasks from '@/components/todo/CompletedTasks'
 
 // Sentence App Component (when not logged in)
 function SentenceApp() {
-  const [currentSentence, setCurrentSentence] = useState<string>('Blowing solves everything :D');
-  const [inputValue, setInputValue] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [message, setMessage] = useState<string>('');
+  const [sentence, setSentence] = useState('')
+  const [tasks, setTasks] = useState<string[]>([])
+  const [message, setMessage] = useState('')
+  const [messageType, setMessageType] = useState<'success' | 'error'>('success')
 
-  // Fetch a random sentence on component mount
-  useEffect(() => {
-    fetchRandomSentence();
-  }, []);
-
-  const fetchRandomSentence = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('sentences')
-        .select('content')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching sentences:', error);
-        return;
-      }
-
-      if (data && data.length > 0) {
-        // Get a random sentence from all sentences
-        const randomIndex = Math.floor(Math.random() * data.length);
-        setCurrentSentence(data[randomIndex].content);
-      }
-    } catch (error) {
-      console.error('Error:', error);
+  const addTask = () => {
+    if (sentence.trim() !== '') {
+      setTasks([...tasks, sentence.trim()])
+      setSentence('')
+      setMessage('Task added successfully!')
+      setMessageType('success')
+      
+      // Clear message after 3 seconds
+      setTimeout(() => setMessage(''), 3000)
     }
-  };
+  }
 
-  const submitSentence = async () => {
-    if (!inputValue.trim()) {
-      setMessage('Please enter a sentence!');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setMessage('');
-
-    try {
-      const { data, error } = await supabase
-        .from('sentences')
-        .insert([
-          {
-            content: inputValue.trim(),
-            created_by: 'Anonymous' // can modify this to track users if needed
-          }
-        ]);
-
-      if (error) {
-        console.error('Error inserting sentence:', error);
-        setMessage('Failed to submit sentence. Please try again.');
-      } else {
-        setMessage('Sentence submitted successfully! 🎉');
-        setInputValue('');
-        // Optionally refresh the current sentence
-        setTimeout(() => {
-          fetchRandomSentence();
-          setMessage('');
-        }, 2000);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      setMessage('Something went wrong. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const removeTask = (index: number) => {
+    const newTasks = tasks.filter((_, i) => i !== index)
+    setTasks(newTasks)
+    setMessage('Task removed!')
+    setMessageType('success')
+    
+    // Clear message after 3 seconds
+    setTimeout(() => setMessage(''), 3000)
+  }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      submitSentence();
+      addTask()
     }
-  };
+  }
 
   return (
     <SidebarProvider>
       <NavSidebar />
       <SidebarInset>
-        <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground p-6">
-          <h1 className="text-2xl font-bold mb-4">No Meow no meow-meow</h1>
-
-          <Image
-            src="/images/banner.png"
-            alt="Banner"
-            width={300}
-            height={150}
-            priority
-            className="mb-6"
-          />
-
-          <div className="text-center">
-            <div className="mb-6">
-              <div className='flex space-x-1'>
-                <h2 className="text-lg font-semibold mb-2">Sentence of the day: </h2>
-                <p className="text-xl italic text-blue-300 mb-4">"{currentSentence}"</p>
-              </div>
-              <Button
-                onClick={fetchRandomSentence}
-                variant="outline"
-                size="sm"
-                className="mb-4"
-              >
-                Get Me a new one!
-              </Button>
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="text-md font-medium">Share your own sentence:</h3>
-              <div className="flex gap-2 max-w-md mx-auto items-center justify-center">
-                <Textarea
-                  placeholder='Say something inspiring...'
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  className="flex-1"
-                  disabled={isSubmitting}
-                />
-                <Button
-                  onClick={submitSentence}
-                  disabled={isSubmitting || !inputValue.trim()}
-                  className="whitespace-nowrap"
-                >
-                  {isSubmitting ? 'Submitting...' : 'Submit'}
-                </Button>
+        <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+          <div className="flex-1 flex items-center justify-center p-4">
+            <div className="w-full max-w-2xl mx-auto">
+              <div className="text-center mb-8">
+                <h1 className="text-4xl font-bold text-gray-800 dark:text-white mb-4">
+                  Simple Task Manager
+                </h1>
+                <p className="text-gray-600 dark:text-gray-300">
+                  Add tasks and manage them easily
+                </p>
               </div>
 
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Plus className="h-5 w-5" />
+                    Add New Task
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      placeholder="Enter a task..."
+                      value={sentence}
+                      onChange={(e) => setSentence(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      className="flex-1"
+                    />
+                    <Button onClick={addTask} disabled={!sentence.trim()}>
+                      Add Task
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {tasks.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Your Tasks ({tasks.length})</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {tasks.map((task, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+                        >
+                          <span className="text-gray-800 dark:text-white flex-1">
+                            {task}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeTask(index)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Status Message */}
               {message && (
-                <p className={`text-sm ${message.includes('successfully') ? 'text-green-400' : 'text-red-400'}`}>
+                <p className={`text-center mt-4 font-medium ${
+                  messageType === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                }`}>
                   {message}
                 </p>
               )}
-            </div>
 
-            {/* Login prompt - Updated since user can now sign in via sidebar */}
-            <div className="mt-8 p-4 border rounded-lg bg-muted/50">
-              <p className="text-sm text-muted-foreground mb-2">
-                Want to access your personal todo app and more features?
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Sign in using the sidebar to get started! 👈
-              </p>
+              {/* Login prompt - Updated since user can now sign in via sidebar */}
+              <div className="mt-8 p-4 border rounded-lg bg-muted/50">
+                <p className="text-sm text-muted-foreground mb-2">
+                  Want to access your personal todo app and more features?
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Sign in using the sidebar to get started! 👈
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -172,14 +142,26 @@ function SentenceApp() {
   );
 }
 
-// Todo App Component (when logged in) - No changes needed since it's already wrapped by the layout
+// Todo App Component (when logged in) - Now includes all todo page components
 function TodoApp() {
   const handleAddTasks = () => {
     // Tasks are automatically refreshed via TodoContext
   };
 
   return (
-    <TodoBoard onAddTasks={handleAddTasks} />
+    <div className="flex-1">
+      {/* Header positioned to align with the add button that's above */}
+      <div className="flex items-center justify-center -mt-18 mb-6 h-12">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-blue-600">
+            To Do
+          </h1>
+        </div>
+      </div>
+
+      <TodoBoard onAddTasks={handleAddTasks} />
+      <CompletedTasks />
+    </div>
   );
 }
 
