@@ -205,7 +205,13 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
       // Completing a task
       if (task.section === 'daily') {
         // For daily tasks, increment completion count and set completion date
-        const today = new Date().toISOString().split('T')[0];
+        // Use timezone-aware date to avoid UTC conversion issues
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const today = `${year}-${month}-${day}`;
+        
         const updates: Partial<TaskData> = {
           completed: true,
           completed_at: new Date().toISOString(),
