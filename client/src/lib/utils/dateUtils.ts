@@ -1,8 +1,16 @@
+// Get today's date in local timezone to avoid UTC offset issues
+const getTodayString = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export const isToday = (dateString?: string): boolean => {
   if (!dateString) return false;
   
-  const today = new Date();
-  const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+  const todayStr = getTodayString(); // Get today in local timezone
   const taskDateStr = dateString.split('T')[0]; // Remove time if present
   
   return todayStr === taskDateStr;
@@ -10,8 +18,8 @@ export const isToday = (dateString?: string): boolean => {
 
 export const isUpcoming = (dateString?: string): boolean => {
   if (!dateString) return false;
-  const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
+  
+  const todayStr = getTodayString(); // Get today in local timezone
   const taskDate = dateString.split('T')[0];
 
   return taskDate > todayStr;
@@ -19,8 +27,8 @@ export const isUpcoming = (dateString?: string): boolean => {
 
 export const isPast = (dateString?: string): boolean => {
   if (!dateString) return false;
-  const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
+  
+  const todayStr = getTodayString(); // Get today in local timezone
   const taskDateStr = dateString.split('T')[0];
 
   return taskDateStr < todayStr;

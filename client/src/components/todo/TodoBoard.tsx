@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Settings, Trash2, Edit3, MoreVertical } from 'lucide-react';
+import { Settings, Trash2, Edit3, MoreVertical, Calendar, Clock } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { useTodo } from '@/contexts/TodoContext';
 import { todoApi } from '@/lib/api/todos';
@@ -99,6 +99,72 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     }
   ];
 
+  // ===== HELPER FUNCTIONS =====
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return null;
+    try {
+      // Parse date string directly to avoid timezone conversion issues
+      // dateString is expected to be in YYYY-MM-DD format
+      const [year, month, day] = dateString.split('-').map(Number);
+      if (!year || !month || !day) return dateString;
+      
+      // Create date object using local timezone to avoid UTC conversion
+      const date = new Date(year, month - 1, day);
+      const currentYear = new Date().getFullYear();
+      
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric',
+        year: date.getFullYear() !== currentYear ? 'numeric' : undefined
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatTime = (timeString?: string) => {
+    if (!timeString) return null;
+    try {
+      // Handle time format (HH:MM or HH:MM:SS)
+      const [hours, minutes] = timeString.split(':');
+      const date = new Date();
+      date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      return date.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      });
+    } catch {
+      return timeString;
+    }
+  };
+
+  const getDateRangeDisplay = (task: TaskData) => {
+    const startDate = formatDate(task.start_date);
+    const endDate = formatDate(task.end_date);
+    
+    if (!startDate && !endDate) return null;
+    
+    if (startDate && endDate && startDate !== endDate) {
+      return `${startDate} - ${endDate}`;
+    }
+    
+    return startDate || endDate;
+  };
+
+  const getTimeRangeDisplay = (task: TaskData) => {
+    const startTime = formatTime(task.start_time);
+    const endTime = formatTime(task.end_time);
+    
+    if (!startTime && !endTime) return null;
+    
+    if (startTime && endTime) {
+      return `${startTime} - ${endTime}`;
+    }
+    
+    return startTime || endTime;
+  };
+
   // ===== TASK MANAGEMENT FUNCTIONS =====
   const handleAddTasks = (newTasks: TaskData[]) => {
     refetch();
@@ -134,10 +200,45 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     const task = allTasks.find(t => t.id === taskId);
     if (!task) return;
 
-    updateTaskMutation.mutate({
-      id: taskId,
-      updates: { completed: !task.completed }
-    });
+    // Handle completion logic differently for daily tasks vs regular tasks
+    if (!task.completed) {
+      // Completing a task
+      if (task.section === 'daily') {
+        // For daily tasks, increment completion count and set completion date
+        const today = new Date().toISOString().split('T')[0];
+        const updates: Partial<TaskData> = {
+          completed: true,
+          completed_at: new Date().toISOString(),
+          completion_count: (task.completion_count || 0) + 1,
+          last_completed_date: today
+        };
+        updateTaskMutation.mutate({ id: taskId, updates });
+      } else {
+        // For regular tasks, just mark as completed
+        updateTaskMutation.mutate({
+          id: taskId,
+          updates: { completed: true, completed_at: new Date().toISOString() }
+        });
+      }
+    } else {
+      // Uncompleting a task
+      if (task.section === 'daily') {
+        // For daily tasks, decrement completion count
+        const updates: Partial<TaskData> = {
+          completed: false,
+          completed_at: undefined,
+          completion_count: Math.max((task.completion_count || 1) - 1, 0),
+          last_completed_date: (task.completion_count || 1) <= 1 ? undefined : task.last_completed_date
+        };
+        updateTaskMutation.mutate({ id: taskId, updates });
+      } else {
+        // For regular tasks, just mark as incomplete
+        updateTaskMutation.mutate({
+          id: taskId,
+          updates: { completed: false, completed_at: undefined }
+        });
+      }
+    }
   };
 
   const clearCompleted = (sectionIndex: number) => {
@@ -264,97 +365,112 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                       </p>
                     </div>
                   ) : (
-                    section.tasks.map((task) => (
-                      <div
-                        key={task.id}
-                        className="group flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
-                      >
-                        {/* Checkbox */}
-                        <button
-                          onClick={() => toggleTask(task.id)}
-                          disabled={updateTaskMutation.isPending}
-                          className="flex-shrink-0"
+                    section.tasks.map((task) => {
+                      const dateRange = getDateRangeDisplay(task);
+                      const timeRange = getTimeRangeDisplay(task);
+                      
+                      return (
+                        <div
+                          key={task.id}
+                          className="group flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
                         >
-                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-                            task.completed
-                              ? 'bg-primary border-primary'
-                              : 'border-muted-foreground hover:border-primary'
-                          }`}>
-                            {task.completed && (
-                              <div className="w-2 h-2 bg-primary-foreground rounded-sm" />
-                            )}
-                          </div>
-                        </button>
-
-                        {/* Task Content */}
-                        <div className="flex-1 min-w-0">
-                          <div className="space-y-1">
-                            <div
-                              className={`text-sm font-medium cursor-pointer ${
-                                task.completed ? 'line-through text-muted-foreground' : ''
-                              }`}
-                              onClick={() => toggleTaskExpansion(task.id)}
-                            >
-                              {task.title}
+                          {/* Checkbox */}
+                          <button
+                            onClick={() => toggleTask(task.id)}
+                            disabled={updateTaskMutation.isPending}
+                            className="flex-shrink-0"
+                          >
+                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                              task.completed
+                                ? 'bg-primary border-primary'
+                                : 'border-muted-foreground hover:border-primary'
+                            }`}>
+                              {task.completed && (
+                                <div className="w-2 h-2 bg-primary-foreground rounded-sm" />
+                              )}
                             </div>
+                          </button>
 
-                            {/* Task Description - Shows when expanded */}
-                            {expandedTask === task.id && task.description && (
-                              <div className="text-xs text-muted-foreground mt-1 p-2 bg-muted/30 rounded break-words overflow-hidden">
-                                {task.description}
+                          {/* Task Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="space-y-1">
+                              <div
+                                className={`text-sm font-medium cursor-pointer ${
+                                  task.completed ? 'line-through text-muted-foreground' : ''
+                                }`}
+                                onClick={() => toggleTaskExpansion(task.id)}
+                              >
+                                {task.title}
                               </div>
-                            )}
 
-                            {/* Priority Badge */}
-                            {task.priority && (
-                              <div className="flex items-center gap-2">
-                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                  task.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
-                                  task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
-                                  'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                                }`}>
-                                  {task.priority}
-                                </span>
-                              </div>
-                            )}
+                              {/* Date and Time Display */}
+                              {(dateRange || timeRange) && (
+                                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                                  {dateRange && (
+                                    <div className="flex items-center gap-1">
+                                      <Calendar className="h-3 w-3" />
+                                      <span>{dateRange}</span>
+                                    </div>
+                                  )}
+                                  {timeRange && (
+                                    <div className="flex items-center gap-1">
+                                      <Clock className="h-3 w-3" />
+                                      <span>{timeRange}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
 
-                            {/* Daily Task Completion Stats */}
-                            {task.section === 'daily' && task.completion_count && task.completion_count > 0 && (
-                              <div className="text-xs text-muted-foreground">
-                                Completed {task.completion_count} times
-                                {task.last_completed_date && ` • Last: ${new Date(task.last_completed_date).toLocaleDateString()}`}
-                              </div>
-                            )}
+                              {/* Task Description - Shows when expanded */}
+                              {expandedTask === task.id && task.description && (
+                                <div className="text-xs text-muted-foreground mt-1 p-2 bg-muted/30 rounded break-words overflow-hidden">
+                                  {task.description}
+                                </div>
+                              )}
+
+                              {/* Priority Badge */}
+                              {task.priority && (
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                    task.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
+                                    task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
+                                    'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                  }`}>
+                                    {task.priority}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
 
-                        {/* Action Menu */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEditModal(task)}>
-                              <Edit3 className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => deleteTask(task.id)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Move to Trash
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    ))
+                          {/* Action Menu */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEditModal(task)}>
+                                <Edit3 className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => deleteTask(task.id)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Move to Trash
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
 

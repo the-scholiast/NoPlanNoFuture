@@ -97,8 +97,24 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     }
 
     return allCompletedTasks.filter(task => {
-      const taskDate = new Date(task.completed_at || task.created_at).toISOString().split('T')[0];
-      return taskDate >= dateFilter.startDate && taskDate <= dateFilter.endDate;
+      const completedDate = task.completed_at || task.created_at;
+      if (!completedDate) return false;
+      
+      let taskDateStr: string;
+      
+      if (completedDate.includes('T')) {
+        // It's a datetime string - convert UTC to local timezone first, then get date
+        const localDate = new Date(completedDate);
+        const year = localDate.getFullYear();
+        const month = String(localDate.getMonth() + 1).padStart(2, '0');
+        const day = String(localDate.getDate()).padStart(2, '0');
+        taskDateStr = `${year}-${month}-${day}`;
+      } else {
+        // It's already just a date string
+        taskDateStr = completedDate;
+      }
+      
+      return taskDateStr >= dateFilter.startDate && taskDateStr <= dateFilter.endDate;
     });
   }, [allCompletedTasks, dateFilter]);
 
@@ -106,13 +122,45 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
 
   // Mutation to mark task as incomplete (undo completion)
   const uncompleteTaskMutation = useMutation({
-    mutationFn: (taskId: string) => todoApi.update(taskId, { completed: false }),
+    mutationFn: async (taskId: string) => {
+      // Get the current task to check if it's a daily task
+      const currentTask = allTasks.find(task => task.id === taskId);
+      
+      if (currentTask?.section === 'daily') {
+        // For daily tasks, we need to decrement completion count and clear last completed date
+        const updates: Partial<TaskData> = {
+          completed: false,
+          completed_at: undefined,
+          completion_count: Math.max((currentTask.completion_count || 1) - 1, 0),
+          last_completed_date: (currentTask.completion_count || 1) <= 1 ? undefined : currentTask.last_completed_date
+        };
+        return todoApi.update(taskId, updates);
+      } else {
+        // For non-daily tasks, just mark as incomplete
+        return todoApi.update(taskId, { completed: false, completed_at: undefined });
+      }
+    },
     onMutate: async (taskId) => {
       await queryClient.cancelQueries({ queryKey: ['tasks'] });
       const previousTasks = queryClient.getQueryData(['tasks']);
 
       queryClient.setQueryData(['tasks'], (old: TaskData[] = []) =>
-        old.map(task => task.id === taskId ? { ...task, completed: false } : task)
+        old.map(task => {
+          if (task.id === taskId) {
+            if (task.section === 'daily') {
+              return {
+                ...task,
+                completed: false,
+                completed_at: undefined,
+                completion_count: Math.max((task.completion_count || 1) - 1, 0),
+                last_completed_date: (task.completion_count || 1) <= 1 ? undefined : task.last_completed_date
+              };
+            } else {
+              return { ...task, completed: false, completed_at: undefined };
+            }
+          }
+          return task;
+        })
       );
 
       return { previousTasks };
@@ -183,12 +231,50 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return null;
-    return new Date(dateString).toLocaleDateString();
+    try {
+      // Handle both date strings (YYYY-MM-DD) and datetime strings (ISO format)
+      if (dateString.includes('T')) {
+        // It's a datetime string (like completed_at), convert UTC to local date
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric',
+          year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+        });
+      } else {
+        // It's a date string (like start_date), parse without timezone conversion
+        const [year, month, day] = dateString.split('-').map(Number);
+        if (!year || !month || !day) return dateString;
+        
+        // Create date object using local timezone to avoid UTC conversion
+        const date = new Date(year, month - 1, day);
+        
+        return date.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric',
+          year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+        });
+      }
+    } catch {
+      return dateString;
+    }
   };
 
   const formatTime = (timeString?: string) => {
     if (!timeString) return null;
-    return timeString;
+    try {
+      // Handle time format (HH:MM or HH:MM:SS)
+      const [hours, minutes] = timeString.split(':');
+      const date = new Date();
+      date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      return date.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      });
+    } catch {
+      return timeString;
+    }
   };
 
   // ===== EVENT HANDLERS =====
@@ -256,8 +342,12 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
   const getFilterDisplayText = () => {
     if (!dateFilter.enabled) return 'All dates';
 
-    const startDate = new Date(dateFilter.startDate + 'T00:00:00');
-    const endDate = new Date(dateFilter.endDate + 'T00:00:00');
+    // Fix timezone issue: avoid using new Date() constructor with date strings for display
+    const formatLocalDate = (dateStr: string) => {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      return date.toLocaleDateString();
+    };
 
     // Check if it's today
     if (dateFilter.startDate === dateFilter.endDate &&
@@ -279,11 +369,11 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
 
     // Check if it's the same date
     if (dateFilter.startDate === dateFilter.endDate) {
-      return startDate.toLocaleDateString();
+      return formatLocalDate(dateFilter.startDate);
     }
 
     // Date range
-    return `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
+    return `${formatLocalDate(dateFilter.startDate)} - ${formatLocalDate(dateFilter.endDate)}`;
   };
 
   // ===== RENDER =====
@@ -495,10 +585,6 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
                         >
                           {task.title}
                         </div>
-                        {/* Section Badge */}
-                        <Badge variant="outline" className="text-xs">
-                          {getSectionLabel(task.section)}
-                        </Badge>
                       </div>
 
                       {/* Task Description - Shows when expanded */}
@@ -543,8 +629,8 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
                       {/* Completion Status */}
                       <div className="text-xs text-muted-foreground">
                         {task.completed_at ?
-                          `✅ Completed on ${formatDate(task.completed_at)}` :
-                          '✅ Marked as complete'
+                          `Completed on ${formatDate(task.completed_at)}` :
+                          'Marked as complete'
                         }
                       </div>
                     </div>
