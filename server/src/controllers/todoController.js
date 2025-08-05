@@ -99,8 +99,16 @@ export const updateTodo = async (userId, todoId, updates) => {
   // Handle completion logic
   if ('completed' in updates) {
     if (updates.completed) {
-      updates.completed_at = new Date().toISOString();
-      
+      // Only set completed_at if it's not already provided from frontend
+      if (!updates.completed_at) {
+        // Create timezone-aware date to match frontend behavior
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        updates.completed_at = `${year}-${month}-${day}`;
+      }
+
       // If it's a daily task, increment completion count (if column exists)
       try {
         const { data: existingTask } = await supabase
@@ -112,8 +120,13 @@ export const updateTodo = async (userId, todoId, updates) => {
           .single();
 
         if (existingTask && existingTask.section === 'daily') {
-          const today = new Date().toISOString().split('T')[0];
-          
+          // Use the same timezone-aware date format as frontend
+          const now = new Date();
+          const year = now.getFullYear();
+          const month = String(now.getMonth() + 1).padStart(2, '0');
+          const day = String(now.getDate()).padStart(2, '0');
+          const today = `${year}-${month}-${day}`;
+
           // Only increment if not already completed today
           if (existingTask.last_completed_date !== today) {
             updates.completion_count = (existingTask.completion_count || 0) + 1;
@@ -302,7 +315,7 @@ export const getCompletedDailyTasks = async (userId) => {
 // Reset daily tasks for new day (only active tasks)
 export const resetDailyTasks = async (userId) => {
   const today = new Date().toISOString().split('T')[0];
-  
+
   // First, get tasks that need to be reset
   const { data: tasksToReset, error: selectError } = await supabase
     .from('todos')
@@ -321,7 +334,7 @@ export const resetDailyTasks = async (userId) => {
   // Filter tasks that haven't been completed today (if last_completed_date column exists)
   let tasksToActuallyReset = tasksToReset;
   try {
-    tasksToActuallyReset = tasksToReset.filter(task => 
+    tasksToActuallyReset = tasksToReset.filter(task =>
       !task.last_completed_date || task.last_completed_date !== today
     );
   } catch (e) {
@@ -336,9 +349,9 @@ export const resetDailyTasks = async (userId) => {
   // Reset the tasks
   const { data, error } = await supabase
     .from('todos')
-    .update({ 
-      completed: false, 
-      completed_at: null 
+    .update({
+      completed: false,
+      completed_at: null
     })
     .in('id', tasksToActuallyReset.map(task => task.id))
     .select();
@@ -365,12 +378,12 @@ export const getDailyTaskStats = async (userId, startDate, endDate) => {
   const stats = tasks.map(task => {
     const totalCompletions = task.completion_count || 0;
     const lastCompleted = task.last_completed_date;
-    
+
     // Calculate completion rate for date range
     let completionRate = 0;
     if (startDate && endDate) {
       const daysDiff = Math.ceil(
-        (new Date(endDate).getTime() - new Date(startDate).getTime()) / 
+        (new Date(endDate).getTime() - new Date(startDate).getTime()) /
         (1000 * 60 * 60 * 24)
       );
       completionRate = daysDiff > 0 ? Math.min(totalCompletions / daysDiff, 1) * 100 : 0;

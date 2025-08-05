@@ -36,20 +36,20 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     const now = new Date();
     const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
     const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert Sunday to 6, others to dayOfWeek - 1
-    
+
     const monday = new Date(now);
     monday.setDate(now.getDate() - daysFromMonday);
-    
+
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
-    
+
     const formatDate = (date: Date) => {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
     };
-    
+
     return {
       start: formatDate(monday),
       end: formatDate(sunday)
@@ -61,23 +61,23 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth();
-    
+
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    
+
     const formatDate = (date: Date) => {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
     };
-    
+
     return {
       start: formatDate(firstDay),
       end: formatDate(lastDay)
     };
   }, []);
-  
+
   const [dateFilter, setDateFilter] = useState({
     startDate: currentWeek.start,
     endDate: currentWeek.end,
@@ -99,21 +99,17 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     return allCompletedTasks.filter(task => {
       const completedDate = task.completed_at || task.created_at;
       if (!completedDate) return false;
-      
+
       let taskDateStr: string;
-      
-      if (completedDate.includes('T')) {
-        // It's a datetime string - convert UTC to local timezone first, then get date
-        const localDate = new Date(completedDate);
-        const year = localDate.getFullYear();
-        const month = String(localDate.getMonth() + 1).padStart(2, '0');
-        const day = String(localDate.getDate()).padStart(2, '0');
-        taskDateStr = `${year}-${month}-${day}`;
+
+      if (completedDate.includes('T') || completedDate.includes(' ')) {
+        // Extract just the date part to avoid timezone conversion
+        taskDateStr = completedDate.split('T')[0] || completedDate.split(' ')[0];
       } else {
         // It's already just a date string
         taskDateStr = completedDate;
       }
-      
+
       return taskDateStr >= dateFilter.startDate && taskDateStr <= dateFilter.endDate;
     });
   }, [allCompletedTasks, dateFilter]);
@@ -125,7 +121,7 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     mutationFn: async (taskId: string) => {
       // Get the current task to check if it's a daily task
       const currentTask = allTasks.find(task => task.id === taskId);
-      
+
       if (currentTask?.section === 'daily') {
         // For daily tasks, we need to decrement completion count and clear last completed date
         const updates: Partial<TaskData> = {
@@ -233,11 +229,16 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     if (!dateString) return null;
     try {
       // Handle both date strings (YYYY-MM-DD) and datetime strings (ISO format)
-      if (dateString.includes('T')) {
-        // It's a datetime string (like completed_at), convert UTC to local date
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', { 
-          month: 'short', 
+      if (dateString.includes('T') || dateString.includes(' ')) {
+        // It's a datetime string - extract just the date part to avoid timezone conversion
+        const datePart = dateString.split('T')[0] || dateString.split(' ')[0];
+        const [year, month, day] = datePart.split('-').map(Number);
+        if (!year || !month || !day) return dateString;
+
+        // Create date object using local timezone to avoid UTC conversion
+        const date = new Date(year, month - 1, day);
+        return date.toLocaleDateString('en-US', {
+          month: 'short',
           day: 'numeric',
           year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
         });
@@ -245,12 +246,12 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
         // It's a date string (like start_date), parse without timezone conversion
         const [year, month, day] = dateString.split('-').map(Number);
         if (!year || !month || !day) return dateString;
-        
+
         // Create date object using local timezone to avoid UTC conversion
         const date = new Date(year, month - 1, day);
-        
-        return date.toLocaleDateString('en-US', { 
-          month: 'short', 
+
+        return date.toLocaleDateString('en-US', {
+          month: 'short',
           day: 'numeric',
           year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
         });
@@ -267,10 +268,10 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
       const [hours, minutes] = timeString.split(':');
       const date = new Date();
       date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-      return date.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
+      return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
         minute: '2-digit',
-        hour12: true 
+        hour12: true
       });
     } catch {
       return timeString;
@@ -356,14 +357,14 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     }
 
     // Check if it's current week
-    if (dateFilter.startDate === currentWeek.start && 
-        dateFilter.endDate === currentWeek.end) {
+    if (dateFilter.startDate === currentWeek.start &&
+      dateFilter.endDate === currentWeek.end) {
       return 'This week';
     }
 
     // Check if it's current month
-    if (dateFilter.startDate === currentMonth.start && 
-        dateFilter.endDate === currentMonth.end) {
+    if (dateFilter.startDate === currentMonth.start &&
+      dateFilter.endDate === currentMonth.end) {
       return 'This month';
     }
 

@@ -12,6 +12,7 @@ import { useTodo } from '@/contexts/TodoContext';
 import { todoApi } from '@/lib/api/todos';
 import { TaskData } from '@/types/todoTypes';
 import EditTaskModal from './EditTaskModal';
+import { getTodayString } from '@/lib/utils/dateUtils';
 
 interface TodoSection {
   title: string;
@@ -26,14 +27,14 @@ interface TodoBoardProps {
 
 export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   const { dailyTasks, todayTasks, upcomingTasks, isLoading, error, refetch } = useTodo();
-  
+
   const [newTaskInputs, setNewTaskInputs] = useState<{ [key: number]: string }>({});
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<TaskData | null>(null);
 
   // ===== MUTATIONS =====
-  
+
   // Create task mutation
   const createTaskMutation = useMutation({
     mutationFn: (taskData: any) => todoApi.create(taskData),
@@ -107,13 +108,13 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
       // dateString is expected to be in YYYY-MM-DD format
       const [year, month, day] = dateString.split('-').map(Number);
       if (!year || !month || !day) return dateString;
-      
+
       // Create date object using local timezone to avoid UTC conversion
       const date = new Date(year, month - 1, day);
       const currentYear = new Date().getFullYear();
-      
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
+
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
         day: 'numeric',
         year: date.getFullYear() !== currentYear ? 'numeric' : undefined
       });
@@ -129,10 +130,10 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
       const [hours, minutes] = timeString.split(':');
       const date = new Date();
       date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-      return date.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
+      return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
         minute: '2-digit',
-        hour12: true 
+        hour12: true
       });
     } catch {
       return timeString;
@@ -142,26 +143,26 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   const getDateRangeDisplay = (task: TaskData) => {
     const startDate = formatDate(task.start_date);
     const endDate = formatDate(task.end_date);
-    
+
     if (!startDate && !endDate) return null;
-    
+
     if (startDate && endDate && startDate !== endDate) {
       return `${startDate} - ${endDate}`;
     }
-    
+
     return startDate || endDate;
   };
 
   const getTimeRangeDisplay = (task: TaskData) => {
     const startTime = formatTime(task.start_time);
     const endTime = formatTime(task.end_time);
-    
+
     if (!startTime && !endTime) return null;
-    
+
     if (startTime && endTime) {
       return `${startTime} - ${endTime}`;
     }
-    
+
     return startTime || endTime;
   };
 
@@ -200,49 +201,46 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     const task = allTasks.find(t => t.id === taskId);
     if (!task) return;
 
-    // Handle completion logic differently for daily tasks vs regular tasks
+    const today = getTodayString(); // Use existing utility function
+    const isDailyTask = task.section === 'daily';
+
     if (!task.completed) {
       // Completing a task
-      if (task.section === 'daily') {
-        // For daily tasks, increment completion count and set completion date
-        // Use timezone-aware date to avoid UTC conversion issues
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const today = `${year}-${month}-${day}`;
-        
-        const updates: Partial<TaskData> = {
-          completed: true,
-          completed_at: new Date().toISOString(),
+      const baseUpdates: Partial<TaskData> = {
+        completed: true,
+        completed_at: today, // Consistent date format for all tasks
+      };
+
+      if (isDailyTask) {
+        // Additional updates for daily tasks
+        const dailyUpdates = {
+          ...baseUpdates,
           completion_count: (task.completion_count || 0) + 1,
           last_completed_date: today
         };
-        updateTaskMutation.mutate({ id: taskId, updates });
+        updateTaskMutation.mutate({ id: taskId, updates: dailyUpdates });
       } else {
-        // For regular tasks, just mark as completed
-        updateTaskMutation.mutate({
-          id: taskId,
-          updates: { completed: true, completed_at: new Date().toISOString() }
-        });
+        // Regular tasks use base updates only
+        updateTaskMutation.mutate({ id: taskId, updates: baseUpdates });
       }
     } else {
       // Uncompleting a task
-      if (task.section === 'daily') {
-        // For daily tasks, decrement completion count
-        const updates: Partial<TaskData> = {
-          completed: false,
-          completed_at: undefined,
+      const baseUpdates: Partial<TaskData> = {
+        completed: false,
+        completed_at: undefined,
+      };
+
+      if (isDailyTask) {
+        // Additional updates for daily tasks
+        const dailyUpdates = {
+          ...baseUpdates,
           completion_count: Math.max((task.completion_count || 1) - 1, 0),
           last_completed_date: (task.completion_count || 1) <= 1 ? undefined : task.last_completed_date
         };
-        updateTaskMutation.mutate({ id: taskId, updates });
+        updateTaskMutation.mutate({ id: taskId, updates: dailyUpdates });
       } else {
-        // For regular tasks, just mark as incomplete
-        updateTaskMutation.mutate({
-          id: taskId,
-          updates: { completed: false, completed_at: undefined }
-        });
+        // Regular tasks use base updates only
+        updateTaskMutation.mutate({ id: taskId, updates: baseUpdates });
       }
     }
   };
@@ -336,7 +334,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                           <AlertDialogHeader>
                             <AlertDialogTitle>Move all tasks to trash?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This will move all tasks in the {section.title.toLowerCase()} section to trash. 
+                              This will move all tasks in the {section.title.toLowerCase()} section to trash.
                               You can restore them later if needed.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
@@ -374,7 +372,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                     section.tasks.map((task) => {
                       const dateRange = getDateRangeDisplay(task);
                       const timeRange = getTimeRangeDisplay(task);
-                      
+
                       return (
                         <div
                           key={task.id}
@@ -386,11 +384,10 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                             disabled={updateTaskMutation.isPending}
                             className="flex-shrink-0"
                           >
-                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-                              task.completed
+                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${task.completed
                                 ? 'bg-primary border-primary'
                                 : 'border-muted-foreground hover:border-primary'
-                            }`}>
+                              }`}>
                               {task.completed && (
                                 <div className="w-2 h-2 bg-primary-foreground rounded-sm" />
                               )}
@@ -401,9 +398,8 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                           <div className="flex-1 min-w-0">
                             <div className="space-y-1">
                               <div
-                                className={`text-sm font-medium cursor-pointer ${
-                                  task.completed ? 'line-through text-muted-foreground' : ''
-                                }`}
+                                className={`text-sm font-medium cursor-pointer ${task.completed ? 'line-through text-muted-foreground' : ''
+                                  }`}
                                 onClick={() => toggleTaskExpansion(task.id)}
                               >
                                 {task.title}
@@ -437,11 +433,10 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                               {/* Priority Badge */}
                               {task.priority && (
                                 <div className="flex items-center gap-2">
-                                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                    task.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
-                                    task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
-                                    'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                                  }`}>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${task.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
+                                      task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
+                                        'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                    }`}>
                                     {task.priority}
                                   </span>
                                 </div>
