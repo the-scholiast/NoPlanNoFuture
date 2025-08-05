@@ -1,10 +1,15 @@
 'use client';
+
+import React, { useState } from 'react';
 import Image from 'next/image';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useState, useEffect } from 'react';
+import { Textarea } from '@/components/ui/textarea';
+import { useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { Textarea } from "@/components/ui/textarea"
+import { useAuth } from '@/hooks/useAuth';
+import TodoBoard from '@/components/todo/TodoBoard';
+import { NavSidebar } from "@/components/navBar/navBar";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
 interface Sentence {
   id: number;
@@ -13,7 +18,8 @@ interface Sentence {
   created_by?: string;
 }
 
-export default function HomePage() {
+// Sentence App Component (when not logged in)
+function SentenceApp() {
   const [currentSentence, setCurrentSentence] = useState<string>('Blowing solves everything :D');
   const [inputValue, setInputValue] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -61,7 +67,7 @@ export default function HomePage() {
         .insert([
           {
             content: inputValue.trim(),
-            created_by: 'Anonymous' // You can modify this to track users if needed
+            created_by: 'Anonymous' // can modify this to track users if needed
           }
         ]);
 
@@ -92,62 +98,107 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground">
-      <h1 className="text-2xl font-bold mb-4">No Meow no meow-meow</h1>
+    <SidebarProvider>
+      <NavSidebar />
+      <SidebarInset>
+        <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground p-6">
+          <h1 className="text-2xl font-bold mb-4">No Meow no meow-meow</h1>
 
-      <Image
-        src="/images/banner.png"
-        alt="Banner"
-        width={300}
-        height={150}
-        priority
-        className="mb-6"
-      />
+          <Image
+            src="/images/banner.png"
+            alt="Banner"
+            width={300}
+            height={150}
+            priority
+            className="mb-6"
+          />
 
-      <div className="text-center ">
-        <div className="mb-6">
-          <div className='flex space-x-1'>
-          <h2 className="text-lg font-semibold mb-2">Sentence of the day: </h2>
-          <p className="text-xl italic text-blue-300 mb-4">"{currentSentence}"</p>
+          <div className="text-center">
+            <div className="mb-6">
+              <div className='flex space-x-1'>
+                <h2 className="text-lg font-semibold mb-2">Sentence of the day: </h2>
+                <p className="text-xl italic text-blue-300 mb-4">"{currentSentence}"</p>
+              </div>
+              <Button
+                onClick={fetchRandomSentence}
+                variant="outline"
+                size="sm"
+                className="mb-4"
+              >
+                Get Me a new one!
+              </Button>
+            </div>
 
+            <div className="space-y-3">
+              <h3 className="text-md font-medium">Share your own sentence:</h3>
+              <div className="flex gap-2 max-w-md mx-auto items-center justify-center">
+                <Textarea
+                  placeholder='Say something inspiring...'
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  className="flex-1"
+                  disabled={isSubmitting}
+                />
+                <Button
+                  onClick={submitSentence}
+                  disabled={isSubmitting || !inputValue.trim()}
+                  className="whitespace-nowrap"
+                >
+                  {isSubmitting ? 'Submitting...' : 'Submit'}
+                </Button>
+              </div>
+
+              {message && (
+                <p className={`text-sm ${message.includes('successfully') ? 'text-green-400' : 'text-red-400'}`}>
+                  {message}
+                </p>
+              )}
+            </div>
+
+            {/* Login prompt - Updated since user can now sign in via sidebar */}
+            <div className="mt-8 p-4 border rounded-lg bg-muted/50">
+              <p className="text-sm text-muted-foreground mb-2">
+                Want to access your personal todo app and more features?
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Sign in using the sidebar to get started! 👈
+              </p>
+            </div>
           </div>
-          <Button
-            onClick={fetchRandomSentence}
-            variant="outline"
-            size="sm"
-            className="mb-4"
-          >
-            Get Me a new one!
-          </Button>
         </div>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
 
-        <div className="space-y-3">
-          <h3 className="text-md font-medium">Share your own sentence:</h3>
-          <div className="flex gap-2 max-w-md mx-auto items-center justify-center">
+// Todo App Component (when logged in) - No changes needed since it's already wrapped by the layout
+function TodoApp() {
+  const handleAddTasks = () => {
+    // Tasks are automatically refreshed via TodoContext
+  };
 
-            <Textarea placeholder='Say something inspiring...' 
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            className="flex-1"
-            disabled={isSubmitting}
-            />
-            <Button
-              onClick={submitSentence}
-              disabled={isSubmitting || !inputValue.trim()}
-              className="whitespace-nowrap"
-            >
-              {isSubmitting ? 'Submitting...' : 'Submit'}
-            </Button>
-          </div>
+  return (
+    <TodoBoard onAddTasks={handleAddTasks} />
+  );
+}
 
-          {message && (
-            <p className={`text-sm ${message.includes('successfully') ? 'text-green-400' : 'text-red-400'}`}>
-              {message}
-            </p>
-          )}
+// Main Page Component
+export default function HomePage() {
+  const { user, loading } = useAuth();
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // Show todo app if user is logged in, otherwise show sentence app with navbar
+  return user ? <TodoApp /> : <SentenceApp />;
 }
