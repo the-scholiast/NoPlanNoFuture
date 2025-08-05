@@ -1,22 +1,23 @@
 "use client"
 
 import React, { useState } from 'react';
-import { Settings, Edit, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { TaskData } from '@/types/todoTypes';
-import { todoApi } from '@/lib/api/todos';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import EditTaskModal from './EditTaskModal';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Settings, Trash2, Edit3, MoreVertical } from 'lucide-react';
+import { useMutation } from '@tanstack/react-query';
 import { useTodo } from '@/contexts/TodoContext';
+import { todoApi } from '@/lib/api/todos';
+import { TaskData } from '@/types/todoTypes';
+import EditTaskModal from './EditTaskModal';
 
-// ===== TYPE DEFINITIONS =====
 interface TodoSection {
   title: string;
+  sectionKey: 'daily' | 'today' | 'upcoming';
   tasks: TaskData[];
   showAddButton: boolean;
-  sectionKey: 'daily' | 'today' | 'upcoming';
 }
 
 interface TodoBoardProps {
@@ -24,36 +25,20 @@ interface TodoBoardProps {
 }
 
 export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
-  const queryClient = useQueryClient();
-
-  // Use TodoContext instead of direct API calls
-  const {
-    dailyTasks,
-    todayTasks,
-    upcomingTasks,
-    isLoading,
-    error,
-    refetch
-  } = useTodo();
-
-  // State for UI interactions
-  const [newTaskInputs, setNewTaskInputs] = useState<{ [key: string]: string }>({});
+  const { dailyTasks, todayTasks, upcomingTasks, isLoading, error, refetch } = useTodo();
+  
+  const [newTaskInputs, setNewTaskInputs] = useState<{ [key: number]: string }>({});
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<TaskData | null>(null);
 
   // ===== MUTATIONS =====
-
+  
   // Create task mutation
   const createTaskMutation = useMutation({
-    mutationFn: (taskData: { title: string; section: 'daily' | 'today' | 'upcoming' }) =>
-      todoApi.create({
-        title: taskData.title,
-        section: taskData.section,
-        priority: 'low' // default priority
-      }),
+    mutationFn: (taskData: any) => todoApi.create(taskData),
     onSuccess: () => {
-      refetch(); // Use context refetch instead of queryClient
+      refetch();
     },
   });
 
@@ -62,63 +47,61 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     mutationFn: ({ id, updates }: { id: string; updates: Partial<TaskData> }) =>
       todoApi.update(id, updates),
     onSuccess: () => {
-      refetch(); // Use context refetch
+      refetch();
     },
   });
 
-  // Delete task mutation
+  // Soft delete task mutation
   const deleteTaskMutation = useMutation({
     mutationFn: (taskId: string) => todoApi.delete(taskId),
     onSuccess: () => {
-      refetch(); // Use context refetch
+      refetch();
     },
   });
 
-  // Clear completed tasks mutation
+  // Clear completed tasks mutation (soft delete)
   const clearCompletedMutation = useMutation({
     mutationFn: (section: 'daily' | 'today' | 'upcoming') =>
       todoApi.deleteCompleted(section),
     onSuccess: () => {
-      refetch(); // Use context refetch
+      refetch();
     },
   });
 
-  // Clear all tasks mutation
+  // Clear all tasks mutation (soft delete)
   const clearAllMutation = useMutation({
     mutationFn: (section: 'daily' | 'today' | 'upcoming') =>
       todoApi.deleteAll(section),
     onSuccess: () => {
-      refetch(); // Use context refetch
+      refetch();
     },
   });
 
-  // ===== ORGANIZE TASKS BY SECTION (using context data) =====
+  // ===== ORGANIZE TASKS BY SECTION =====
   const sections: TodoSection[] = [
     {
       title: "Daily",
       sectionKey: 'daily',
-      tasks: dailyTasks, // From context
+      tasks: dailyTasks,
       showAddButton: false
     },
     {
       title: "Today",
       sectionKey: 'today',
-      tasks: todayTasks, // From context - automatically filtered by date
+      tasks: todayTasks,
       showAddButton: false
     },
     {
       title: "Upcoming",
       sectionKey: 'upcoming',
-      tasks: upcomingTasks, // From context - automatically filtered by date
+      tasks: upcomingTasks,
       showAddButton: false
     }
   ];
 
   // ===== TASK MANAGEMENT FUNCTIONS =====
   const handleAddTasks = (newTasks: TaskData[]) => {
-    refetch(); // Use context refetch
-
-    // Call the optional callback
+    refetch();
     if (onAddTasks) {
       onAddTasks(newTasks);
     }
@@ -135,21 +118,18 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
       section: section.sectionKey,
       // Add date logic for dynamic sections
       ...(section.sectionKey === 'today' && {
-        start_date: new Date().toISOString().split('T')[0] // Today's date
+        start_date: new Date().toISOString().split('T')[0]
       }),
       ...(section.sectionKey === 'upcoming' && {
-        start_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0] // Tomorrow's date as default
+        start_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
       })
     };
 
     createTaskMutation.mutate(taskData);
-
-    // Clear input
     setNewTaskInputs(prev => ({ ...prev, [sectionIndex]: "" }));
   };
 
   const toggleTask = (taskId: string) => {
-    // Find task in all sections since context provides filtered arrays
     const allTasks = [...dailyTasks, ...todayTasks, ...upcomingTasks];
     const task = allTasks.find(t => t.id === taskId);
     if (!task) return;
@@ -184,7 +164,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   };
 
   const handleTaskUpdated = () => {
-    refetch(); // Use context refetch
+    refetch();
   };
 
   const handleInputKeyPress = (e: React.KeyboardEvent, sectionIndex: number) => {
@@ -213,161 +193,192 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   }
 
   return (
-    <div className="w-full h-full p-6 bg-background">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full">
-        {sections.map((section, sectionIndex) => (
-          <Card key={section.title} className="flex flex-col h-fit min-h-[400px]">
-            <CardHeader className="pb-4 border-b">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-semibold">
-                  {section.title}
-                  <span className="ml-2 text-sm text-muted-foreground">
-                    ({section.tasks.length})
-                  </span>
-                </CardTitle>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => clearCompleted(sectionIndex)}
-                      disabled={clearCompletedMutation.isPending}
-                    >
-                      Clear completed
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => clearAll(sectionIndex)}
-                      disabled={clearAllMutation.isPending}
-                    >
-                      Clear all
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </CardHeader>
-
-            <CardContent className="flex-1">
-              {/* Task List */}
-              <div className="space-y-2 mb-4">
-                {section.tasks.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p className="text-sm">
-                      {section.sectionKey === 'today'
-                        ? 'No tasks scheduled for today'
-                        : section.sectionKey === 'upcoming'
-                          ? 'No upcoming tasks'
-                          : 'No daily tasks'
-                      }
-                    </p>
-                  </div>
-                ) : (
-                  section.tasks.map((task) => (
-                    <div
-                      key={task.id}
-                      className="group flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
-                    >
-                      {/* Checkbox */}
-                      <button
-                        onClick={() => toggleTask(task.id)}
-                        disabled={updateTaskMutation.isPending}
-                        className="flex-shrink-0"
+    <>
+      <div className="w-full h-full p-6 bg-background">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full">
+          {sections.map((section, sectionIndex) => (
+            <Card key={section.title} className="flex flex-col h-fit min-h-[400px]">
+              <CardHeader className="pb-4 border-b">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg font-semibold">
+                    {section.title}
+                    <span className="ml-2 text-sm text-muted-foreground">
+                      ({section.tasks.length})
+                    </span>
+                  </CardTitle>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => clearCompleted(sectionIndex)}
+                        disabled={clearCompletedMutation.isPending}
                       >
-                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${task.completed
-                          ? 'bg-primary border-primary'
-                          : 'border-muted-foreground hover:border-primary'
+                        Move completed to trash
+                      </DropdownMenuItem>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                            Move all to trash
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Move all tasks to trash?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will move all tasks in the {section.title.toLowerCase()} section to trash. 
+                              You can restore them later if needed.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => clearAll(sectionIndex)}
+                              className="bg-destructive text-destructive-foreground"
+                            >
+                              Move to Trash
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </CardHeader>
+
+              <CardContent className="flex-1">
+                {/* Task List */}
+                <div className="space-y-2 mb-4">
+                  {section.tasks.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p className="text-sm">
+                        {section.sectionKey === 'today'
+                          ? 'No tasks scheduled for today'
+                          : section.sectionKey === 'upcoming'
+                            ? 'No upcoming tasks'
+                            : 'No daily tasks'
+                        }
+                      </p>
+                    </div>
+                  ) : (
+                    section.tasks.map((task) => (
+                      <div
+                        key={task.id}
+                        className="group flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
+                      >
+                        {/* Checkbox */}
+                        <button
+                          onClick={() => toggleTask(task.id)}
+                          disabled={updateTaskMutation.isPending}
+                          className="flex-shrink-0"
+                        >
+                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                            task.completed
+                              ? 'bg-primary border-primary'
+                              : 'border-muted-foreground hover:border-primary'
                           }`}>
-                          {task.completed && (
-                            <div className="w-2 h-2 bg-primary-foreground rounded-sm" />
-                          )}
-                        </div>
-                      </button>
-
-                      {/* Task Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="space-y-1">
-                          <div
-                            className={`text-sm font-medium cursor-pointer ${task.completed ? 'line-through text-muted-foreground' : ''
-                              }`}
-                            onClick={() => toggleTaskExpansion(task.id)}
-                          >
-                            {task.title}
+                            {task.completed && (
+                              <div className="w-2 h-2 bg-primary-foreground rounded-sm" />
+                            )}
                           </div>
+                        </button>
 
-                          {/* Task Description - Shows when expanded */}
-                          {expandedTask === task.id && task.description && (
-                            <div className="text-xs text-muted-foreground mt-1 p-2 bg-muted/30 rounded break-words overflow-hidden">
-                              {task.description}
+                        {/* Task Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="space-y-1">
+                            <div
+                              className={`text-sm font-medium cursor-pointer ${
+                                task.completed ? 'line-through text-muted-foreground' : ''
+                              }`}
+                              onClick={() => toggleTaskExpansion(task.id)}
+                            >
+                              {task.title}
                             </div>
-                          )}
 
-                          {/* Priority Badge */}
-                          {task.priority && (
-                            <div className="flex items-center gap-2">
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${task.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
-                                task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
+                            {/* Task Description - Shows when expanded */}
+                            {expandedTask === task.id && task.description && (
+                              <div className="text-xs text-muted-foreground mt-1 p-2 bg-muted/30 rounded break-words overflow-hidden">
+                                {task.description}
+                              </div>
+                            )}
+
+                            {/* Priority Badge */}
+                            {task.priority && (
+                              <div className="flex items-center gap-2">
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                  task.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
+                                  task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
                                   'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
                                 }`}>
-                                {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-                              </span>
-                            </div>
-                          )}
+                                  {task.priority}
+                                </span>
+                              </div>
+                            )}
 
-                          {/* Date and Time Information */}
-                          {(task.start_date || task.end_date || task.start_time || task.end_time) && (
-                            <div className="space-y-1">
-                              {/* Dates */}
-                              {(task.start_date || task.end_date) && (
-                                <div className="text-xs text-muted-foreground">
-                                  📅 {task.start_date && task.start_date.replace(/-/g, '/')}
-                                  {task.start_date && task.end_date && ' - '}
-                                  {task.end_date && task.end_date.replace(/-/g, '/')}
-                                </div>
-                              )}
-
-                              {/* Times */}
-                              {(task.start_time || task.end_time) && (
-                                <div className="text-xs text-muted-foreground">
-                                  🕐 {task.start_time && task.start_time.substring(0, 5)}
-                                  {task.start_time && task.end_time && ' - '}
-                                  {task.end_time && task.end_time.substring(0, 5)}
-                                </div>
-                              )}
-                            </div>
-                          )}
+                            {/* Daily Task Completion Stats */}
+                            {task.section === 'daily' && task.completion_count && task.completion_count > 0 && (
+                              <div className="text-xs text-muted-foreground">
+                                Completed {task.completion_count} times
+                                {task.last_completed_date && ` • Last: ${new Date(task.last_completed_date).toLocaleDateString()}`}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Task Actions */}
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                          onClick={() => openEditModal(task)}
-                          disabled={updateTaskMutation.isPending}
-                        >
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                          onClick={() => deleteTask(task.id)}
-                          disabled={deleteTaskMutation.isPending}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+                        {/* Action Menu */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEditModal(task)}>
+                              <Edit3 className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => deleteTask(task.id)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Move to Trash
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                    ))
+                  )}
+                </div>
+
+                {/* Add Task Input */}
+                <div className="flex gap-2">
+                  <Input
+                    placeholder={`Add ${section.title.toLowerCase()} task...`}
+                    value={newTaskInputs[sectionIndex] || ""}
+                    onChange={(e) => setNewTaskInputs(prev => ({ ...prev, [sectionIndex]: e.target.value }))}
+                    onKeyPress={(e) => handleInputKeyPress(e, sectionIndex)}
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={() => addTask(sectionIndex)}
+                    disabled={createTaskMutation.isPending || !newTaskInputs[sectionIndex]?.trim()}
+                    size="sm"
+                  >
+                    Add
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
 
       {/* Edit Task Modal */}
@@ -377,6 +388,6 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
         task={taskToEdit}
         onTaskUpdated={handleTaskUpdated}
       />
-    </div>
+    </>
   );
 }
