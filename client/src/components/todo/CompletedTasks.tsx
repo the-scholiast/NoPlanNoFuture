@@ -579,53 +579,47 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
                   {/* Task Content */}
                   <div className="flex-1 min-w-0">
                     <div className="space-y-2">
-                      <div className="flex items-start gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <div
-                          className="text-sm font-medium cursor-pointer line-through text-muted-foreground flex-1"
+                          className="text-sm font-medium cursor-pointer line-through text-muted-foreground"
                           onClick={() => toggleTaskExpansion(task.id)}
                         >
                           {task.title}
                         </div>
+                        {/* Task Description - Shows inline next to title without strikethrough */}
+                        {task.description && (
+                          <span className="text-xs font-normal text-muted-foreground/80">
+                            - {task.description}
+                          </span>
+                        )}
                       </div>
 
-                      {/* Task Description - Shows when expanded */}
-                      {expandedTask === task.id && task.description && (
-                        <div className="text-xs text-muted-foreground p-2 bg-background rounded border">
-                          {task.description}
-                        </div>
-                      )}
-
-                      {/* Priority Badge */}
-                      {task.priority && (
-                        <div className="flex items-center gap-2">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getPriorityColor(task.priority)}`}>
+                      <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+                        {/* Priority Badge */}
+                        {task.priority && (
+                          <span className={`px-2 py-0.5 rounded-full font-medium ${getPriorityColor(task.priority)}`}>
                             {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
                           </span>
-                        </div>
-                      )}
+                        )}
 
-                      {/* Date and Time Information */}
-                      {(task.start_date || task.end_date || task.start_time || task.end_time) && (
-                        <div className="space-y-1">
-                          {/* Dates */}
-                          {(task.start_date || task.end_date) && (
-                            <div className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              {formatDate(task.start_date)}
-                              {task.start_date && task.end_date && task.end_date !== task.start_date && ` - ${formatDate(task.end_date)}`}
-                            </div>
-                          )}
+                        {/* Dates */}
+                        {(task.start_date || task.end_date) && (
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {formatDate(task.start_date)}
+                            {task.start_date && task.end_date && task.end_date !== task.start_date && ` - ${formatDate(task.end_date)}`}
+                          </div>
+                        )}
 
-                          {/* Times */}
-                          {(task.start_time || task.end_time) && (
-                            <div className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {formatTime(task.start_time)}
-                              {task.start_time && task.end_time && ` - ${formatTime(task.end_time)}`}
-                            </div>
-                          )}
-                        </div>
-                      )}
+                        {/* Times */}
+                        {(task.start_time || task.end_time) && (
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {formatTime(task.start_time)}
+                            {task.start_time && task.end_time && ` - ${formatTime(task.end_time)}`}
+                          </div>
+                        )}
+                      </div>
 
                       {/* Completion Status */}
                       <div className="text-xs text-muted-foreground">
