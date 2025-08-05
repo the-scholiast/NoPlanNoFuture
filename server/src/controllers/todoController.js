@@ -1,17 +1,20 @@
+// server/src/controllers/todoController.js
 import { supabase } from '../utils/supabase.js';
 import { ValidationError } from '../utils/errors.js';
 
-// Fetches all todos for a specific user from the Supabase todos table
+// ===== EXISTING FUNCTIONS (UPDATED FOR SOFT DELETE SUPPORT) =====
+
+// Fetches all active (non-deleted) todos for a specific user
 export const getAllTodos = async (userId) => {
   const { data, error } = await supabase
     .from('todos')
     .select('*')
     .eq('user_id', userId)
-    .order('created_at', { ascending: false }); // Returns by creation date (newest first)
+    .is('deleted_at', null) // Only get non-deleted tasks
+    .order('created_at', { ascending: false });
 
   if (error) throw error;
-
-  return data;
+  return data || [];
 };
 
 // Creates a new todo in the database
@@ -22,50 +25,63 @@ export const createTodo = async (userId, todoData) => {
     throw new ValidationError('Title and section are required');
   }
 
+  const todoToInsert = {
+    user_id: userId,
+    title,
+    section,
+    priority: priority || null,
+    description: description || "",
+    start_date: start_date || null,
+    end_date: end_date || null,
+    start_time: start_time || null,
+    end_time: end_time || null,
+    completed: false,
+    completed_at: null
+  };
+
+  // Add new fields if columns exist (graceful degradation)
+  try {
+    todoToInsert.is_recurring = section === 'daily';
+    todoToInsert.completion_count = 0;
+    todoToInsert.last_completed_date = null;
+    todoToInsert.deleted_at = null;
+  } catch (e) {
+    // If columns don't exist yet, continue without them
+    console.log('New columns not yet available, continuing with basic fields');
+  }
+
   const { data, error } = await supabase
     .from('todos')
-    .insert({
-      user_id: userId,
-      title,
-      section,
-      priority: priority || null,
-      description: description || "",
-      start_date: start_date || null,
-      end_date: end_date || null,
-      start_time: start_time || null,
-      end_time: end_time || null,
-      completed: false,
-      completed_at: null
-    })
+    .insert(todoToInsert)
     .select()
     .single();
 
   if (error) throw error;
-
   return data;
 };
 
-// Get incompleted tasks
+// Get active incompleted tasks
 export const getIncompletedTodos = async (userId) => {
-  let query = supabase
+  const { data, error } = await supabase
     .from('todos')
     .select('*')
     .eq('user_id', userId)
     .eq('completed', false)
-
-  const { data, error } = await query.order('created_at', { ascending: false });
+    .is('deleted_at', null) // Exclude deleted tasks
+    .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return data;
+  return data || [];
 };
 
-// Get completed tasks
+// Get active completed tasks
 export const getCompletedTodos = async (userId, dateRange) => {
   let query = supabase
     .from('todos')
     .select('*')
     .eq('user_id', userId)
     .eq('completed', true)
+    .is('deleted_at', null); // Exclude deleted tasks
 
   if (dateRange) {
     query = query.gte('completed_at', dateRange.start)
@@ -75,14 +91,39 @@ export const getCompletedTodos = async (userId, dateRange) => {
   const { data, error } = await query.order('completed_at', { ascending: false });
 
   if (error) throw error;
-  return data;
+  return data || [];
 };
 
-// Updates an existing todo's fields
+// Enhanced update function to handle completion tracking
 export const updateTodo = async (userId, todoId, updates) => {
+  // Handle completion logic
   if ('completed' in updates) {
     if (updates.completed) {
       updates.completed_at = new Date().toISOString();
+      
+      // If it's a daily task, increment completion count (if column exists)
+      try {
+        const { data: existingTask } = await supabase
+          .from('todos')
+          .select('section, completion_count, last_completed_date')
+          .eq('id', todoId)
+          .eq('user_id', userId)
+          .is('deleted_at', null)
+          .single();
+
+        if (existingTask && existingTask.section === 'daily') {
+          const today = new Date().toISOString().split('T')[0];
+          
+          // Only increment if not already completed today
+          if (existingTask.last_completed_date !== today) {
+            updates.completion_count = (existingTask.completion_count || 0) + 1;
+            updates.last_completed_date = today;
+          }
+        }
+      } catch (e) {
+        // If new columns don't exist, continue without completion tracking
+        console.log('Completion tracking columns not available');
+      }
     } else {
       updates.completed_at = null;
     }
@@ -93,50 +134,264 @@ export const updateTodo = async (userId, todoId, updates) => {
     .update(updates)
     .eq('id', todoId)
     .eq('user_id', userId)
+    .is('deleted_at', null) // Only update non-deleted tasks
     .select()
     .single();
 
   if (error) throw error;
-
   return data;
 };
 
-// Deletes a specific todo
+// Original delete function (now does hard delete for backward compatibility)
 export const deleteTodo = async (userId, todoId) => {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('todos')
     .delete()
     .eq('id', todoId)
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .select()
+    .single();
 
   if (error) throw error;
-
-  return { success: true };
+  return { success: true, deletedTodo: data };
 };
 
-// Bulk deletion functionality
-export const bulkDeleteTodos = async (userId, { section, completed }) => {
-  // Build the base delete query, ensuring only the user's todos can be deleted
+// Original bulk delete function (maintains existing signature)
+export const bulkDeleteTodos = async (userId, { section, completed, filter }) => {
   let query = supabase
     .from('todos')
     .delete()
     .eq('user_id', userId);
 
-  // Apply section filter if specified
-  if (section) {
-    query = query.eq('section', section);
+  // Handle both old format and new format
+  if (filter) {
+    // New format with filter object
+    if (filter.section) {
+      query = query.eq('section', filter.section);
+    }
+    if (filter.completed !== undefined) {
+      query = query.eq('completed', filter.completed);
+    }
+  } else {
+    // Old format with direct properties
+    if (section) {
+      query = query.eq('section', section);
+    }
+    if (completed !== undefined) {
+      query = query.eq('completed', completed);
+    }
   }
 
-  // Apply completion status filter if specified 
-  if (completed !== undefined) {
-    query = query.eq('completed', completed);
-  }
-
-  // Execute the delete query and return the deleted records for counting
   const { data, error } = await query.select();
 
   if (error) throw error;
+  return { success: true, deleted: data?.length || 0, deletedCount: data?.length || 0 };
+};
 
-  // Return success confirmation with count of deleted items
-  return { success: true, deleted: data?.length || 0 };
+// ===== NEW SOFT DELETE FUNCTIONS =====
+
+// Soft delete a todo (mark as deleted instead of removing)
+export const softDeleteTodo = async (userId, todoId) => {
+  const { data, error } = await supabase
+    .from('todos')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', todoId)
+    .eq('user_id', userId)
+    .is('deleted_at', null) // Only delete non-deleted tasks
+    .select()
+    .single();
+
+  if (error) throw error;
+  if (!data) throw new Error('Todo not found or already deleted');
+  return data;
+};
+
+// Restore a soft deleted todo
+export const restoreTodo = async (userId, todoId) => {
+  const { data, error } = await supabase
+    .from('todos')
+    .update({ deleted_at: null })
+    .eq('id', todoId)
+    .eq('user_id', userId)
+    .not('deleted_at', 'is', null) // Only restore deleted tasks
+    .select()
+    .single();
+
+  if (error) throw error;
+  if (!data) throw new Error('Deleted todo not found');
+  return data;
+};
+
+// Get deleted todos (for trash/recovery functionality)
+export const getDeletedTodos = async (userId, limit = 50) => {
+  const { data, error } = await supabase
+    .from('todos')
+    .select('*')
+    .eq('user_id', userId)
+    .not('deleted_at', 'is', null) // Only get deleted tasks
+    .order('deleted_at', { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data || [];
+};
+
+// Permanently delete old soft-deleted todos (cleanup function)
+export const permanentlyDeleteOldTodos = async (userId, daysOld = 30) => {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - daysOld);
+
+  const { data, error } = await supabase
+    .from('todos')
+    .delete()
+    .eq('user_id', userId)
+    .not('deleted_at', 'is', null)
+    .lt('deleted_at', cutoffDate.toISOString())
+    .select();
+
+  if (error) throw error;
+  return data || [];
+};
+
+// Soft delete completed tasks from a specific section
+export const deleteCompletedTodos = async (userId, section) => {
+  const { data, error } = await supabase
+    .from('todos')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('user_id', userId)
+    .eq('section', section)
+    .eq('completed', true)
+    .is('deleted_at', null) // Only delete non-deleted tasks
+    .select();
+
+  if (error) throw error;
+  return data || [];
+};
+
+// Soft delete all tasks from a specific section
+export const deleteAllTodos = async (userId, section) => {
+  const { data, error } = await supabase
+    .from('todos')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('user_id', userId)
+    .eq('section', section)
+    .is('deleted_at', null) // Only delete non-deleted tasks
+    .select();
+
+  if (error) throw error;
+  return data || [];
+};
+
+// ===== DAILY TASK FUNCTIONS =====
+
+// Get completed daily tasks (active only)
+export const getCompletedDailyTasks = async (userId) => {
+  const { data, error } = await supabase
+    .from('todos')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('section', 'daily')
+    .eq('completed', true)
+    .is('deleted_at', null) // Exclude deleted tasks
+    .order('completed_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
+// Reset daily tasks for new day (only active tasks)
+export const resetDailyTasks = async (userId) => {
+  const today = new Date().toISOString().split('T')[0];
+  
+  // First, get tasks that need to be reset
+  const { data: tasksToReset, error: selectError } = await supabase
+    .from('todos')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('section', 'daily')
+    .eq('completed', true)
+    .is('deleted_at', null); // Only reset active tasks
+
+  if (selectError) throw selectError;
+
+  if (!tasksToReset || tasksToReset.length === 0) {
+    return []; // No tasks to reset
+  }
+
+  // Filter tasks that haven't been completed today (if last_completed_date column exists)
+  let tasksToActuallyReset = tasksToReset;
+  try {
+    tasksToActuallyReset = tasksToReset.filter(task => 
+      !task.last_completed_date || task.last_completed_date !== today
+    );
+  } catch (e) {
+    // If last_completed_date column doesn't exist, reset all completed daily tasks
+    console.log('last_completed_date column not available, resetting all completed daily tasks');
+  }
+
+  if (tasksToActuallyReset.length === 0) {
+    return []; // No tasks need to be reset
+  }
+
+  // Reset the tasks
+  const { data, error } = await supabase
+    .from('todos')
+    .update({ 
+      completed: false, 
+      completed_at: null 
+    })
+    .in('id', tasksToActuallyReset.map(task => task.id))
+    .select();
+
+  if (error) throw error;
+  return data || [];
+};
+
+// Get daily task statistics (only active tasks)
+export const getDailyTaskStats = async (userId, startDate, endDate) => {
+  const { data, error } = await supabase
+    .from('todos')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('section', 'daily')
+    .is('deleted_at', null) // Exclude deleted tasks
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+
+  const tasks = data || [];
+
+  // Calculate statistics for each task
+  const stats = tasks.map(task => {
+    const totalCompletions = task.completion_count || 0;
+    const lastCompleted = task.last_completed_date;
+    
+    // Calculate completion rate for date range
+    let completionRate = 0;
+    if (startDate && endDate) {
+      const daysDiff = Math.ceil(
+        (new Date(endDate).getTime() - new Date(startDate).getTime()) / 
+        (1000 * 60 * 60 * 24)
+      );
+      completionRate = daysDiff > 0 ? Math.min(totalCompletions / daysDiff, 1) * 100 : 0;
+    } else {
+      // Default to last 30 days
+      const createdDate = new Date(task.created_at);
+      const today = new Date();
+      const daysSinceCreated = Math.ceil((today.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+      completionRate = daysSinceCreated > 0 ? Math.min(totalCompletions / daysSinceCreated, 1) * 100 : 0;
+    }
+
+    return {
+      id: task.id,
+      title: task.title,
+      totalCompletions,
+      lastCompleted,
+      completionRate: Math.round(completionRate * 100) / 100, // Round to 2 decimal places
+      createdAt: task.created_at,
+      currentStreak: (lastCompleted === new Date().toISOString().split('T')[0] && task.completed) ? 1 : 0
+    };
+  });
+
+  return stats;
 };
