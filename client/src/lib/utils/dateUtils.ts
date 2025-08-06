@@ -14,6 +14,17 @@ export const formatDateString = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+// Parse string (yyyy-mm-dd) to Date object in local timezone
+export const parseToLocalDate = (dateString: string): Date => {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day); // month is 0-indexed
+};
+
+// Convert Date or string to Date object, ensuring local timezone
+export const ensureLocalDate = (date: Date | string): Date => {
+  return date instanceof Date ? date : parseToLocalDate(date);
+};
+
 export const isToday = (dateString?: string): boolean => {
   if (!dateString) return false;
   
