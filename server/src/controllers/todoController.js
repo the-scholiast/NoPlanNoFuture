@@ -1,6 +1,30 @@
-// server/src/controllers/todoController.js
 import { supabase } from '../utils/supabase.js';
 import { ValidationError } from '../utils/errors.js';
+import { ensureLocalDate, formatDateString, } from '../utils/dateUtils.js';
+
+// Days of the week mapping
+const DAYS_OF_WEEK = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+// Get the day name from a date
+const getDayName = (date) => {
+  const dayIndex = new Date(ensureLocalDate(date)).getDay();
+  return DAYS_OF_WEEK[dayIndex];
+};
+
+// Check if a task should appear on a specific date
+const shouldTaskAppearOnDate = (task, date) => {
+  if (!task.is_recurring || !task.recurring_days || task.recurring_days.length === 0) {
+    return false;
+  }
+
+  // Check date range
+  if (task.start_date && formatDateString(date) < task.start_date) return false;
+  if (task.end_date && formatDateString(date) > task.end_date) return false;
+
+  // Check if day is included
+  const dayName = getDayName(date);
+  return task.recurring_days.includes(dayName);
+};
 
 // ===== EXISTING FUNCTIONS (UPDATED FOR SOFT DELETE SUPPORT) =====
 
@@ -19,10 +43,29 @@ export const getAllTodos = async (userId) => {
 
 // Creates a new todo in the database
 export const createTodo = async (userId, todoData) => {
-  const { title, section, priority, start_date, end_date, start_time, end_time, description } = todoData;
+  const {
+    title,
+    section,
+    priority,
+    start_date,
+    end_date,
+    start_time,
+    end_time,
+    description,
+    is_recurring,
+    recurring_days,
+  } = todoData;
 
   if (!title || !section) {
     throw new ValidationError('Title and section are required');
+  }
+
+  // Validate recurring_days if provided
+  if (recurring_days && Array.isArray(recurring_days)) {
+    const invalidDays = recurring_days.filter(day => !DAYS_OF_WEEK.includes(day.toLowerCase()));
+    if (invalidDays.length > 0) {
+      throw new ValidationError(`Invalid day names: ${invalidDays.join(', ')}`);
+    }
   }
 
   const todoToInsert = {
@@ -36,19 +79,13 @@ export const createTodo = async (userId, todoData) => {
     start_time: start_time || null,
     end_time: end_time || null,
     completed: false,
-    completed_at: null
+    completed_at: null,
+    is_recurring: is_recurring || false,
+    recurring_days: recurring_days || [],
+    completion_count: 0,
+    last_completed_date: null,
+    deleted_at: null
   };
-
-  // Add new fields if columns exist (graceful degradation)
-  try {
-    todoToInsert.is_recurring = section === 'daily';
-    todoToInsert.completion_count = 0;
-    todoToInsert.last_completed_date = null;
-    todoToInsert.deleted_at = null;
-  } catch (e) {
-    // If columns don't exist yet, continue without them
-    console.log('New columns not yet available, continuing with basic fields');
-  }
 
   const { data, error } = await supabase
     .from('todos')
@@ -103,10 +140,7 @@ export const updateTodo = async (userId, todoId, updates) => {
       if (!updates.completed_at) {
         // Create timezone-aware date to match frontend behavior
         const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        updates.completed_at = `${year}-${month}-${day}`;
+        updates.completed_at = formatDateString(now);
       }
 
       // If it's a daily task, increment completion count (if column exists)
@@ -122,10 +156,7 @@ export const updateTodo = async (userId, todoId, updates) => {
         if (existingTask && existingTask.section === 'daily') {
           // Use the same timezone-aware date format as frontend
           const now = new Date();
-          const year = now.getFullYear();
-          const month = String(now.getMonth() + 1).padStart(2, '0');
-          const day = String(now.getDate()).padStart(2, '0');
-          const today = `${year}-${month}-${day}`;
+          const today = formatDateString(now);
 
           // Only increment if not already completed today
           if (existingTask.last_completed_date !== today) {
@@ -207,7 +238,7 @@ export const bulkDeleteTodos = async (userId, { section, completed, filter }) =>
 export const softDeleteTodo = async (userId, todoId) => {
   const { data, error } = await supabase
     .from('todos')
-    .update({ deleted_at: new Date().toISOString() })
+    .update({ deleted_at: formatDateString(new Date()) })
     .eq('id', todoId)
     .eq('user_id', userId)
     .is('deleted_at', null) // Only delete non-deleted tasks
@@ -259,7 +290,7 @@ export const permanentlyDeleteOldTodos = async (userId, daysOld = 30) => {
     .delete()
     .eq('user_id', userId)
     .not('deleted_at', 'is', null)
-    .lt('deleted_at', cutoffDate.toISOString())
+    .lt('deleted_at', formatDateString(cutoffDate))
     .select();
 
   if (error) throw error;
@@ -270,7 +301,7 @@ export const permanentlyDeleteOldTodos = async (userId, daysOld = 30) => {
 export const deleteCompletedTodos = async (userId, section) => {
   const { data, error } = await supabase
     .from('todos')
-    .update({ deleted_at: new Date().toISOString() })
+    .update({ deleted_at: formatDateString(new Date()) })
     .eq('user_id', userId)
     .eq('section', section)
     .eq('completed', true)
@@ -285,7 +316,7 @@ export const deleteCompletedTodos = async (userId, section) => {
 export const deleteAllTodos = async (userId, section) => {
   const { data, error } = await supabase
     .from('todos')
-    .update({ deleted_at: new Date().toISOString() })
+    .update({ deleted_at: formatDateString(new Date()) })
     .eq('user_id', userId)
     .eq('section', section)
     .is('deleted_at', null) // Only delete non-deleted tasks
@@ -314,7 +345,7 @@ export const getCompletedDailyTasks = async (userId) => {
 
 // Reset daily tasks for new day (only active tasks)
 export const resetDailyTasks = async (userId) => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = formatDateString(new Date());
 
   // First, get tasks that need to be reset
   const { data: tasksToReset, error: selectError } = await supabase
@@ -402,9 +433,110 @@ export const getDailyTaskStats = async (userId, startDate, endDate) => {
       lastCompleted,
       completionRate: Math.round(completionRate * 100) / 100, // Round to 2 decimal places
       createdAt: task.created_at,
-      currentStreak: (lastCompleted === new Date().toISOString().split('T')[0] && task.completed) ? 1 : 0
+      currentStreak: (lastCompleted === formatDateString(new Date()) && task.completed) ? 1 : 0
     };
   });
 
   return stats;
+};
+
+// RECURRING TASKS
+
+// Get tasks for a specific date (including recurring tasks)
+export const getTodosForDate = async (userId, date) => {
+  const dayName = getDayName(date);
+
+  const { data, error } = await supabase
+    .from('todos')
+    .select('*')
+    .eq('user_id', userId)
+    .is('deleted_at', null)
+    .or(`and(is_recurring.eq.false,start_date.eq.${date}),and(is_recurring.eq.true,recurring_days.cs.{${dayName}},or(start_date.is.null,start_date.lte.${date}),or(end_date.is.null,end_date.gte.${date}))`)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
+// Get upcoming recurring task instances for a date range
+export const getRecurringTaskInstances = async (userId, startDate, endDate) => {
+  // First, get all recurring tasks
+  const { data: recurringTasks, error } = await supabase
+    .from('todos')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_recurring', true)
+    .is('deleted_at', null)
+    .not('recurring_days', 'is', null);
+
+  if (error) throw error;
+
+  const instances = [];
+  
+  // Convert to Date objects for iteration, avoiding UTC issues
+  const startDateObj = ensureLocalDate(startDate);
+  const endDateObj = ensureLocalDate(endDate);
+
+  for (const task of recurringTasks || []) {
+    // Create a new Date object to avoid mutating the original
+    const currentDate = new Date(startDateObj);
+
+    while (currentDate <= endDateObj) {
+      // shouldTaskAppearOnDate expects a Date object, not a string
+      if (shouldTaskAppearOnDate(task, currentDate)) {
+        const currentDateString = formatDateString(currentDate);
+        instances.push({
+          ...task,
+          id: `${task.id}_${currentDateString}`,
+          instance_date: currentDateString,
+          start_date: currentDateString,
+          parent_task_id: task.id
+        });
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+  }
+  
+  return instances;
+};
+
+// Update the existing getTodayTasks to include recurring tasks
+export const getTodayTasks = async (userId) => {
+  const today = formatDateString(new Date);
+  return getTodosForDate(userId, today);
+};
+
+// Get tasks for the upcoming week with recurring instances
+export const getUpcomingWeekTasks = async (userId) => {
+  const today = new Date();
+  const nextWeek = new Date();
+  nextWeek.setDate(today.getDate() + 7);
+
+  return getRecurringTaskInstances(userId, today, nextWeek);
+};
+
+// Bulk update recurring days for existing task
+export const updateRecurringDays = async (taskId, userId, recurringDays) => {
+  if (!Array.isArray(recurringDays)) {
+    throw new ValidationError('recurring_days must be an array');
+  }
+
+  const invalidDays = recurringDays.filter(day => !DAYS_OF_WEEK.includes(day.toLowerCase()));
+  if (invalidDays.length > 0) {
+    throw new ValidationError(`Invalid day names: ${invalidDays.join(', ')}`);
+  }
+
+  const { data, error } = await supabase
+    .from('todos')
+    .update({
+      recurring_days: recurringDays.map(day => day.toLowerCase()),
+      is_recurring: true
+    })
+    .eq('id', taskId)
+    .eq('user_id', userId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
 };
