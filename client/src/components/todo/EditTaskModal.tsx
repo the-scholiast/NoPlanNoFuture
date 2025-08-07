@@ -150,8 +150,30 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
         return;
       }
 
+      // Prepare the task data with proper formatting
+      let taskDataToUpdate = {
+        ...editableTask,
+        recurring_days: editableTask.recurring_days?.map(day => day.toLowerCase()) || [],
+        start_date: editableTask.start_date?.trim() || undefined,
+        end_date: editableTask.end_date?.trim() || undefined,
+        start_time: editableTask.start_time?.trim() || undefined,
+        end_time: editableTask.end_time?.trim() || undefined,
+        description: editableTask.description?.trim() || undefined
+      };
+
+      // If not recurring, explicitly set recurring fields to their default values
+      if (!editableTask.is_recurring) {
+        taskDataToUpdate = {
+          ...taskDataToUpdate,
+          is_recurring: false,
+          recurring_days: []
+        };
+      }
+
       // Prepare updates (only send fields that actually have values)
-      const updates: Partial<TaskData> = updateTaskData(editableTask);
+      const updates: Partial<TaskData> = updateTaskData(taskDataToUpdate);
+
+      console.log('Sending updates to backend:', updates);
 
       // Send to backend
       await todoApi.update(task.id, updates);
