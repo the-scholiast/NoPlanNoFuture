@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -31,6 +31,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     dailyTasks,
     todayTasksWithRecurring,
     upcomingTasksWithRecurring,
+    upcomingTasks,
     isLoading,
     isLoadingTodayRecurring,
     isLoadingUpcomingRecurring,
@@ -127,8 +128,10 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     {
       title: "Upcoming",
       sectionKey: 'upcoming',
-      // Filter out daily tasks from upcoming recurring instances to avoid duplication
-      tasks: upcomingTasksWithRecurring.filter(task => task.section !== 'daily'),
+      // Combine regular upcoming tasks with recurring instances
+      tasks: [
+        ...upcomingTasks.filter(task => task.section !== 'daily') // Regular non-recurring upcoming tasks
+      ],
       showAddButton: false
     }
   ];
@@ -245,7 +248,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   // Updated toggle task function to handle recurring task instances
   const toggleTask = (taskId: string) => {
     // Find the task in all sections (including recurring instances)
-    const allTasks = [...dailyTasks, ...todayTasksWithRecurring, ...upcomingTasksWithRecurring];
+    const allTasks = [...dailyTasks, ...todayTasksWithRecurring, ...upcomingTasks];
     const task = allTasks.find(t => t.id === taskId);
     if (!task) return;
 
