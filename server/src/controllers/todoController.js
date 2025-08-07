@@ -173,6 +173,18 @@ export const updateTodo = async (userId, todoId, updates) => {
     }
   }
 
+  if (updates.recurring_days && Array.isArray(updates.recurring_days)) {
+    const invalidDays = updates.recurring_days.filter(day => !DAYS_OF_WEEK.includes(day.toLowerCase()));
+    if (invalidDays.length > 0) {
+      throw new ValidationError(`Invalid day names: ${invalidDays.join(', ')}`);
+    }
+  }
+
+  // If is_recurring is being set to true, ensure recurring_days is valid
+  if (updates.is_recurring && (!updates.recurring_days || updates.recurring_days.length === 0)) {
+    throw new ValidationError('Recurring tasks must have at least one day selected');
+  }
+
   const { data, error } = await supabase
     .from('todos')
     .update(updates)
@@ -472,7 +484,7 @@ export const getRecurringTaskInstances = async (userId, startDate, endDate) => {
   if (error) throw error;
 
   const instances = [];
-  
+
   // Convert to Date objects for iteration, avoiding UTC issues
   const startDateObj = ensureLocalDate(startDate);
   const endDateObj = ensureLocalDate(endDate);
@@ -496,7 +508,7 @@ export const getRecurringTaskInstances = async (userId, startDate, endDate) => {
       currentDate.setDate(currentDate.getDate() + 1);
     }
   }
-  
+
   return instances;
 };
 
