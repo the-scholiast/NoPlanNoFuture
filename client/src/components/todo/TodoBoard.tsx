@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -13,6 +13,8 @@ import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { TaskData } from '@/types/todoTypes';
 import EditTaskModal from './EditTaskModal';
 import { getTodayString } from '@/lib/utils/dateUtils';
+import UpcomingDateFilter from './UpcomingDateFilter';
+import { CompactTaskSorting } from '@/components/todo/TaskSortingComponent';
 
 interface TodoSection {
   title: string;
@@ -45,6 +47,16 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<TaskData | null>(null);
+  const [upcomingFilter, setUpcomingFilter] = useState({
+    startDate: '',
+    endDate: '',
+    enabled: true
+  });
+  const [sortedTasks, setSortedTasks] = useState<{ [key: string]: TaskData[] }>({
+    daily: [],
+    today: [],
+    upcoming: []
+  });
 
   // ===== MUTATIONS =====
 
@@ -111,32 +123,81 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
 
   // ===== ORGANIZE TASKS BY SECTION =====
   // Updated to use recurring tasks data for Today and Upcoming sections
+  const filteredUpcomingTasks = useMemo(() => {
+    let tasks = upcomingTasks;
+
+    if (upcomingFilter.enabled) {
+      tasks = upcomingTasks.filter(task => {
+        const taskDate = task.start_date || task.created_at?.split('T')[0];
+        if (!taskDate) return false;
+
+        const taskDateStr = taskDate.includes('T') ? taskDate.split('T')[0] : taskDate;
+        return taskDateStr >= upcomingFilter.startDate && taskDateStr <= upcomingFilter.endDate;
+      });
+    }
+
+    // Sort tasks by date first, then by time if available
+    return tasks.sort((a, b) => {
+      const dateA = a.start_date || a.created_at?.split('T')[0] || '';
+      const dateB = b.start_date || b.created_at?.split('T')[0] || '';
+
+      // First, sort by date
+      if (dateA !== dateB) {
+        return dateA.localeCompare(dateB);
+      }
+
+      // If dates are the same, sort by start time
+      const timeA = a.start_time || '';
+      const timeB = b.start_time || '';
+
+      if (timeA && timeB) {
+        return timeA.localeCompare(timeB);
+      }
+
+      // If only one has time, put the one with time first
+      if (timeA && !timeB) return -1;
+      if (!timeA && timeB) return 1;
+
+      // If neither has time, maintain original order (or sort by title)
+      return a.title.localeCompare(b.title);
+    });
+  }, [upcomingTasks, upcomingFilter]);
+
+  React.useEffect(() => {
+    setSortedTasks({
+      daily: dailyTasks,
+      today: todayTasksWithRecurring.filter(task => task.section !== 'daily'),
+      upcoming: filteredUpcomingTasks.filter(task => task.section !== 'daily')
+    });
+  }, [dailyTasks, todayTasksWithRecurring, filteredUpcomingTasks]);
+
   const sections: TodoSection[] = [
     {
       title: "Daily",
       sectionKey: 'daily',
-      tasks: dailyTasks,
+      tasks: sortedTasks.daily.length > 0 ? sortedTasks.daily : dailyTasks,
       showAddButton: false
     },
     {
       title: "Today",
       sectionKey: 'today',
       // Filter out daily tasks from today's recurring instances to avoid duplication
-      tasks: todayTasksWithRecurring.filter(task => task.section !== 'daily'),
+      tasks: sortedTasks.today.length > 0 ? sortedTasks.today : todayTasksWithRecurring.filter(task => task.section !== 'daily'),
       showAddButton: false
     },
     {
       title: "Upcoming",
       sectionKey: 'upcoming',
       // Combine regular upcoming tasks with recurring instances
-      tasks: [
-        ...upcomingTasks.filter(task => task.section !== 'daily') // Regular non-recurring upcoming tasks
+      tasks: sortedTasks.upcoming.length > 0 ? sortedTasks.upcoming : [
+        ...filteredUpcomingTasks.filter(task => task.section !== 'daily') // Regular non-recurring upcoming tasks
       ],
       showAddButton: false
     }
   ];
 
   // ===== HELPER FUNCTIONS =====
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return null;
     try {
@@ -348,6 +409,13 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     }
   };
 
+  const handleTasksSort = (sectionKey: string, tasks: TaskData[]) => {
+    setSortedTasks(prev => ({
+      ...prev,
+      [sectionKey]: tasks
+    }));
+  };
+
   // ===== RENDER =====
   // Updated loading logic to account for recurring tasks
   const isAnyLoading = isLoading || isLoadingTodayRecurring || isLoadingUpcomingRecurring;
@@ -384,46 +452,67 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                       ({section.tasks.length})
                     </span>
                   </CardTitle>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Settings className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => clearCompleted(sectionIndex)}
-                        disabled={clearCompletedMutation.isPending}
-                      >
-                        Move completed to trash
-                      </DropdownMenuItem>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                            Move all to trash
+
+                  <div className="flex items-center gap-2">
+                    {/* Add Task Sorting Component */}
+                    <CompactTaskSorting
+                      key={section.sectionKey}
+                      tasks={section.sectionKey === 'daily' ? dailyTasks :
+                        section.sectionKey === 'today' ? todayTasksWithRecurring.filter(task => task.section !== 'daily') :
+                          filteredUpcomingTasks.filter(task => task.section !== 'daily')}
+                      onTasksChange={(tasks) => handleTasksSort(section.sectionKey, tasks)}
+                      className="mr-2"
+                    />
+
+                    {/* Conditional rendering based on section */}
+                    {section.sectionKey === 'upcoming' ? (
+                      <UpcomingDateFilter
+                        onFilterChange={setUpcomingFilter}
+                        className=""
+                      />
+                    ) : (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Settings className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => clearCompleted(sectionIndex)}
+                            disabled={clearCompletedMutation.isPending}
+                          >
+                            Move completed to trash
                           </DropdownMenuItem>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Move all tasks to trash?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will move all tasks in the {section.title.toLowerCase()} section to trash.
-                              You can restore them later if needed.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => clearAll(sectionIndex)}
-                              className="bg-destructive text-destructive-foreground"
-                            >
-                              Move to Trash
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                Move all to trash
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Move all tasks to trash?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will move all tasks in the {section.title.toLowerCase()} section to trash.
+                                  You can restore them later if needed.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => clearAll(sectionIndex)}
+                                  className="bg-destructive text-destructive-foreground"
+                                >
+                                  Move to Trash
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
 
