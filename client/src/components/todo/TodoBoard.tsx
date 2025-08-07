@@ -3,11 +3,10 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Settings, Trash2, Edit3, MoreVertical, Calendar, Clock, Repeat, AlertCircle, BarChart3, RefreshCw } from 'lucide-react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useTodo } from '@/contexts/TodoContext';
 import { todoApi } from '@/lib/api/todos';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
@@ -45,8 +44,6 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<TaskData | null>(null);
-  const [selectedTaskStats, setSelectedTaskStats] = useState<string | null>(null);
-  const [showRecurringStats, setShowRecurringStats] = useState(false);
 
   // ===== MUTATIONS =====
 
@@ -111,31 +108,6 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     },
   });
 
-  // Update recurring pattern mutation
-  const updateRecurringPatternMutation = useMutation({
-    mutationFn: ({ taskId, recurringDays }: { taskId: string; recurringDays: string[] }) =>
-      recurringTodoApi.updateRecurringPattern(taskId, recurringDays),
-    onSuccess: () => {
-      refetch();
-      refetchTodayRecurring();
-      refetchUpcomingRecurring();
-    },
-  });
-
-  // Generate instances for preview
-  const generateInstancesMutation = useMutation({
-    mutationFn: ({ taskId, startDate, endDate }: { taskId: string; startDate: string; endDate: string }) =>
-      recurringTodoApi.generateInstances(taskId, startDate, endDate),
-  });
-
-  // Get task statistics query
-  const { data: taskStats, isLoading: isLoadingStats } = useQuery({
-    queryKey: ['recurring-stats', selectedTaskStats],
-    queryFn: () => selectedTaskStats ? recurringTodoApi.getTaskStats(selectedTaskStats) : null,
-    enabled: !!selectedTaskStats && showRecurringStats,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
-
   // ===== ORGANIZE TASKS BY SECTION =====
   // Updated to use recurring tasks data for Today and Upcoming sections
   const sections: TodoSection[] = [
@@ -148,13 +120,15 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     {
       title: "Today",
       sectionKey: 'today',
-      tasks: todayTasksWithRecurring, // Now includes recurring task instances
+      // Filter out daily tasks from today's recurring instances to avoid duplication
+      tasks: todayTasksWithRecurring.filter(task => task.section !== 'daily'),
       showAddButton: false
     },
     {
       title: "Upcoming",
       sectionKey: 'upcoming',
-      tasks: upcomingTasksWithRecurring, // Now includes recurring task instances
+      // Filter out daily tasks from upcoming recurring instances to avoid duplication
+      tasks: upcomingTasksWithRecurring.filter(task => task.section !== 'daily'),
       showAddButton: false
     }
   ];
@@ -234,39 +208,6 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   const getRecurringPatternDisplay = (task: TaskData) => {
     // Use the API helper for better formatting
     return recurringTodoApi.getRecurringDescription(task);
-  };
-
-  // New helper function to validate recurring days
-  const validateRecurringDays = (days: string[]) => {
-    return recurringTodoApi.validateRecurringDays(days);
-  };
-
-  // New helper function to show task statistics
-  const showTaskStats = (taskId: string) => {
-    const originalId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
-    setSelectedTaskStats(originalId);
-    setShowRecurringStats(true);
-  };
-
-  // New helper function to preview recurring instances
-  const previewRecurringInstances = async (taskId: string) => {
-    const originalId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
-    const today = new Date().toISOString().split('T')[0];
-    const nextMonth = new Date();
-    nextMonth.setMonth(nextMonth.getMonth() + 1);
-    const endDate = nextMonth.toISOString().split('T')[0];
-
-    try {
-      const instances = await generateInstancesMutation.mutateAsync({
-        taskId: originalId,
-        startDate: today,
-        endDate: endDate
-      });
-      console.log('Upcoming instances for this task:', instances);
-      // You could show this in a modal or tooltip
-    } catch (error) {
-      console.error('Failed to generate instances:', error);
-    }
   };
 
   // ===== TASK MANAGEMENT FUNCTIONS =====
@@ -617,20 +558,6 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                                 {isInstance ? 'Edit Pattern' : 'Edit'}
                               </DropdownMenuItem>
 
-                              {/* NEW: Recurring task specific actions */}
-                              {(task.is_recurring || isInstance) && (
-                                <>
-                                  <DropdownMenuItem onClick={() => showTaskStats(task.id)}>
-                                    <BarChart3 className="h-4 w-4 mr-2" />
-                                    View Stats
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => previewRecurringInstances(task.id)}>
-                                    <RefreshCw className="h-4 w-4 mr-2" />
-                                    Preview Instances
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-
                               <DropdownMenuItem
                                 onClick={() => deleteTask(task.id)}
                                 className="text-destructive focus:text-destructive"
@@ -645,101 +572,11 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                     })
                   )}
                 </div>
-
-                {/* Add Task Input */}
-                <div className="flex gap-2">
-                  <Input
-                    placeholder={`Add ${section.title.toLowerCase()} task...`}
-                    value={newTaskInputs[sectionIndex] || ""}
-                    onChange={(e) => setNewTaskInputs(prev => ({ ...prev, [sectionIndex]: e.target.value }))}
-                    onKeyPress={(e) => handleInputKeyPress(e, sectionIndex)}
-                    className="flex-1"
-                  />
-                  <Button
-                    onClick={() => addTask(sectionIndex)}
-                    disabled={createTaskMutation.isPending || !newTaskInputs[sectionIndex]?.trim()}
-                    size="sm"
-                  >
-                    Add
-                  </Button>
-                </div>
               </CardContent>
             </Card>
           ))}
         </div>
       </div>
-
-      {/* NEW: Recurring Task Statistics Modal */}
-      {showRecurringStats && selectedTaskStats && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-background p-6 rounded-lg max-w-md w-full mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Recurring Task Statistics</h3>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setShowRecurringStats(false);
-                  setSelectedTaskStats(null);
-                }}
-              >
-                ×
-              </Button>
-            </div>
-
-            {isLoadingStats ? (
-              <div className="text-center py-4">Loading statistics...</div>
-            ) : taskStats ? (
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-medium">{taskStats.taskTitle}</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Repeats: {taskStats.recurringDays.join(', ')}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">
-                      {taskStats.statistics.completionRate.toFixed(1)}%
-                    </div>
-                    <div className="text-xs text-muted-foreground">Completion Rate</div>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">
-                      {taskStats.statistics.completedOccurrences}
-                    </div>
-                    <div className="text-xs text-muted-foreground">Completed</div>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-600">
-                      {taskStats.statistics.totalPossibleOccurrences}
-                    </div>
-                    <div className="text-xs text-muted-foreground">Total Possible</div>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-600">
-                      {taskStats.statistics.averagePerWeek.toFixed(1)}
-                    </div>
-                    <div className="text-xs text-muted-foreground">Avg/Week</div>
-                  </div>
-                </div>
-
-                <div className="text-xs text-muted-foreground">
-                  <p>Period: {taskStats.dateRange.start} to {taskStats.dateRange.end}</p>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-4 text-muted-foreground">
-                No statistics available
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Edit Task Modal */}
       <EditTaskModal
