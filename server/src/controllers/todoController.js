@@ -54,6 +54,7 @@ export const createTodo = async (userId, todoData) => {
     description,
     is_recurring,
     recurring_days,
+    is_schedule,
   } = todoData;
 
   if (!title || !section) {
@@ -84,7 +85,8 @@ export const createTodo = async (userId, todoData) => {
     recurring_days: recurring_days || [],
     completion_count: 0,
     last_completed_date: null,
-    deleted_at: null
+    deleted_at: null,
+    is_schedule: is_schedule || false,
   };
 
   const { data, error } = await supabase

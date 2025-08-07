@@ -34,7 +34,8 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
     start_time: '',
     end_time: '',
     is_recurring: false,
-    recurring_days: []
+    recurring_days: [],
+    is_schedule: false,
   };
 
   const [tasks, setTasks] = useState<InternalTaskData[]>([placeholderTask]);
@@ -294,21 +295,35 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
 
               {/* Recurring Section */}
               <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id={`recurring-${task.id}`}
-                    checked={task.is_recurring}
-                    onCheckedChange={(checked) => {
-                      updateTask(task.id, 'is_recurring', checked === true);
-                      if (checked !== true) {
-                        updateTask(task.id, 'recurring_days', []);
-                      }
-                    }}
-                    disabled={isSubmitting}
-                  />
-                  <Label htmlFor={`recurring-${task.id}`} className="text-sm font-medium">
-                    Make this task recurring
-                  </Label>
+                <div className="flex items-center gap-2 justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`recurring-${task.id}`}
+                      checked={task.is_recurring}
+                      onCheckedChange={(checked) => {
+                        updateTask(task.id, 'is_recurring', checked === true);
+                        if (checked !== true) {
+                          updateTask(task.id, 'recurring_days', []);
+                        }
+                      }}
+                      disabled={isSubmitting}
+                    />
+                    <Label htmlFor={`recurring-${task.id}`} className="text-sm font-medium">
+                      Make this task recurring
+                    </Label>
+                  </div>
+                  {/* Calendar/timetable checkbox */}
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`schedule-${task.id}`}
+                      checked={task.is_schedule || false}
+                      onCheckedChange={(checked) => updateTask(task.id, 'is_schedule', checked)}
+                      disabled={isSubmitting}
+                    />
+                    <Label htmlFor={`schedule-${task.id}`} className="text-sm">
+                      Add to calendar/timetable
+                    </Label>
+                  </div>
                 </div>
 
                 {task.is_recurring && (

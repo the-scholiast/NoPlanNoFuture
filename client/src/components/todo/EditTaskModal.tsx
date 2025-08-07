@@ -25,6 +25,7 @@ const DAYS_OF_WEEK = [
 interface EditableTaskData extends CreateTaskData {
   is_recurring?: boolean;
   recurring_days?: string[];
+  is_schedule?: boolean;
 }
 
 export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated }: EditTaskModalProps) {
@@ -56,7 +57,8 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
         start_time: task.start_time || '',
         end_time: task.end_time || '',
         is_recurring: task.is_recurring || false,
-        recurring_days: task.recurring_days || []
+        recurring_days: task.recurring_days || [],
+        is_schedule: task.is_schedule || false,
       });
       setError(null);
     }
