@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useMemo } from 'react';
-import { Check, Trash2, RotateCcw, Calendar, Clock, Filter, X } from 'lucide-react';
+import { Check, Trash2, RotateCcw, Calendar, Clock, Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { TaskData } from '@/types/todoTypes';
 import { todoApi } from '@/lib/api/todos';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTodo } from '@/contexts/TodoContext';
+import { CompactTaskSorting } from '@/components/todo/TaskSortingComponent';
 
 interface CompletedTasksProps {
   className?: string;
@@ -20,6 +21,8 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
   const queryClient = useQueryClient();
   const { allTasks, isLoading, error } = useTodo();
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
+  const [isTasksExpanded, setIsTasksExpanded] = useState(false); // New state for collapsible container
+  const [sortedCompletedTasks, setSortedCompletedTasks] = useState<TaskData[]>([]); // State for sorted tasks
 
   // Date filter state - default to current week
   // Get current date in local timezone to avoid UTC offset issues
@@ -113,6 +116,9 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
       return taskDateStr >= dateFilter.startDate && taskDateStr <= dateFilter.endDate;
     });
   }, [allCompletedTasks, dateFilter]);
+
+  // Use sorted tasks if available, otherwise use filtered tasks
+  const displayTasks = sortedCompletedTasks.length > 0 ? sortedCompletedTasks : filteredCompletedTasks;
 
   // ===== MUTATIONS =====
 
@@ -377,6 +383,11 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     return `${formatLocalDate(dateFilter.startDate)} - ${formatLocalDate(dateFilter.endDate)}`;
   };
 
+  // Handle sorting for completed tasks
+  const handleTasksSort = (sortedTasks: TaskData[]) => {
+    setSortedCompletedTasks(sortedTasks);
+  };
+
   // ===== RENDER =====
   if (isLoading) {
     return (
@@ -396,7 +407,7 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     );
   }
 
-  const totalCompletedTasks = filteredCompletedTasks.length;
+  const totalCompletedTasks = displayTasks.length;
 
   return (
     <div className={`w-full space-y-4 ${className}`}>
@@ -414,6 +425,15 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Task Sorting Component */}
+          {totalCompletedTasks > 0 && (
+            <CompactTaskSorting
+              tasks={filteredCompletedTasks}
+              onTasksChange={handleTasksSort}
+              defaultSort={{ field: 'created_at', order: 'desc' }}
+            />
+          )}
+
           {/* Date Filter Popover */}
           <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
             <PopoverTrigger asChild>
@@ -543,7 +563,7 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
         </div>
       </div>
 
-      {/* All Completed Tasks in One Container */}
+      {/* All Completed Tasks in Collapsible Container */}
       {totalCompletedTasks === 0 ? (
         <Card>
           <CardContent className="py-12">
@@ -559,103 +579,128 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Check className="w-5 h-5 text-green-600" />
-              All Completed Tasks
-            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsTasksExpanded(!isTasksExpanded)}
+                className="h-auto p-0 hover:bg-transparent"
+              >
+                {isTasksExpanded ? (
+                  <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                )}
+              </Button>
+              <CardTitle className="flex items-center gap-2">
+                <Check className="w-5 h-5 text-green-600" />
+                All Completed Tasks
+                <span className="text-sm font-normal text-muted-foreground">
+                  ({totalCompletedTasks})
+                </span>
+              </CardTitle>
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {filteredCompletedTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
-                >
-                  {/* Completion Indicator */}
-                  <div className="w-5 h-5 bg-green-500 border-2 border-green-500 rounded flex items-center justify-center mt-0.5">
-                    <Check className="w-3 h-3 text-white" />
-                  </div>
 
-                  {/* Task Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <div
-                          className="text-sm font-medium cursor-pointer line-through text-muted-foreground"
-                          onClick={() => toggleTaskExpansion(task.id)}
-                        >
-                          {task.title}
+          {isTasksExpanded && (
+            <CardContent>
+              <div className="space-y-3">
+                {displayTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    {/* Completion Indicator */}
+                    <div className="w-5 h-5 bg-green-500 border-2 border-green-500 rounded flex items-center justify-center mt-0.5">
+                      <Check className="w-3 h-3 text-white" />
+                    </div>
+
+                    {/* Task Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div
+                            className="text-sm font-medium cursor-pointer line-through text-muted-foreground"
+                            onClick={() => toggleTaskExpansion(task.id)}
+                          >
+                            {task.title}
+                          </div>
+                          {/* Task Description - Shows inline next to title without strikethrough */}
+                          {task.description && (
+                            <span className="text-xs font-normal text-muted-foreground/80">
+                              - {task.description}
+                            </span>
+                          )}
                         </div>
-                        {/* Task Description - Shows inline next to title without strikethrough */}
-                        {task.description && (
-                          <span className="text-xs font-normal text-muted-foreground/80">
-                            - {task.description}
+
+                        <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+                          {/* Priority Badge */}
+                          {task.priority && (
+                            <span className={`px-2 py-0.5 rounded-full font-medium ${getPriorityColor(task.priority)}`}>
+                              {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                            </span>
+                          )}
+
+                          {/* Section Badge */}
+                          <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 font-medium">
+                            {getSectionLabel(task.section || 'other')}
                           </span>
-                        )}
-                      </div>
 
-                      <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
-                        {/* Priority Badge */}
-                        {task.priority && (
-                          <span className={`px-2 py-0.5 rounded-full font-medium ${getPriorityColor(task.priority)}`}>
-                            {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-                          </span>
-                        )}
+                          {/* Dates */}
+                          {(task.start_date || task.end_date) && (
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {formatDate(task.start_date)}
+                              {task.start_date && task.end_date && task.end_date !== task.start_date && ` - ${formatDate(task.end_date)}`}
+                            </div>
+                          )}
 
-                        {/* Dates */}
-                        {(task.start_date || task.end_date) && (
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {formatDate(task.start_date)}
-                            {task.start_date && task.end_date && task.end_date !== task.start_date && ` - ${formatDate(task.end_date)}`}
-                          </div>
-                        )}
+                          {/* Times */}
+                          {(task.start_time || task.end_time) && (
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {formatTime(task.start_time)}
+                              {task.start_time && task.end_time && ` - ${formatTime(task.end_time)}`}
+                            </div>
+                          )}
+                        </div>
 
-                        {/* Times */}
-                        {(task.start_time || task.end_time) && (
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {formatTime(task.start_time)}
-                            {task.start_time && task.end_time && ` - ${formatTime(task.end_time)}`}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Completion Status */}
-                      <div className="text-xs text-muted-foreground">
-                        {task.completed_at ?
-                          `Completed on ${formatDate(task.completed_at)}` :
-                          'Marked as complete'
-                        }
+                        {/* Completion Status */}
+                        <div className="text-xs text-muted-foreground">
+                          {task.completed_at ?
+                            `Completed on ${formatDate(task.completed_at)}` :
+                            'Marked as complete'
+                          }
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleUncompleteTask(task.id)}
-                      className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
-                      title="Mark as incomplete"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteTask(task.id)}
-                      className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                      title="Delete task"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleUncompleteTask(task.id)}
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
+                        title="Mark as incomplete"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteTask(task.id)}
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                        title="Delete task"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
+                ))}
+              </div>
+            </CardContent>
+          )}
         </Card>
       )}
     </div>
