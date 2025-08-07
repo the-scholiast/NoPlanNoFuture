@@ -53,7 +53,13 @@ export function transformTaskData(data: any): TaskData {
     start_date: data.start_date || undefined,
     end_date: data.end_date || undefined,
     start_time: data.start_time || undefined,
-    end_time: data.end_time || undefined
+    end_time: data.end_time || undefined,
+    is_recurring: data.is_recurring || false,
+    recurring_days: data.recurring_days || undefined,
+    parent_task_id: data.parent_task_id || undefined,
+    completion_count: data.completion_count || undefined,
+    last_completed_date: data.last_completed_date || undefined,
+    deleted_at: data.deleted_at || undefined
   }
 }
 
@@ -68,6 +74,8 @@ export function transformCreateTaskData(data: any): CreateTaskData {
     end_date: data.end_date || undefined,
     start_time: data.start_time || undefined,
     end_time: data.end_time || undefined,
+    is_recurring: data.is_recurring || false,
+    recurring_days: data.recurring_days || undefined,
   }
 }
 
@@ -83,6 +91,8 @@ export function formatCreateTaskData(data: CreateTaskData, user: string) {
     end_date: data.end_date || null,
     start_time: data.start_time || null,
     end_time: data.end_time || null,
+    is_recurring: data.is_recurring || false,            
+    recurring_days: data.recurring_days || null,         
   }
 }
 
