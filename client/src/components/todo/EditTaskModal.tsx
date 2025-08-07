@@ -5,12 +5,27 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { TaskData } from '@/types/todoTypes';
 import { todoApi } from '@/lib/api/todos';
 import { CreateTaskData, EditTaskModalProps } from '@/types/todoTypes';
 import { updateTaskData } from '@/lib/api/transformers';
 
-interface EditableTaskData extends CreateTaskData {};
+const DAYS_OF_WEEK = [
+  { key: 'sunday', label: 'Sun' },
+  { key: 'monday', label: 'Mon' },
+  { key: 'tuesday', label: 'Tue' },
+  { key: 'wednesday', label: 'Wed' },
+  { key: 'thursday', label: 'Thu' },
+  { key: 'friday', label: 'Fri' },
+  { key: 'saturday', label: 'Sat' }
+];
+
+interface EditableTaskData extends CreateTaskData {
+  is_recurring?: boolean;
+  recurring_days?: string[];
+}
 
 export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated }: EditTaskModalProps) {
   const [editableTask, setEditableTask] = useState<EditableTaskData>({
@@ -21,7 +36,9 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
     start_date: '',
     end_date: '',
     start_time: '',
-    end_time: ''
+    end_time: '',
+    is_recurring: false,
+    recurring_days: []
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +54,9 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
         start_date: task.start_date || '',
         end_date: task.end_date || '',
         start_time: task.start_time || '',
-        end_time: task.end_time || ''
+        end_time: task.end_time || '',
+        is_recurring: task.is_recurring || false,
+        recurring_days: task.recurring_days || []
       });
       setError(null);
     }
@@ -46,6 +65,68 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
   // HELPER FUNCTIONS
   const updateField = (field: keyof EditableTaskData, value: any) => {
     setEditableTask(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Day selection helpers
+  const toggleDay = (day: string) => {
+    setEditableTask(prev => {
+      const currentDays = prev.recurring_days || [];
+      const newDays = currentDays.includes(day)
+        ? currentDays.filter(d => d !== day)
+        : [...currentDays, day];
+
+      return {
+        ...prev,
+        recurring_days: newDays,
+        is_recurring: newDays.length > 0
+      };
+    });
+  };
+
+  const toggleEveryDay = (checked: boolean) => {
+    setEditableTask(prev => {
+      const newDays = checked ? DAYS_OF_WEEK.map(d => d.key) : [];
+      return {
+        ...prev,
+        recurring_days: newDays,
+        is_recurring: newDays.length > 0
+      };
+    });
+  };
+
+  const isEveryDaySelected = (): boolean => {
+    return editableTask.recurring_days?.length === 7 || false;
+  };
+
+  const isDaySelected = (day: string): boolean => {
+    return editableTask.recurring_days?.includes(day) || false;
+  };
+
+  const getRecurringDescription = (): string => {
+    if (!editableTask.is_recurring || !editableTask.recurring_days || editableTask.recurring_days.length === 0) {
+      return '';
+    }
+
+    const days = editableTask.recurring_days;
+    const dayNames = days.map(day => day.charAt(0).toUpperCase() + day.slice(1));
+
+    if (days.length === 7) {
+      return 'Every day';
+    }
+
+    if (days.length === 5 && !days.includes('saturday') && !days.includes('sunday')) {
+      return 'Weekdays only';
+    }
+
+    if (days.length === 2 && days.includes('saturday') && days.includes('sunday')) {
+      return 'Weekends only';
+    }
+
+    if (days.length <= 3) {
+      return dayNames.join(', ');
+    }
+
+    return `${days.length} days per week`;
   };
 
   const handleSave = async () => {
@@ -58,6 +139,13 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
       // Validate required fields
       if (!editableTask.title.trim()) {
         setError('Task title is required.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Validate recurring tasks have at least one day selected
+      if (editableTask.is_recurring && (!editableTask.recurring_days || editableTask.recurring_days.length === 0)) {
+        setError('Recurring tasks must have at least one day selected.');
         setIsSubmitting(false);
         return;
       }
@@ -93,7 +181,14 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Task</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>Edit Task</DialogTitle>
+            {editableTask.is_recurring && (
+              <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full">
+                Recurring: {getRecurringDescription()}
+              </span>
+            )}
+          </div>
         </DialogHeader>
 
         {error && (
@@ -164,6 +259,66 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* Recurring Section */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="recurring"
+                checked={editableTask.is_recurring}
+                onCheckedChange={(checked) => {
+                  updateField('is_recurring', checked === true);
+                  if (checked !== true) {
+                    updateField('recurring_days', []);
+                  }
+                }}
+                disabled={isSubmitting}
+              />
+              <Label htmlFor="recurring" className="text-sm font-medium">
+                Make this task recurring
+              </Label>
+            </div>
+
+            {editableTask.is_recurring && (
+              <div className="space-y-3 p-3 bg-blue-50 dark:bg-blue-950 rounded-md">
+                {/* Everyday Toggle */}
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="everyday"
+                    checked={isEveryDaySelected()}
+                    onCheckedChange={(checked) => toggleEveryDay(checked === true)}
+                    disabled={isSubmitting}
+                  />
+                  <Label htmlFor="everyday" className="text-sm font-medium">
+                    Every day
+                  </Label>
+                </div>
+
+                {/* Individual Day Selection */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Or select specific days:</label>
+                  <div className="grid grid-cols-7 gap-2">
+                    {DAYS_OF_WEEK.map((day) => (
+                      <div key={day.key} className="flex flex-col items-center">
+                        <Checkbox
+                          id={day.key}
+                          checked={isDaySelected(day.key)}
+                          onCheckedChange={() => toggleDay(day.key)}
+                          disabled={isSubmitting}
+                        />
+                        <Label
+                          htmlFor={day.key}
+                          className="text-xs mt-1 cursor-pointer"
+                        >
+                          {day.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Date Range Row */}
