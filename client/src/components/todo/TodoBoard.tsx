@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Settings, Trash2, Edit3, MoreVertical, Calendar, Clock } from 'lucide-react';
-import { useMutation } from '@tanstack/react-query';
+import { Settings, Trash2, Edit3, MoreVertical, Calendar, Clock, Repeat, AlertCircle, BarChart3, RefreshCw } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTodo } from '@/contexts/TodoContext';
 import { todoApi } from '@/lib/api/todos';
+import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { TaskData } from '@/types/todoTypes';
 import EditTaskModal from './EditTaskModal';
 import { getTodayString } from '@/lib/utils/dateUtils';
@@ -26,12 +27,26 @@ interface TodoBoardProps {
 }
 
 export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
-  const { dailyTasks, todayTasks, upcomingTasks, isLoading, error, refetch } = useTodo();
+  // Updated to use new recurring tasks data from context
+  const {
+    dailyTasks,
+    todayTasksWithRecurring,
+    upcomingTasksWithRecurring,
+    isLoading,
+    isLoadingTodayRecurring,
+    isLoadingUpcomingRecurring,
+    error,
+    refetch,
+    refetchTodayRecurring,
+    refetchUpcomingRecurring
+  } = useTodo();
 
   const [newTaskInputs, setNewTaskInputs] = useState<{ [key: number]: string }>({});
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<TaskData | null>(null);
+  const [selectedTaskStats, setSelectedTaskStats] = useState<string | null>(null);
+  const [showRecurringStats, setShowRecurringStats] = useState(false);
 
   // ===== MUTATIONS =====
 
@@ -40,45 +55,89 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     mutationFn: (taskData: any) => todoApi.create(taskData),
     onSuccess: () => {
       refetch();
+      // Refetch recurring tasks for Today and Upcoming sections
+      refetchTodayRecurring();
+      refetchUpcomingRecurring();
     },
   });
 
-  // Update task mutation
+  // Update task mutation - Enhanced for recurring tasks
   const updateTaskMutation = useMutation({
-    mutationFn: ({ id, updates }: { id: string; updates: Partial<TaskData> }) =>
-      todoApi.update(id, updates),
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<TaskData> }) => {
+      // Extract the original task ID for recurring task instances
+      const originalTaskId = id.includes('_') ? id.split('_')[0] : id;
+      return todoApi.update(originalTaskId, updates);
+    },
     onSuccess: () => {
       refetch();
+      refetchTodayRecurring();
+      refetchUpcomingRecurring();
     },
   });
 
-  // Soft delete task mutation
+  // Soft delete task mutation - Enhanced for recurring tasks
   const deleteTaskMutation = useMutation({
-    mutationFn: (taskId: string) => todoApi.delete(taskId),
+    mutationFn: (taskId: string) => {
+      // Extract the original task ID for recurring task instances
+      const originalTaskId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
+      return todoApi.delete(originalTaskId);
+    },
     onSuccess: () => {
       refetch();
+      refetchTodayRecurring();
+      refetchUpcomingRecurring();
     },
   });
 
   // Clear completed tasks mutation (soft delete)
   const clearCompletedMutation = useMutation({
-    mutationFn: (section: 'daily' | 'today' | 'upcoming') =>
-      todoApi.deleteCompleted(section),
-    onSuccess: () => {
+    mutationFn: (sectionKey: 'daily' | 'today' | 'upcoming') =>
+      todoApi.deleteCompleted(sectionKey),
+    onSuccess: (data, sectionKey) => {
       refetch();
+      if (sectionKey === 'today') refetchTodayRecurring();
+      if (sectionKey === 'upcoming') refetchUpcomingRecurring();
     },
   });
 
   // Clear all tasks mutation (soft delete)
   const clearAllMutation = useMutation({
-    mutationFn: (section: 'daily' | 'today' | 'upcoming') =>
-      todoApi.deleteAll(section),
-    onSuccess: () => {
+    mutationFn: (sectionKey: 'daily' | 'today' | 'upcoming') =>
+      todoApi.deleteAll(sectionKey),
+    onSuccess: (data, sectionKey) => {
       refetch();
+      if (sectionKey === 'today') refetchTodayRecurring();
+      if (sectionKey === 'upcoming') refetchUpcomingRecurring();
     },
   });
 
+  // Update recurring pattern mutation
+  const updateRecurringPatternMutation = useMutation({
+    mutationFn: ({ taskId, recurringDays }: { taskId: string; recurringDays: string[] }) =>
+      recurringTodoApi.updateRecurringPattern(taskId, recurringDays),
+    onSuccess: () => {
+      refetch();
+      refetchTodayRecurring();
+      refetchUpcomingRecurring();
+    },
+  });
+
+  // Generate instances for preview
+  const generateInstancesMutation = useMutation({
+    mutationFn: ({ taskId, startDate, endDate }: { taskId: string; startDate: string; endDate: string }) =>
+      recurringTodoApi.generateInstances(taskId, startDate, endDate),
+  });
+
+  // Get task statistics query
+  const { data: taskStats, isLoading: isLoadingStats } = useQuery({
+    queryKey: ['recurring-stats', selectedTaskStats],
+    queryFn: () => selectedTaskStats ? recurringTodoApi.getTaskStats(selectedTaskStats) : null,
+    enabled: !!selectedTaskStats && showRecurringStats,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
   // ===== ORGANIZE TASKS BY SECTION =====
+  // Updated to use recurring tasks data for Today and Upcoming sections
   const sections: TodoSection[] = [
     {
       title: "Daily",
@@ -89,13 +148,13 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     {
       title: "Today",
       sectionKey: 'today',
-      tasks: todayTasks,
+      tasks: todayTasksWithRecurring, // Now includes recurring task instances
       showAddButton: false
     },
     {
       title: "Upcoming",
       sectionKey: 'upcoming',
-      tasks: upcomingTasks,
+      tasks: upcomingTasksWithRecurring, // Now includes recurring task instances
       showAddButton: false
     }
   ];
@@ -166,9 +225,55 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     return startTime || endTime;
   };
 
+  // New helper function to check if task is a recurring instance
+  const isRecurringInstance = (task: TaskData) => {
+    return task.id.includes('_') && task.parent_task_id;
+  };
+
+  // New helper function to get recurring pattern display using recurringTodoApi
+  const getRecurringPatternDisplay = (task: TaskData) => {
+    // Use the API helper for better formatting
+    return recurringTodoApi.getRecurringDescription(task);
+  };
+
+  // New helper function to validate recurring days
+  const validateRecurringDays = (days: string[]) => {
+    return recurringTodoApi.validateRecurringDays(days);
+  };
+
+  // New helper function to show task statistics
+  const showTaskStats = (taskId: string) => {
+    const originalId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
+    setSelectedTaskStats(originalId);
+    setShowRecurringStats(true);
+  };
+
+  // New helper function to preview recurring instances
+  const previewRecurringInstances = async (taskId: string) => {
+    const originalId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
+    const today = new Date().toISOString().split('T')[0];
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    const endDate = nextMonth.toISOString().split('T')[0];
+
+    try {
+      const instances = await generateInstancesMutation.mutateAsync({
+        taskId: originalId,
+        startDate: today,
+        endDate: endDate
+      });
+      console.log('Upcoming instances for this task:', instances);
+      // You could show this in a modal or tooltip
+    } catch (error) {
+      console.error('Failed to generate instances:', error);
+    }
+  };
+
   // ===== TASK MANAGEMENT FUNCTIONS =====
   const handleAddTasks = (newTasks: TaskData[]) => {
     refetch();
+    refetchTodayRecurring();
+    refetchUpcomingRecurring();
     if (onAddTasks) {
       onAddTasks(newTasks);
     }
@@ -196,19 +301,22 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     setNewTaskInputs(prev => ({ ...prev, [sectionIndex]: "" }));
   };
 
+  // Updated toggle task function to handle recurring task instances
   const toggleTask = (taskId: string) => {
-    const allTasks = [...dailyTasks, ...todayTasks, ...upcomingTasks];
+    // Find the task in all sections (including recurring instances)
+    const allTasks = [...dailyTasks, ...todayTasksWithRecurring, ...upcomingTasksWithRecurring];
     const task = allTasks.find(t => t.id === taskId);
     if (!task) return;
 
-    const today = getTodayString(); // Use existing utility function
+    const today = getTodayString();
     const isDailyTask = task.section === 'daily';
+    const isRecurringTask = task.is_recurring || isRecurringInstance(task);
 
     if (!task.completed) {
       // Completing a task
       const baseUpdates: Partial<TaskData> = {
         completed: true,
-        completed_at: today, // Consistent date format for all tasks
+        completed_at: today,
       };
 
       if (isDailyTask) {
@@ -219,6 +327,10 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
           last_completed_date: today
         };
         updateTaskMutation.mutate({ id: taskId, updates: dailyUpdates });
+      } else if (isRecurringTask && isRecurringInstance(task)) {
+        // For recurring task instances, we only update completion status
+        // The completion is tracked for this specific instance/date
+        updateTaskMutation.mutate({ id: taskId, updates: baseUpdates });
       } else {
         // Regular tasks use base updates only
         updateTaskMutation.mutate({ id: taskId, updates: baseUpdates });
@@ -239,7 +351,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
         };
         updateTaskMutation.mutate({ id: taskId, updates: dailyUpdates });
       } else {
-        // Regular tasks use base updates only
+        // Regular tasks and recurring instances use base updates only
         updateTaskMutation.mutate({ id: taskId, updates: baseUpdates });
       }
     }
@@ -264,12 +376,26 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   };
 
   const openEditModal = (task: TaskData) => {
-    setTaskToEdit(task);
+    // For recurring task instances, we pass the original task data
+    // but keep the instance ID for reference
+    if (isRecurringInstance(task)) {
+      // Create a modified task object for editing the parent task
+      const editTask = {
+        ...task,
+        // We'll edit the parent task, not the instance
+        id: task.parent_task_id || task.id.split('_')[0]
+      };
+      setTaskToEdit(editTask);
+    } else {
+      setTaskToEdit(task);
+    }
     setEditModalOpen(true);
   };
 
   const handleTaskUpdated = () => {
     refetch();
+    refetchTodayRecurring();
+    refetchUpcomingRecurring();
   };
 
   const handleInputKeyPress = (e: React.KeyboardEvent, sectionIndex: number) => {
@@ -279,7 +405,10 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   };
 
   // ===== RENDER =====
-  if (isLoading) {
+  // Updated loading logic to account for recurring tasks
+  const isAnyLoading = isLoading || isLoadingTodayRecurring || isLoadingUpcomingRecurring;
+
+  if (isAnyLoading) {
     return (
       <div className="w-full h-full p-6 bg-background flex items-center justify-center">
         <div className="text-muted-foreground">Loading tasks...</div>
@@ -372,6 +501,8 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                     section.tasks.map((task) => {
                       const dateRange = getDateRangeDisplay(task);
                       const timeRange = getTimeRangeDisplay(task);
+                      const recurringPattern = getRecurringPatternDisplay(task);
+                      const isInstance = isRecurringInstance(task);
 
                       return (
                         <div
@@ -385,8 +516,8 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                             className="flex-shrink-0"
                           >
                             <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${task.completed
-                                ? 'bg-primary border-primary'
-                                : 'border-muted-foreground hover:border-primary'
+                              ? 'bg-primary border-primary'
+                              : 'border-muted-foreground hover:border-primary'
                               }`}>
                               {task.completed && (
                                 <div className="w-2 h-2 bg-primary-foreground rounded-sm" />
@@ -398,15 +529,27 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                           <div className="flex-1 min-w-0">
                             <div className="space-y-1">
                               <div
-                                className={`text-sm font-medium cursor-pointer ${task.completed ? 'line-through text-muted-foreground' : ''
+                                className={`text-sm font-medium cursor-pointer flex items-center gap-2 ${task.completed ? 'line-through text-muted-foreground' : ''
                                   }`}
                                 onClick={() => toggleTaskExpansion(task.id)}
                               >
-                                {task.title}
+                                <span>{task.title}</span>
+                                {/* Recurring task indicator */}
+                                {(task.is_recurring || isInstance) && (
+                                  <div title="Recurring task">
+                                    <Repeat className="h-3 w-3 text-blue-500" />
+                                  </div>
+                                )}
+                                {/* Recurring instance indicator */}
+                                {isInstance && (
+                                  <div title="Task instance">
+                                    <AlertCircle className="h-3 w-3 text-orange-500" />
+                                  </div>
+                                )}
                               </div>
 
-                              {/* Date and Time Display */}
-                              {(dateRange || timeRange) && (
+                              {/* Date, Time, and Recurring Pattern Display */}
+                              {(dateRange || timeRange || recurringPattern) && (
                                 <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                                   {dateRange && (
                                     <div className="flex items-center gap-1">
@@ -418,6 +561,12 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                                     <div className="flex items-center gap-1">
                                       <Clock className="h-3 w-3" />
                                       <span>{timeRange}</span>
+                                    </div>
+                                  )}
+                                  {recurringPattern && (
+                                    <div className="flex items-center gap-1">
+                                      <Repeat className="h-3 w-3" />
+                                      <span>{recurringPattern}</span>
                                     </div>
                                   )}
                                 </div>
@@ -434,11 +583,18 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                               {task.priority && (
                                 <div className="flex items-center gap-2">
                                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${task.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
-                                      task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
-                                        'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                    task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
+                                      'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
                                     }`}>
                                     {task.priority}
                                   </span>
+                                </div>
+                              )}
+
+                              {/* Recurring Instance Info */}
+                              {isInstance && (
+                                <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                                  Instance for {formatDate(task.start_date)}
                                 </div>
                               )}
                             </div>
@@ -458,14 +614,29 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => openEditModal(task)}>
                                 <Edit3 className="h-4 w-4 mr-2" />
-                                Edit
+                                {isInstance ? 'Edit Pattern' : 'Edit'}
                               </DropdownMenuItem>
+
+                              {/* NEW: Recurring task specific actions */}
+                              {(task.is_recurring || isInstance) && (
+                                <>
+                                  <DropdownMenuItem onClick={() => showTaskStats(task.id)}>
+                                    <BarChart3 className="h-4 w-4 mr-2" />
+                                    View Stats
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => previewRecurringInstances(task.id)}>
+                                    <RefreshCw className="h-4 w-4 mr-2" />
+                                    Preview Instances
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+
                               <DropdownMenuItem
                                 onClick={() => deleteTask(task.id)}
                                 className="text-destructive focus:text-destructive"
                               >
                                 <Trash2 className="h-4 w-4 mr-2" />
-                                Move to Trash
+                                {isInstance ? 'Remove Pattern' : 'Move to Trash'}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -497,6 +668,78 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
           ))}
         </div>
       </div>
+
+      {/* NEW: Recurring Task Statistics Modal */}
+      {showRecurringStats && selectedTaskStats && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-background p-6 rounded-lg max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Recurring Task Statistics</h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setShowRecurringStats(false);
+                  setSelectedTaskStats(null);
+                }}
+              >
+                ×
+              </Button>
+            </div>
+
+            {isLoadingStats ? (
+              <div className="text-center py-4">Loading statistics...</div>
+            ) : taskStats ? (
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-medium">{taskStats.taskTitle}</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Repeats: {taskStats.recurringDays.join(', ')}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">
+                      {taskStats.statistics.completionRate.toFixed(1)}%
+                    </div>
+                    <div className="text-xs text-muted-foreground">Completion Rate</div>
+                  </div>
+
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600">
+                      {taskStats.statistics.completedOccurrences}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Completed</div>
+                  </div>
+
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-gray-600">
+                      {taskStats.statistics.totalPossibleOccurrences}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Total Possible</div>
+                  </div>
+
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-purple-600">
+                      {taskStats.statistics.averagePerWeek.toFixed(1)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Avg/Week</div>
+                  </div>
+                </div>
+
+                <div className="text-xs text-muted-foreground">
+                  <p>Period: {taskStats.dateRange.start} to {taskStats.dateRange.end}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4 text-muted-foreground">
+                No statistics available
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Edit Task Modal */}
       <EditTaskModal
