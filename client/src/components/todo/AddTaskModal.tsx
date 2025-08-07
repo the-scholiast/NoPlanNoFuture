@@ -9,6 +9,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TaskData, AddTaskModalProps, CreateTaskData, InternalTaskData } from '@/types/todoTypes';
 import { todoApi } from '@/lib/api/todos';
 import { transformCreateTaskData } from '@/lib/api/transformers';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+
+const DAYS_OF_WEEK = [
+  { key: 'sunday', label: 'Sun' },
+  { key: 'monday', label: 'Mon' },
+  { key: 'tuesday', label: 'Tue' },
+  { key: 'wednesday', label: 'Wed' },
+  { key: 'thursday', label: 'Thu' },
+  { key: 'friday', label: 'Fri' },
+  { key: 'saturday', label: 'Sat' }
+];
 
 export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTaskModalProps) {
   const placeholderTask: InternalTaskData = {
@@ -20,15 +32,21 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
     start_date: '',
     end_date: '',
     start_time: '',
-    end_time: ''
-  }
+    end_time: '',
+    is_recurring: false,
+    recurring_days: []
+  };
+
   const [tasks, setTasks] = useState<InternalTaskData[]>([placeholderTask]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // HELPER FUNCTIONS
   const addNewTask = () => {
-    const newTask: InternalTaskData = placeholderTask;
+    const newTask: InternalTaskData = {
+      ...placeholderTask,
+      id: Date.now().toString() // Unique ID for each task
+    };
     setTasks(prev => [...prev, newTask]);
   };
 
@@ -44,6 +62,49 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
     }
   };
 
+  // Day selection helpers
+  const toggleDay = (taskId: string, day: string) => {
+    setTasks(prev => prev.map(task => {
+      if (task.id === taskId) {
+        const currentDays = task.recurring_days || [];
+        const newDays = currentDays.includes(day)
+          ? currentDays.filter(d => d !== day)
+          : [...currentDays, day];
+
+        return {
+          ...task,
+          recurring_days: newDays,
+          is_recurring: newDays.length > 0
+        };
+      }
+      return task;
+    }));
+  };
+
+  const toggleEveryDay = (taskId: string, checked: boolean) => {
+    setTasks(prev => prev.map(task => {
+      if (task.id === taskId) {
+        const newDays = checked ? DAYS_OF_WEEK.map(d => d.key) : [];
+        return {
+          ...task,
+          recurring_days: newDays,
+          is_recurring: newDays.length > 0
+        };
+      }
+      return task;
+    }));
+  };
+
+  const isEveryDaySelected = (taskId: string): boolean => {
+    const task = tasks.find(t => t.id === taskId);
+    return task?.recurring_days?.length === 7 || false;
+  };
+
+  const isDaySelected = (taskId: string, day: string): boolean => {
+    const task = tasks.find(t => t.id === taskId);
+    return task?.recurring_days?.includes(day) || false;
+  };
+
   const handleApply = async () => {
     setError(null);
     setIsSubmitting(true);
@@ -54,6 +115,17 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
 
       if (validTasks.length === 0) {
         setError('Please add at least one task with a valid name.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Validate recurring tasks have at least one day selected
+      const invalidRecurringTasks = validTasks.filter(task =>
+        task.is_recurring && (!task.recurring_days || task.recurring_days.length === 0)
+      );
+
+      if (invalidRecurringTasks.length > 0) {
+        setError('Recurring tasks must have at least one day selected.');
         setIsSubmitting(false);
         return;
       }
@@ -89,15 +161,42 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
     onOpenChange(false);
   };
 
+  const getRecurringDescription = (task: InternalTaskData): string => {
+    if (!task.is_recurring || !task.recurring_days || task.recurring_days.length === 0) {
+      return '';
+    }
+
+    const days = task.recurring_days;
+    const dayNames = days.map(day => day.charAt(0).toUpperCase() + day.slice(1));
+
+    if (days.length === 7) {
+      return 'Every day';
+    }
+
+    if (days.length === 5 && !days.includes('saturday') && !days.includes('sunday')) {
+      return 'Weekdays only';
+    }
+
+    if (days.length === 2 && days.includes('saturday') && days.includes('sunday')) {
+      return 'Weekends only';
+    }
+
+    if (days.length <= 3) {
+      return dayNames.join(', ');
+    }
+
+    return `${days.length} days per week`;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Tasks</DialogTitle>
         </DialogHeader>
 
         {error && (
-          <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md">
+          <div className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 text-sm p-3 rounded-md">
             {error}
           </div>
         )}
@@ -105,19 +204,24 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
         <div className="space-y-4">
           {/* Task List */}
           {tasks.map((task, index) => (
-            <div key={task.id} className="p-4 border rounded-lg bg-muted/30 space-y-4">
+            <div key={task.id} className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800 space-y-4">
               {/* Header Row with Task Label and Remove Button */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-medium">Task {index + 1}</span>
+                  {task.is_recurring && (
+                    <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full">
+                      Recurring: {getRecurringDescription(task)}
+                    </span>
+                  )}
                 </div>
 
                 {/* Remove Task Button */}
                 {tasks.length > 1 && (
                   <Button
                     variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                    size="sm"
+                    className="h-6 w-6 p-0 text-gray-500 hover:text-red-500"
                     onClick={() => removeTask(task.id)}
                     disabled={isSubmitting}
                   >
@@ -186,6 +290,66 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              {/* Recurring Section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id={`recurring-${task.id}`}
+                    checked={task.is_recurring}
+                    onCheckedChange={(checked) => {
+                      updateTask(task.id, 'is_recurring', checked === true);
+                      if (checked !== true) {
+                        updateTask(task.id, 'recurring_days', []);
+                      }
+                    }}
+                    disabled={isSubmitting}
+                  />
+                  <Label htmlFor={`recurring-${task.id}`} className="text-sm font-medium">
+                    Make this task recurring
+                  </Label>
+                </div>
+
+                {task.is_recurring && (
+                  <div className="space-y-3 p-3 bg-blue-50 dark:bg-blue-950 rounded-md">
+                    {/* Everyday Toggle */}
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id={`everyday-${task.id}`}
+                        checked={isEveryDaySelected(task.id)}
+                        onCheckedChange={(checked) => toggleEveryDay(task.id, checked === true)}
+                        disabled={isSubmitting}
+                      />
+                      <Label htmlFor={`everyday-${task.id}`} className="text-sm font-medium">
+                        Every day
+                      </Label>
+                    </div>
+
+                    {/* Individual Day Selection */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Or select specific days:</label>
+                      <div className="grid grid-cols-7 gap-2">
+                        {DAYS_OF_WEEK.map((day) => (
+                          <div key={day.key} className="flex flex-col items-center">
+                            <Checkbox
+                              id={`${task.id}-${day.key}`}
+                              checked={isDaySelected(task.id, day.key)}
+                              onCheckedChange={() => toggleDay(task.id, day.key)}
+                              disabled={isSubmitting}
+                            />
+                            <Label
+                              htmlFor={`${task.id}-${day.key}`}
+                              className="text-xs mt-1 cursor-pointer"
+                            >
+                              {day.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Date Range Row */}
