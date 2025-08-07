@@ -523,10 +523,49 @@ export const getTodayTasks = async (userId) => {
 // Get tasks for the upcoming week with recurring instances
 export const getUpcomingWeekTasks = async (userId) => {
   const today = new Date();
-  const nextWeek = new Date();
-  nextWeek.setDate(today.getDate() + 7);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
 
-  return getRecurringTaskInstances(userId, today, nextWeek);
+  const nextWeek = new Date(tomorrow);
+  nextWeek.setDate(tomorrow.getDate() + 7);
+
+  // Get all recurring tasks that could appear in the upcoming period
+  const { data: recurringTasks, error } = await supabase
+    .from('todos')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_recurring', true)
+    .is('deleted_at', null)
+    .not('recurring_days', 'is', null);
+
+  if (error) {
+    console.error('Error fetching recurring tasks:', error);
+    throw error;
+  }
+
+  // Filter to only include tasks that will appear in the upcoming period
+  const upcomingRecurringTasks = [];
+
+  for (const task of recurringTasks || []) {
+    // Check if this recurring task should appear on any day in the upcoming period
+    let willAppearInPeriod = false;
+    const currentDate = new Date(tomorrow);
+
+    while (currentDate <= nextWeek && !willAppearInPeriod) {
+      if (shouldTaskAppearOnDate(task, currentDate)) {
+        willAppearInPeriod = true;
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    if (willAppearInPeriod) {
+      console.log(`Task ${task.id} (${task.title}) will appear in upcoming period`);
+      upcomingRecurringTasks.push(task);
+    }
+  }
+
+  console.log('Upcoming recurring tasks (originals):', upcomingRecurringTasks.length);
+  return upcomingRecurringTasks;
 };
 
 // Bulk update recurring days for existing task

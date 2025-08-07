@@ -123,6 +123,46 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
 
   // ===== ORGANIZE TASKS BY SECTION =====
   // Updated to use recurring tasks data for Today and Upcoming sections
+  const filteredUpcomingRecurringTasks = useMemo(() => {
+    let tasks = upcomingTasksWithRecurring.filter(task => task.section !== 'daily');
+
+    if (upcomingFilter.enabled) {
+      tasks = tasks.filter(task => {
+        const taskDate = task.start_date || task.created_at?.split('T')[0];
+        if (!taskDate) return false;
+
+        const taskDateStr = taskDate.includes('T') ? taskDate.split('T')[0] : taskDate;
+        return taskDateStr >= upcomingFilter.startDate && taskDateStr <= upcomingFilter.endDate;
+      });
+    }
+
+    // Sort tasks by date first, then by time if available
+    return tasks.sort((a, b) => {
+      const dateA = a.start_date || a.created_at?.split('T')[0] || '';
+      const dateB = b.start_date || b.created_at?.split('T')[0] || '';
+
+      // First, sort by date
+      if (dateA !== dateB) {
+        return dateA.localeCompare(dateB);
+      }
+
+      // If dates are the same, sort by start time
+      const timeA = a.start_time || '';
+      const timeB = b.start_time || '';
+
+      if (timeA && timeB) {
+        return timeA.localeCompare(timeB);
+      }
+
+      // If only one has time, put the one with time first
+      if (timeA && !timeB) return -1;
+      if (!timeA && timeB) return 1;
+
+      // If neither has time, maintain original order (or sort by title)
+      return a.title.localeCompare(b.title);
+    });
+  }, [upcomingTasksWithRecurring, upcomingFilter]);
+
   const filteredUpcomingTasks = useMemo(() => {
     let tasks = upcomingTasks;
 
@@ -167,9 +207,13 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     setSortedTasks({
       daily: dailyTasks,
       today: todayTasksWithRecurring.filter(task => task.section !== 'daily'),
-      upcoming: filteredUpcomingTasks.filter(task => task.section !== 'daily')
+      // Combine both regular upcoming tasks and recurring task instances
+      upcoming: [
+        ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
+        ...filteredUpcomingRecurringTasks
+      ]
     });
-  }, [dailyTasks, todayTasksWithRecurring, filteredUpcomingTasks]);
+  }, [dailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks]);
 
   const sections: TodoSection[] = [
     {
@@ -188,9 +232,10 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     {
       title: "Upcoming",
       sectionKey: 'upcoming',
-      // Combine regular upcoming tasks with recurring instances
+      // Use combined tasks that include both regular and recurring instances
       tasks: sortedTasks.upcoming.length > 0 ? sortedTasks.upcoming : [
-        ...filteredUpcomingTasks.filter(task => task.section !== 'daily') // Regular non-recurring upcoming tasks
+        ...filteredUpcomingTasks.filter(task => task.section !== 'daily'), // Regular non-recurring upcoming tasks
+        ...filteredUpcomingRecurringTasks // Recurring task instances
       ],
       showAddButton: false
     }
@@ -308,10 +353,20 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
 
   // Updated toggle task function to handle recurring task instances
   const toggleTask = (taskId: string) => {
-    // Find the task in all sections (including recurring instances)
-    const allTasks = [...dailyTasks, ...todayTasksWithRecurring, ...upcomingTasks];
+    // Include upcomingTasksWithRecurring in the search
+    const allTasks = [
+      ...dailyTasks,
+      ...todayTasksWithRecurring,
+      ...upcomingTasks,
+      ...upcomingTasksWithRecurring 
+    ];
+
     const task = allTasks.find(t => t.id === taskId);
-    if (!task) return;
+    if (!task) {
+      console.log('Task not found with ID:', taskId);
+      console.log('Available task IDs:', allTasks.map(t => t.id));
+      return;
+    }
 
     const today = getTodayString();
     const isDailyTask = task.section === 'daily';
