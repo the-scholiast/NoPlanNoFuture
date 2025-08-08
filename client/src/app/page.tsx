@@ -92,7 +92,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground">
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] bg-background text-foreground -m-6">
       <h1 className="text-2xl font-bold mb-4">No Meow no meow-meow</h1>
 
       <Image
@@ -101,7 +101,7 @@ export default function HomePage() {
         width={300}
         height={150}
         priority
-        className="mb-6"
+        className="mb-4"
       />
 
       <div className="text-center ">
