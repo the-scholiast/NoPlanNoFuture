@@ -1,13 +1,14 @@
 'use client'
 
 import React from 'react';
-import { Check, ChevronDown, ChevronUp, Filter, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Filter, X, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import { CompactTaskSorting } from '@/components/todo/TaskSortingComponent';
 import { CompletedTaskItem } from './CompletedTaskItem';
 import { useCompletedTasks } from './hooks';
@@ -55,9 +56,12 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
   const formatTime = (timeString?: string) => {
     if (!timeString) return null;
     try {
-      const [hours, minutes] = timeString.split(':');
+      const [hours, minutes] = timeString.split(':').map(Number);
+      if (isNaN(hours) || isNaN(minutes)) return timeString;
+      
       const date = new Date();
-      date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      date.setHours(hours, minutes);
+      
       return date.toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit',
@@ -79,56 +83,239 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300';
-      case 'medium': return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300';
-      case 'low': return 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300';
-      default: return 'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300';
+      case 'high':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'low':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
   };
 
-  // Handle filter reset
-  const resetFilters = () => {
-    updateSearchQuery('');
+  // Quick filter functions
+  const setTodayFilter = () => {
+    const today = new Date().toISOString().split('T')[0];
     updateDateFilter({
-      enabled: false,
-      startDate: '',
-      endDate: ''
+      startDate: today,
+      endDate: today,
+      enabled: true
     });
   };
 
-  // Calculate active filter count
-  const activeFiltersCount = 
-    (searchQuery.trim() ? 1 : 0) + 
-    (dateFilter.enabled ? 1 : 0);
+  const setWeekFilter = () => {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    const endOfWeek = new Date(today);
+    endOfWeek.setDate(today.getDate() + (6 - today.getDay()));
 
+    updateDateFilter({
+      startDate: startOfWeek.toISOString().split('T')[0],
+      endDate: endOfWeek.toISOString().split('T')[0],
+      enabled: true
+    });
+  };
+
+  const setMonthFilter = () => {
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+    updateDateFilter({
+      startDate: startOfMonth.toISOString().split('T')[0],
+      endDate: endOfMonth.toISOString().split('T')[0],
+      enabled: true
+    });
+  };
+
+  const clearDateFilter = () => {
+    updateDateFilter({ enabled: false });
+  };
+
+  const getFilterDisplayText = () => {
+    if (!dateFilter.enabled) return 'All dates';
+    
+    const today = new Date().toISOString().split('T')[0];
+    
+    if (dateFilter.startDate === dateFilter.endDate) {
+      if (dateFilter.startDate === today) {
+        return 'Today only';
+      }
+      return formatDate(dateFilter.startDate) || 'Selected date';
+    }
+    
+    return `${formatDate(dateFilter.startDate)} - ${formatDate(dateFilter.endDate)}`;
+  };
+
+  // Handle clear all completed tasks
+  const handleClearAllCompleted = () => {
+    if (window.confirm('Are you sure you want to delete all completed tasks? This action cannot be undone.')) {
+      // Implementation would go here
+      console.log('Clear all completed tasks');
+    }
+  };
+
+  // Loading state
   if (isLoading) {
     return (
-      <div className="w-full p-6 bg-background">
-        <div className="text-muted-foreground text-center">Loading completed tasks...</div>
+      <div className={`w-full mt-6 ${className}`}>
+        <Card>
+          <CardContent className="py-12">
+            <div className="text-center text-muted-foreground">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p>Loading completed tasks...</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
+  // Error state
   if (error) {
     return (
-      <div className="w-full p-6 bg-background">
-        <div className="text-destructive text-center">
-          Error loading completed tasks: {error instanceof Error ? error.message : 'Unknown error'}
-        </div>
+      <div className={`w-full mt-6 ${className}`}>
+        <Card>
+          <CardContent className="py-12">
+            <div className="text-center text-destructive">
+              <p>Error loading completed tasks</p>
+              <p className="text-sm mt-2">{error instanceof Error ? error.message : 'Unknown error'}</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className={`w-full p-6 bg-background ${className || ''}`}>
-      {totalCompletedTasks > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
+    <div className={`w-full mt-6 ${className}`}>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-4">
+          {/* Search */}
+          <div className="relative">
+            <Input
+              placeholder="Search completed tasks..."
+              value={searchQuery}
+              onChange={(e) => updateSearchQuery(e.target.value)}
+              className="w-64"
+            />
+            {searchQuery && (
               <Button
                 variant="ghost"
+                size="sm"
+                onClick={() => updateSearchQuery('')}
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+
+          {/* Date Filter */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Filter className="w-4 h-4" />
+                {getFilterDisplayText()}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label>Enable Date Filter</Label>
+                  <Switch
+                    checked={dateFilter.enabled}
+                    onCheckedChange={(checked) => updateDateFilter({ enabled: checked })}
+                  />
+                </div>
+
+                {dateFilter.enabled && (
+                  <>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label htmlFor="start-date">Start Date</Label>
+                        <Input
+                          id="start-date"
+                          type="date"
+                          value={dateFilter.startDate}
+                          onChange={(e) => updateDateFilter({ startDate: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="end-date">End Date</Label>
+                        <Input
+                          id="end-date"
+                          type="date"
+                          value={dateFilter.endDate}
+                          onChange={(e) => updateDateFilter({ endDate: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" onClick={setTodayFilter}>
+                        Today
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={setWeekFilter}>
+                        This Week
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={setMonthFilter}>
+                        This Month
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={clearDateFilter}>
+                        Show All
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+            ✅ {totalCompletedTasks}
+          </Badge>
+
+          {/* Clear All Button */}
+          {totalCompletedTasks > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleClearAllCompleted}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Clear All
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* All Completed Tasks in Collapsible Container */}
+      {totalCompletedTasks === 0 ? (
+        <Card>
+          <CardContent className="py-12">
+            <div className="text-center text-muted-foreground">
+              <Check className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No completed tasks found</p>
+              {dateFilter.enabled && (
+                <p className="text-sm mt-2">Try adjusting your date filter</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={toggleTasksExpansion}
-                className="p-0 h-auto hover:bg-transparent"
+                className="h-auto p-0 hover:bg-transparent"
               >
                 {isTasksExpanded ? (
                   <ChevronUp className="w-5 h-5 text-muted-foreground" />
@@ -138,123 +325,42 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
               </Button>
               <CardTitle className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-600" />
-                All Completed Tasks
+                Completed Tasks
                 <span className="text-sm font-normal text-muted-foreground">
                   ({totalCompletedTasks})
                 </span>
               </CardTitle>
-              
-              {/* Filter Controls */}
-              <div className="flex items-center gap-2">
-                {activeFiltersCount > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={resetFilters}
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="w-3 h-3 mr-1" />
-                    Clear ({activeFiltersCount})
-                  </Button>
-                )}
-                
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <Filter className="w-4 h-4" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80" align="end">
-                    <div className="space-y-4">
-                      <h4 className="font-medium text-sm">Filter Completed Tasks</h4>
-                      
-                      {/* Search Filter */}
-                      <div className="space-y-2">
-                        <Label htmlFor="search" className="text-xs">Search tasks</Label>
-                        <Input
-                          id="search"
-                          placeholder="Search by title or description..."
-                          value={searchQuery}
-                          onChange={(e) => updateSearchQuery(e.target.value)}
-                          className="h-8"
-                        />
-                      </div>
-                      
-                      {/* Date Range Filter */}
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            id="date-filter"
-                            checked={dateFilter.enabled}
-                            onCheckedChange={(enabled) => updateDateFilter({ enabled })}
-                          />
-                          <Label htmlFor="date-filter" className="text-xs">Filter by completion date</Label>
-                        </div>
-                        
-                        {dateFilter.enabled && (
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <Label htmlFor="start-date" className="text-xs">From</Label>
-                              <Input
-                                id="start-date"
-                                type="date"
-                                value={dateFilter.startDate}
-                                onChange={(e) => updateDateFilter({ startDate: e.target.value })}
-                                className="h-8"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="end-date" className="text-xs">To</Label>
-                              <Input
-                                id="end-date"
-                                type="date"
-                                value={dateFilter.endDate}
-                                onChange={(e) => updateDateFilter({ endDate: e.target.value })}
-                                className="h-8"
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
             </div>
           </CardHeader>
 
           {isTasksExpanded && (
             <CardContent>
-              {/* Task Sorting */}
-              <div className="mb-4">
-                <CompactTaskSorting
-                  tasks={completedTasks}
-                  onTasksChange={(sortedTasks) => updateSortedTasks(sortedTasks as CompletedTaskWithCompletion[])}
-                />
-              </div>
+              {/* Sorting */}
+              {totalCompletedTasks > 1 && (
+                <div className="mb-4">
+                  <CompactTaskSorting
+                    tasks={completedTasks}
+                    onTasksChange={(sortedTasks) => updateSortedTasks(sortedTasks as CompletedTaskWithCompletion[])}
+                  />
+                </div>
+              )}
 
-              {/* Completed Tasks List */}
+              {/* Tasks List */}
               <div className="space-y-3">
-                {completedTasks.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-4">
-                    No completed tasks match your filters
-                  </div>
-                ) : (
-                  completedTasks.map((task) => (
-                    <CompletedTaskItem
-                      key={task.completion.id}
-                      task={task}
-                      isExpanded={expandedTask === task.completion.id}
-                      onToggleExpansion={toggleTaskExpansion}
-                      onUncompleteTask={handleUncompleteTask}
-                      onDeleteTask={handleDeleteTask}
-                      formatDate={formatDate}
-                      formatTime={formatTime}
-                      getSectionLabel={getSectionLabel}
-                      getPriorityColor={getPriorityColor}
-                    />
-                  ))
-                )}
+                {completedTasks.map((task) => (
+                  <CompletedTaskItem
+                    key={`${task.id}-${task.completion.id}`}
+                    task={task}
+                    isExpanded={expandedTask === task.completion.id}
+                    onToggleExpansion={toggleTaskExpansion}
+                    onUncompleteTask={handleUncompleteTask}
+                    onDeleteTask={handleDeleteTask}
+                    formatDate={formatDate}
+                    formatTime={formatTime}
+                    getSectionLabel={getSectionLabel}
+                    getPriorityColor={getPriorityColor}
+                  />
+                ))}
               </div>
             </CardContent>
           )}

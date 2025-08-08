@@ -8,8 +8,19 @@ import { Trash2, Plus } from "lucide-react"
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { NavSidebar } from "@/components/navBar/navBar"
 import { useAuth } from '@/hooks/useAuth'
-import TodoBoard from '@/components/todo/TodoBoard'
-import CompletedTasks from '@/components/todo/CompletedTasks/CompletedTasks'
+import { TodoBoard, CompletedTasks } from '@/components/todo'
+import { TodoProvider } from '@/contexts/TodoContext'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+// Create a query client for this component if it's not already wrapped
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: 3,
+    },
+  },
+});
 
 // Sentence App Component (when not logged in)
 function SentenceApp() {
@@ -148,19 +159,21 @@ function TodoApp() {
   };
 
   return (
-    <div className="flex-1">
-      {/* Header positioned to align with the add button that's above */}
-      <div className="flex items-center justify-center -mt-18 mb-6 h-12">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-blue-600">
-            To Do
-          </h1>
+    <TodoProvider>
+      <div className="flex-1">
+        {/* Header positioned to align with the add button that's above */}
+        <div className="flex items-center justify-center -mt-18 mb-6 h-12">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold text-blue-600">
+              To Do
+            </h1>
+          </div>
         </div>
-      </div>
 
-      <TodoBoard onAddTasks={handleAddTasks} />
-      <CompletedTasks />
-    </div>
+        <TodoBoard onAddTasks={handleAddTasks} />
+        <CompletedTasks />
+      </div>
+    </TodoProvider>
   );
 }
 
@@ -181,5 +194,9 @@ export default function HomePage() {
   }
 
   // Show todo app if user is logged in, otherwise show sentence app with navbar
-  return user ? <TodoApp /> : <SentenceApp />;
+  return (
+    <QueryClientProvider client={queryClient}>
+      {user ? <TodoApp /> : <SentenceApp />}
+    </QueryClientProvider>
+  );
 }

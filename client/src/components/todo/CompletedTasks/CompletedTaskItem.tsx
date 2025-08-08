@@ -28,7 +28,6 @@ export function CompletedTaskItem({
   getPriorityColor,
 }: CompletedTaskItemProps) {
   const completionDate = formatDate(task.completion.instance_date);
-  const completedAtDate = formatDate(task.completion.completed_at.split('T')[0]);
   const completedAtTime = task.completion.completed_at.split('T')[1]?.split('.')[0];
 
   return (
