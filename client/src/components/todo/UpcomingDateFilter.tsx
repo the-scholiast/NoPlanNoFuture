@@ -5,6 +5,7 @@ import { Filter, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { formatDateString } from '@/lib/utils/dateUtils';
 
 interface UpcomingDateFilterProps {
   onFilterChange: (filter: {
@@ -20,35 +21,24 @@ export default function UpcomingDateFilter({ onFilterChange, className = '' }: U
   const tomorrow = useMemo(() => {
     const now = new Date();
     now.setDate(now.getDate() + 1);
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return formatDateString(now);
   }, []);
 
-  // Get current week starting from tomorrow (Monday to Sunday)
+  // Get current week starting from tomorrow (tomorrow + 7 days)
   const upcomingWeek = useMemo(() => {
     const now = new Date();
     now.setDate(now.getDate() + 1); // Start from tomorrow
-    const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert Sunday to 6, others to dayOfWeek - 1
 
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - daysFromMonday);
+    // Start date is tomorrow
+    const startDate = new Date(now);
 
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-
-    const formatDate = (date: Date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
+    // End date is 7 days from tomorrow (so tomorrow + 6 more days)
+    const endDate = new Date(now);
+    endDate.setDate(now.getDate() + 6);
 
     return {
-      start: formatDate(monday),
-      end: formatDate(sunday)
+      start: formatDateString(startDate),
+      end: formatDateString(endDate)
     };
   }, []);
 

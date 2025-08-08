@@ -22,14 +22,8 @@ export const todoCompletionsApi = {
 
     if (dateRange) {
       query = query
-        .gte('completed_at', dateRange.start)
-        .lte('completed_at', dateRange.end);
-    }
-
-    if (dateRange) {
-      query = query
-        .gte('completed_at', dateRange.start)
-        .lte('completed_at', dateRange.end);
+        .gte('completed_at', `${dateRange.start}T00:00:00.000Z`)
+        .lte('completed_at', `${dateRange.end}T23:59:59.999Z`);
     }
 
     const { data: completions, error } = await query;
@@ -214,5 +208,30 @@ export const todoCompletionsApi = {
       throw error;
     }
     return data;
+  },
+
+  // Get a specific completion by ID
+  async getCompletion(completionId: string): Promise<TodoCompletion | null> {
+    const { data, error } = await supabase
+      .from('todo_completions')
+      .select('*')
+      .eq('id', completionId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  },
+
+  // Get completions for a specific task on a specific date
+  async getCompletionsForTaskAndDate(taskId: string, instanceDate: string): Promise<TodoCompletion[]> {
+    const { data, error } = await supabase
+      .from('todo_completions')
+      .select('*')
+      .eq('task_id', taskId)
+      .eq('instance_date', instanceDate)
+      .order('completed_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
   },
 }

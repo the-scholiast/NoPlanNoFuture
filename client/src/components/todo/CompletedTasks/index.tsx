@@ -13,6 +13,7 @@ import { CompactTaskSorting } from '@/components/todo/TaskSortingComponent';
 import { CompletedTaskItem } from './CompletedTaskItem';
 import { useCompletedTasks } from './hooks';
 import { CompletedTasksProps, CompletedTaskWithCompletion } from './types';
+import { formatDateString } from '@/lib/utils/dateUtils';
 
 export default function CompletedTasks({ className }: CompletedTasksProps) {
   const {
@@ -58,10 +59,10 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     try {
       const [hours, minutes] = timeString.split(':').map(Number);
       if (isNaN(hours) || isNaN(minutes)) return timeString;
-      
+
       const date = new Date();
       date.setHours(hours, minutes);
-      
+
       return date.toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit',
@@ -106,14 +107,18 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
 
   const setWeekFilter = () => {
     const today = new Date();
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay());
-    const endOfWeek = new Date(today);
-    endOfWeek.setDate(today.getDate() + (6 - today.getDay()));
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert Sunday to 6, others to dayOfWeek - 1
+
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - daysFromMonday);
+
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
 
     updateDateFilter({
-      startDate: startOfWeek.toISOString().split('T')[0],
-      endDate: endOfWeek.toISOString().split('T')[0],
+      startDate: formatDateString(monday),
+      endDate: formatDateString(sunday),
       enabled: true
     });
   };
@@ -136,16 +141,16 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
 
   const getFilterDisplayText = () => {
     if (!dateFilter.enabled) return 'All dates';
-    
+
     const today = new Date().toISOString().split('T')[0];
-    
+
     if (dateFilter.startDate === dateFilter.endDate) {
       if (dateFilter.startDate === today) {
         return 'Today only';
       }
       return formatDate(dateFilter.startDate) || 'Selected date';
     }
-    
+
     return `${formatDate(dateFilter.startDate)} - ${formatDate(dateFilter.endDate)}`;
   };
 
