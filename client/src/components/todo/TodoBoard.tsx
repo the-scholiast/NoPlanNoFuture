@@ -58,6 +58,43 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     upcoming: []
   });
 
+  // Get current date for filtering
+  const currentDate = useMemo(() => {
+    return new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+  }, []);
+
+  // ===== DAILY TASKS FILTERING =====
+  const filteredDailyTasks = useMemo(() => {
+    const filtered = dailyTasks.filter(task => {
+      // If no start_date and no end_date, show the task (infinitely recurring)
+      if (!task.start_date && !task.end_date) {
+        return true;
+      }
+
+      // If has start_date but no end_date, check if start_date >= current_date (future tasks only)
+      if (task.start_date && !task.end_date) {
+        const shouldShow = task.start_date >= currentDate;
+        return shouldShow;
+      }
+
+      // If has end_date but no start_date, check if current date <= end_date
+      if (!task.start_date && task.end_date) {
+        const shouldShow = currentDate <= task.end_date;
+        return shouldShow;
+      }
+
+      // If has both start_date and end_date, check if current date is within range
+      if (task.start_date && task.end_date) {
+        const shouldShow = currentDate >= task.start_date && currentDate <= task.end_date;
+        return shouldShow;
+      }
+
+      return true;
+    });
+
+    return filtered;
+  }, [dailyTasks, currentDate]);
+
   // ===== MUTATIONS =====
 
   // Create task mutation
@@ -205,7 +242,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
 
   React.useEffect(() => {
     setSortedTasks({
-      daily: dailyTasks,
+      daily: filteredDailyTasks, // Use filtered daily tasks
       today: todayTasksWithRecurring.filter(task => task.section !== 'daily'),
       // Combine both regular upcoming tasks and recurring task instances
       upcoming: [
@@ -213,13 +250,13 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
         ...filteredUpcomingRecurringTasks
       ]
     });
-  }, [dailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks]);
+  }, [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks]);
 
   const sections: TodoSection[] = [
     {
       title: "Daily",
       sectionKey: 'daily',
-      tasks: sortedTasks.daily.length > 0 ? sortedTasks.daily : dailyTasks,
+      tasks: filteredDailyTasks, // Always use filtered daily tasks directly
       showAddButton: false
     },
     {
@@ -355,10 +392,10 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   const toggleTask = (taskId: string) => {
     // Include upcomingTasksWithRecurring in the search
     const allTasks = [
-      ...dailyTasks,
+      ...filteredDailyTasks, // Use filtered daily tasks
       ...todayTasksWithRecurring,
       ...upcomingTasks,
-      ...upcomingTasksWithRecurring 
+      ...upcomingTasksWithRecurring
     ];
 
     const task = allTasks.find(t => t.id === taskId);
@@ -512,7 +549,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                     {/* Add Task Sorting Component */}
                     <CompactTaskSorting
                       key={section.sectionKey}
-                      tasks={section.sectionKey === 'daily' ? dailyTasks :
+                      tasks={section.sectionKey === 'daily' ? filteredDailyTasks : // Use filtered daily tasks
                         section.sectionKey === 'today' ? todayTasksWithRecurring.filter(task => task.section !== 'daily') :
                           filteredUpcomingTasks.filter(task => task.section !== 'daily')}
                       onTasksChange={(tasks) => handleTasksSort(section.sectionKey, tasks)}
