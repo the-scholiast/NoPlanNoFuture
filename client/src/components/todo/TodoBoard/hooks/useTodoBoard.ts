@@ -1,15 +1,15 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { TaskData } from '@/types/todoTypes';
 import { useTodo } from '@/contexts/TodoContext';
 import { useTodoMutations } from '../../shared/hooks';
 import { getTodayString } from '@/lib/utils/dateUtils';
+import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 
 // Defines the structure for each section in TodoBoard
 interface TodoSection {
   title: string;
   sectionKey: 'daily' | 'today' | 'upcoming';
   tasks: TaskData[];
-  showAddButton: boolean;
 }
 
 // Business logic for the TodoBoard component
@@ -25,7 +25,13 @@ export const useTodoBoard = () => {
     error,                         // Any query errors
   } = useTodo();
 
-  const { toggleTaskMutation } = useTodoMutations();
+  const {
+    createTaskMutation,
+    toggleTaskFunction,
+    clearCompletedMutation,
+    clearAllMutation,
+    deleteTaskMutation,
+  } = useTodoMutations();
 
   // UI interaction states
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
@@ -36,6 +42,12 @@ export const useTodoBoard = () => {
     daily: [],
     today: [],
     upcoming: []
+  });
+  // Task filtering states
+  const [upcomingFilter, setUpcomingFilter] = useState({
+    startDate: '',
+    endDate: '',
+    enabled: true
   });
 
   // Get current date for filtering
@@ -60,47 +72,190 @@ export const useTodoBoard = () => {
     });
   }, [dailyTasks, currentDate]);
 
+  // Filtered upcoming tasks with date filtering
+  const filteredUpcomingRecurringTasks = useMemo(() => {
+    let tasks = upcomingTasksWithRecurring.filter(task => task.section !== 'daily');
+
+    if (upcomingFilter.enabled) {
+      tasks = tasks.filter(task => {
+        const taskDate = task.start_date || task.created_at?.split('T')[0];
+        if (!taskDate) return false;
+        const taskDateStr = taskDate.includes('T') ? taskDate.split('T')[0] : taskDate;
+        return taskDateStr >= upcomingFilter.startDate && taskDateStr <= upcomingFilter.endDate;
+      });
+    }
+
+    // Sort tasks by date first, then by time if available
+    return tasks.sort((a, b) => {
+      const dateA = a.start_date || a.created_at?.split('T')[0] || '';
+      const dateB = b.start_date || b.created_at?.split('T')[0] || '';
+      // First, sort by date
+      if (dateA !== dateB) return dateA.localeCompare(dateB);
+      // If dates are the same, sort by start time
+      const timeA = a.start_time || '';
+      const timeB = b.start_time || '';
+      if (timeA && timeB) return timeA.localeCompare(timeB);
+      // If only one has time, put the one with time first
+      if (timeA && !timeB) return -1;
+      if (!timeA && timeB) return 1;
+      // If neither has time, maintain original order (or sort by title)
+      return a.title.localeCompare(b.title);
+    });
+  }, [upcomingTasksWithRecurring, upcomingFilter]);
+
+  const filteredUpcomingTasks = useMemo(() => {
+    let tasks = upcomingTasks;
+    if (upcomingFilter.enabled) {
+      tasks = upcomingTasks.filter(task => {
+        const taskDate = task.start_date || task.created_at?.split('T')[0];
+        if (!taskDate) return false;
+        const taskDateStr = taskDate.includes('T') ? taskDate.split('T')[0] : taskDate;
+        return taskDateStr >= upcomingFilter.startDate && taskDateStr <= upcomingFilter.endDate;
+      });
+    }
+
+    return tasks.sort((a, b) => {
+      const dateA = a.start_date || a.created_at?.split('T')[0] || '';
+      const dateB = b.start_date || b.created_at?.split('T')[0] || '';
+      if (dateA !== dateB) return dateA.localeCompare(dateB);
+      const timeA = a.start_time || '';
+      const timeB = b.start_time || '';
+      if (timeA && timeB) return timeA.localeCompare(timeB);
+      if (timeA && !timeB) return -1;
+      if (!timeA && timeB) return 1;
+      return a.title.localeCompare(b.title);
+    });
+  }, [upcomingTasks, upcomingFilter]);
+
+  // Sync sorted tasks
+  useEffect(() => {
+    setSortedTasks({
+      daily: filteredDailyTasks,
+      today: todayTasksWithRecurring.filter(task => task.section !== 'daily'),
+      upcoming: [
+        ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
+        ...filteredUpcomingRecurringTasks
+      ]
+    });
+  }, [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks]);
+
   // Sections configuration
-  const sections: TodoSection[] = useMemo(() => [
+  const sections: TodoSection[] = [
     {
       title: "Daily Tasks",
       sectionKey: 'daily',
-      tasks: sortedTasks.daily.length > 0 ? sortedTasks.daily : filteredDailyTasks,
-      showAddButton: true
+      tasks: filteredDailyTasks,
     },
     {
       title: "Today",
       sectionKey: 'today',
-      tasks: sortedTasks.today.length > 0 ? sortedTasks.today : todayTasksWithRecurring,
-      showAddButton: true
+      tasks: sortedTasks.today.length > 0 ? sortedTasks.today : todayTasksWithRecurring.filter(task => task.section !== 'daily'),
     },
     {
       title: "Upcoming",
       sectionKey: 'upcoming',
-      tasks: sortedTasks.upcoming.length > 0 ? sortedTasks.upcoming : [...upcomingTasks, ...upcomingTasksWithRecurring],
-      showAddButton: true
+      tasks: sortedTasks.upcoming.length > 0 ? sortedTasks.upcoming : [
+        ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
+        ...filteredUpcomingRecurringTasks
+      ],
     }
-  ], [filteredDailyTasks, todayTasksWithRecurring, upcomingTasks, upcomingTasksWithRecurring, sortedTasks]);
+  ];
 
-  // Handles task completion logic
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return null;
+    try {
+      const [year, month, day] = dateString.split('-').map(Number);
+      if (!year || !month || !day) return dateString;
+      const date = new Date(year, month - 1, day);
+      const currentYear = new Date().getFullYear();
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: date.getFullYear() !== currentYear ? 'numeric' : undefined
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatTime = (timeString?: string) => {
+    if (!timeString) return null;
+    try {
+      const [hours, minutes] = timeString.split(':');
+      const date = new Date();
+      date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return timeString;
+    }
+  };
+
+  const getDateRangeDisplay = (task: TaskData) => {
+    const startDate = formatDate(task.start_date);
+    const endDate = formatDate(task.end_date);
+    if (!startDate && !endDate) return null;
+    if (startDate && endDate && startDate !== endDate) {
+      return `${startDate} - ${endDate}`;
+    }
+    return startDate || endDate;
+  };
+
+  const getTimeRangeDisplay = (task: TaskData) => {
+    const startTime = formatTime(task.start_time);
+    const endTime = formatTime(task.end_time);
+    if (!startTime && !endTime) return null;
+    if (startTime && endTime) {
+      return `${startTime} - ${endTime}`;
+    }
+    return startTime || endTime;
+  };
+
+  const isRecurringInstance = (task: TaskData) => {
+    return task.id.includes('_') && task.parent_task_id;
+  };
+
+  const getRecurringPatternDisplay = (task: TaskData) => {
+    return recurringTodoApi.getRecurringDescription(task);
+  };
+
+  // Updated toggle task function to handle recurring task instances
   const toggleTask = (taskId: string) => {
-    // Search all possible task sources
+    // Include upcomingTasksWithRecurring in the search
     const allTasks = [
-      ...filteredDailyTasks,        // Filtered daily recurring tasks
-      ...todayTasksWithRecurring,   // Today's tasks + recurring instances
-      ...upcomingTasks,             // Regular upcoming tasks
-      ...upcomingTasksWithRecurring // Future recurring instances
+      ...filteredDailyTasks, // Use filtered daily tasks
+      ...todayTasksWithRecurring,
+      ...upcomingTasks,
+      ...upcomingTasksWithRecurring
     ];
 
-    // Find the specific task to toggle
-    const task = allTasks.find(t => t.id === taskId);
-    if (!task) return;
+    // Create a proper boolean function for isRecurringInstance
+    const isRecurringInstanceBoolean = (task: TaskData): boolean => {
+      return Boolean(task.id.includes('_') && task.parent_task_id);
+    };
 
-    // Use shared mutation (handles recurring task ID extraction automatically) -> Remove? Instance tasks should appear in completed component?
-    toggleTaskMutation.mutate({
-      taskId,
-      completed: !task.completed
-    });
+    toggleTaskFunction(taskId, allTasks, isRecurringInstanceBoolean);
+  };
+
+  const clearCompleted = (sectionIndex: number) => {
+    const section = sections[sectionIndex];
+    clearCompletedMutation.mutate(section.sectionKey);
+  };
+
+  const clearAll = (sectionIndex: number) => {
+    const section = sections[sectionIndex];
+    clearAllMutation.mutate(section.sectionKey);
+  };
+
+  const deleteTask = (taskId: string) => {
+    deleteTaskMutation.mutate(taskId);
+  };
+
+  const toggleTaskExpansion = (taskId: string) => {
+    setExpandedTask(expandedTask === taskId ? null : taskId);
   };
 
   // Ensures editing a recurring instance modifies the original task > Remove? Instance tasks should appear in completed component?
@@ -135,6 +290,10 @@ export const useTodoBoard = () => {
     // Data
     sections,
     filteredDailyTasks,
+    todayTasksWithRecurring,
+    upcomingTasksWithRecurring,
+    filteredUpcomingTasks,
+    filteredUpcomingRecurringTasks,
     
     // State
     expandedTask,
@@ -143,11 +302,27 @@ export const useTodoBoard = () => {
     setEditModalOpen,
     taskToEdit,
     setTaskToEdit,
+    upcomingFilter,
+    setUpcomingFilter,
+    sortedTasks,
+    setSortedTasks,
     
     // Actions
     toggleTask,
     openEditModal,
     handleTasksSort,
+    clearCompleted,
+    clearAll,
+    deleteTask,
+    toggleTaskExpansion,
+    
+    // Helper functions
+    formatDate,
+    formatTime,
+    getDateRangeDisplay,
+    getTimeRangeDisplay,
+    isRecurringInstance,
+    getRecurringPatternDisplay,
     
     // Loading/Error
     isLoading: isAnyLoading,
