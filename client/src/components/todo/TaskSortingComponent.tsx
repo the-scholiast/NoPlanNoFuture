@@ -1,9 +1,8 @@
 "use client"
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -87,42 +86,6 @@ export const CompactTaskSorting: React.FC<CompactTaskSortingProps> = ({
     return endTime1 - endTime2;
   };
 
-  const sortedTasks = useMemo(() => {
-    const sorted = [...tasks].sort((a, b) => {
-      let comparison = 0;
-
-      switch (sortConfig.field) {
-        case 'start_time':
-          comparison = getTimeInMinutes(a.start_time) - getTimeInMinutes(b.start_time);
-          if (comparison === 0) {
-            comparison = getDateTimeComparison(a, b);
-          }
-          break;
-        case 'start_date':
-          comparison = getDateObject(a.start_date).getTime() - getDateObject(b.start_date).getTime();
-          if (comparison === 0) {
-            comparison = getDateTimeComparison(a, b);
-          }
-          break;
-        case 'priority':
-          comparison = getPriorityWeight(b.priority) - getPriorityWeight(a.priority);
-          if (comparison === 0) {
-            comparison = getDateTimeComparison(a, b);
-          }
-          break;
-        case 'created_at':
-          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-          break;
-        default:
-          comparison = 0;
-      }
-
-      return sortConfig.order === 'asc' ? comparison : -comparison;
-    });
-
-    return sorted;
-  }, [tasks, sortConfig]);
-
   const handleSortChange = (field: SortField, order?: SortOrder) => {
     const newSortConfig = {
       field,
@@ -132,40 +95,51 @@ export const CompactTaskSorting: React.FC<CompactTaskSortingProps> = ({
     // Update local state immediately
     setSortConfig(newSortConfig);
 
-    // Calculate sorted tasks immediately with new config
-    const newSortedTasks = [...tasks].sort((a, b) => {
-      let comparison = 0;
+    // Separate completed and active tasks
+    const completedTasks = tasks.filter(task => task.completed);
+    const activeTasks = tasks.filter(task => !task.completed);
 
-      switch (newSortConfig.field) {
-        case 'start_time':
-          comparison = getTimeInMinutes(a.start_time) - getTimeInMinutes(b.start_time);
-          if (comparison === 0) {
-            comparison = getDateTimeComparison(a, b);
-          }
-          break;
-        case 'start_date':
-          comparison = getDateObject(a.start_date).getTime() - getDateObject(b.start_date).getTime();
-          if (comparison === 0) {
-            comparison = getDateTimeComparison(a, b);
-          }
-          break;
-        case 'priority':
-          comparison = getPriorityWeight(b.priority) - getPriorityWeight(a.priority);
-          if (comparison === 0) {
-            comparison = getDateTimeComparison(a, b);
-          }
-          break;
-        case 'created_at':
-          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-          break;
-        default:
-          comparison = 0;
-      }
+    // Sort function for both groups
+    const sortTaskGroup = (taskGroup: typeof tasks) => {
+      return taskGroup.sort((a, b) => {
+        let comparison = 0;
 
-      return newSortConfig.order === 'asc' ? comparison : -comparison;
-    });
+        switch (newSortConfig.field) {
+          case 'start_time':
+            comparison = getTimeInMinutes(a.start_time) - getTimeInMinutes(b.start_time);
+            if (comparison === 0) {
+              comparison = getDateTimeComparison(a, b);
+            }
+            break;
+          case 'start_date':
+            comparison = getDateObject(a.start_date).getTime() - getDateObject(b.start_date).getTime();
+            if (comparison === 0) {
+              comparison = getDateTimeComparison(a, b);
+            }
+            break;
+          case 'priority':
+            comparison = getPriorityWeight(b.priority) - getPriorityWeight(a.priority);
+            if (comparison === 0) {
+              comparison = getDateTimeComparison(a, b);
+            }
+            break;
+          case 'created_at':
+            comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+            break;
+          default:
+            comparison = 0;
+        }
 
-    onTasksChange(newSortedTasks);
+        return newSortConfig.order === 'asc' ? comparison : -comparison;
+      });
+    };
+
+    // Sort both groups and combine with completed tasks at the bottom
+    const sortedActiveTasks = sortTaskGroup(activeTasks);
+    const sortedCompletedTasks = sortTaskGroup(completedTasks);
+    const finalSortedTasks = [...sortedActiveTasks, ...sortedCompletedTasks];
+
+    onTasksChange(finalSortedTasks);
   };
 
   const formatSortFieldName = (field: SortField): string => {
