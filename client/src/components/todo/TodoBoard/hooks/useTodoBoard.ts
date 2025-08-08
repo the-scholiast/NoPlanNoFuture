@@ -66,37 +66,6 @@ export const useTodoBoard = () => {
     });
   }, [dailyTasks, currentDate]);
 
-  // Filtered upcoming tasks with date filtering
-  const filteredUpcomingRecurringTasks = useMemo(() => {
-    let tasks = upcomingTasksWithRecurring.filter(task => task.section !== 'daily');
-
-    if (upcomingFilter.enabled) {
-      tasks = tasks.filter(task => {
-        const taskDate = task.start_date || task.created_at?.split('T')[0];
-        if (!taskDate) return false;
-        const taskDateStr = taskDate.includes('T') ? taskDate.split('T')[0] : taskDate;
-        return taskDateStr >= upcomingFilter.startDate && taskDateStr <= upcomingFilter.endDate;
-      });
-    }
-
-    // Sort tasks by date first, then by time if available
-    return tasks.sort((a, b) => {
-      const dateA = a.start_date || a.created_at?.split('T')[0] || '';
-      const dateB = b.start_date || b.created_at?.split('T')[0] || '';
-      // First, sort by date
-      if (dateA !== dateB) return dateA.localeCompare(dateB);
-      // If dates are the same, sort by start time
-      const timeA = a.start_time || '';
-      const timeB = b.start_time || '';
-      if (timeA && timeB) return timeA.localeCompare(timeB);
-      // If only one has time, put the one with time first
-      if (timeA && !timeB) return -1;
-      if (!timeA && timeB) return 1;
-      // If neither has time, maintain original order (or sort by title)
-      return a.title.localeCompare(b.title);
-    });
-  }, [upcomingTasksWithRecurring, upcomingFilter]);
-
   const filteredUpcomingTasks = useMemo(() => {
     let tasks = upcomingTasks;
     if (upcomingFilter.enabled) {
@@ -121,6 +90,34 @@ export const useTodoBoard = () => {
     });
   }, [upcomingTasks, upcomingFilter]);
 
+  // Filtered upcoming tasks with date filtering
+  const filteredUpcomingRecurringTasks = useMemo(() => {
+    let tasks = upcomingTasksWithRecurring.filter(task => task.section !== 'daily');
+
+    if (upcomingFilter.enabled) {
+      tasks = tasks.filter(task => {
+        const taskDate = task.start_date || task.created_at?.split('T')[0];
+        if (!taskDate) return false;
+
+        const taskDateStr = taskDate.includes('T') ?
+          taskDate.split('T')[0] : taskDate;
+        return taskDateStr >= upcomingFilter.startDate && taskDateStr <= upcomingFilter.endDate;
+      });
+    }
+
+    return tasks.sort((a, b) => {
+      const dateA = a.start_date || a.created_at?.split('T')[0] || '';
+      const dateB = b.start_date || b.created_at?.split('T')[0] || '';
+      if (dateA !== dateB) return dateA.localeCompare(dateB);
+      const timeA = a.start_time || '';
+      const timeB = b.start_time || '';
+      if (timeA && timeB) return timeA.localeCompare(timeB);
+      if (timeA && !timeB) return -1;
+      if (!timeA && timeB) return 1;
+      return a.title.localeCompare(b.title);
+    });
+  }, [upcomingTasksWithRecurring, upcomingFilter]);
+
   // Sync sorted tasks
   useEffect(() => {
     setSortedTasks(prev => ({
@@ -133,6 +130,7 @@ export const useTodoBoard = () => {
       ]
     }));
   }, [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks]);
+
 
   // Sections configuration
   const sections: TodoSection[] = [
