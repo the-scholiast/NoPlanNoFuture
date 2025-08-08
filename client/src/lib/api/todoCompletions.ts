@@ -215,4 +215,29 @@ export const todoCompletionsApi = {
     }
     return data;
   },
+
+  // Get a specific completion by ID
+  async getCompletion(completionId: string): Promise<TodoCompletion | null> {
+    const { data, error } = await supabase
+      .from('todo_completions')
+      .select('*')
+      .eq('id', completionId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  },
+
+  // Get completions for a specific task on a specific date
+  async getCompletionsForTaskAndDate(taskId: string, instanceDate: string): Promise<TodoCompletion[]> {
+    const { data, error } = await supabase
+      .from('todo_completions')
+      .select('*')
+      .eq('task_id', taskId)
+      .eq('instance_date', instanceDate)
+      .order('completed_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
 }
