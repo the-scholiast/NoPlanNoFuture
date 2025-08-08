@@ -4,13 +4,7 @@ import { useTodo } from '@/contexts/TodoContext';
 import { useTodoMutations } from '../../shared/hooks';
 import { getTodayString } from '@/lib/utils/dateUtils';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
-
-// Defines the structure for each section in TodoBoard
-interface TodoSection {
-  title: string;
-  sectionKey: 'daily' | 'today' | 'upcoming';
-  tasks: TaskData[];
-}
+import { TodoSection } from '../../shared/types';
 
 // Business logic for the TodoBoard component
 export const useTodoBoard = () => {
@@ -129,14 +123,15 @@ export const useTodoBoard = () => {
 
   // Sync sorted tasks
   useEffect(() => {
-    setSortedTasks({
+    setSortedTasks(prev => ({
+      ...prev,
       daily: filteredDailyTasks,
       today: todayTasksWithRecurring.filter(task => task.section !== 'daily'),
       upcoming: [
         ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
         ...filteredUpcomingRecurringTasks
       ]
-    });
+    }));
   }, [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks]);
 
   // Sections configuration
@@ -144,20 +139,17 @@ export const useTodoBoard = () => {
     {
       title: "Daily Tasks",
       sectionKey: 'daily',
-      tasks: filteredDailyTasks,
+      tasks: sortedTasks.daily,
     },
     {
       title: "Today",
       sectionKey: 'today',
-      tasks: sortedTasks.today.length > 0 ? sortedTasks.today : todayTasksWithRecurring.filter(task => task.section !== 'daily'),
+      tasks: sortedTasks.today,
     },
     {
       title: "Upcoming",
       sectionKey: 'upcoming',
-      tasks: sortedTasks.upcoming.length > 0 ? sortedTasks.upcoming : [
-        ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
-        ...filteredUpcomingRecurringTasks
-      ],
+      tasks: sortedTasks.upcoming,
     }
   ];
 
@@ -294,7 +286,7 @@ export const useTodoBoard = () => {
     upcomingTasksWithRecurring,
     filteredUpcomingTasks,
     filteredUpcomingRecurringTasks,
-    
+
     // State
     expandedTask,
     setExpandedTask,
@@ -306,7 +298,7 @@ export const useTodoBoard = () => {
     setUpcomingFilter,
     sortedTasks,
     setSortedTasks,
-    
+
     // Actions
     toggleTask,
     openEditModal,
@@ -315,7 +307,7 @@ export const useTodoBoard = () => {
     clearAll,
     deleteTask,
     toggleTaskExpansion,
-    
+
     // Helper functions
     formatDate,
     formatTime,
@@ -323,7 +315,7 @@ export const useTodoBoard = () => {
     getTimeRangeDisplay,
     isRecurringInstance,
     getRecurringPatternDisplay,
-    
+
     // Loading/Error
     isLoading: isAnyLoading,
     error,

@@ -5,16 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Settings, Trash2, Edit3, MoreVertical, Calendar, Clock, Repeat, AlertCircle, BarChart3, RefreshCw } from 'lucide-react';
-import { TaskData } from '@/types/todoTypes';
+import { Settings, Trash2, Edit3, MoreVertical, Calendar, Clock, Repeat, AlertCircle, } from 'lucide-react';
 import { useTodoBoard } from './hooks/useTodoBoard';
 import EditTaskModal from '../EditTaskModal';
 import UpcomingDateFilter from '../UpcomingDateFilter';
 import { CompactTaskSorting } from '../TaskSortingComponent';
-
-interface TodoBoardProps {
-  onAddTasks?: (tasks: TaskData[]) => void;
-}
+import { TodoBoardProps } from '../shared/types';
 
 export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   const {
