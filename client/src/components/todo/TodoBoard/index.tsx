@@ -85,8 +85,6 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                       key={section.sectionKey}
                       tasks={section.sectionKey === 'daily' ? filteredDailyTasks :
                         section.sectionKey === 'today' ? todayTasksWithRecurring.filter(task => task.section !== 'daily') :
-                          // OLD: filteredUpcomingTasks.filter(task => task.section !== 'daily')
-                          // NEW: Combined tasks including recurring instances
                           [...filteredUpcomingTasks.filter(task => task.section !== 'daily'), ...filteredUpcomingRecurringTasks]
                       }
                       onTasksChange={(tasks) => handleTasksSort(section.sectionKey, tasks)}
