@@ -4,94 +4,59 @@ import React, { useState } from 'react';
 import { CheckSquare, Check, Calendar, Clock, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { todoApi } from '@/lib/api/todos';
 import { TaskData } from '@/types/todoTypes';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTodo } from '@/contexts/TodoContext';
+import { useTodoMutations } from '@/components/todo/shared/hooks';
 
 export default function TodoModalButton() {
   const [isOpen, setIsOpen] = useState(false);
-  const queryClient = useQueryClient(); // Gets access to the cache manager
 
-  // Fetch tasks with useQuery
+  // Use the TodoContext for data instead of a separate query
   const {
-    data: tasks = [],
+    dailyTasks,
+    todayTasksWithRecurring,
+    upcomingTasksWithRecurring,
+    upcomingTasks,
     isLoading: loading,
     error
-  } = useQuery({
-    queryKey: ['tasks'],
-    queryFn: () => todoApi.getAll(),
-    enabled: isOpen, // Only run query when modal is open
-    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-    retry: 3,
-    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000)
-  });
+  } = useTodo();
 
-  // Mutation for toggling task completion
-  const toggleTaskMutation = useMutation({
-    mutationFn: ({ taskId, completed }: { taskId: string; completed: boolean }) => 
-      todoApi.update(taskId, { completed }),
-    onMutate: async ({ taskId, completed }) => {
-      // Cancel any outgoing refetches (so they don't overwrite optimistic update)
-      await queryClient.cancelQueries({ queryKey: ['tasks'] });
+  // Use the shared mutations hook
+  const {
+    toggleTaskFunction
+  } = useTodoMutations();
 
-      // Snapshot the previous value
-      const previousTasks = queryClient.getQueryData(['tasks']);
-
-      // Optimistically update to the new value
-      queryClient.setQueryData(['tasks'], (old: TaskData[] = []) =>
-        old.map(task =>
-          task.id === taskId ? { ...task, completed } : task
-        )
-      );
-
-      // Return a context object with the snapshotted value
-      return { previousTasks };
-    },
-    onError: (err, variables, context) => {
-      // If the mutation fails, use the context returned from onMutate to roll back
-      if (context?.previousTasks) {
-        queryClient.setQueryData(['tasks'], context.previousTasks);
-      }
-    },
-    onSettled: () => {
-      // Always refetch after error or success to ensure we have the latest data
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    },
-  });
-
-  // Toggle task completion
-  const toggleTask = (taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
-
-    toggleTaskMutation.mutate({
-      taskId,
-      completed: !task.completed
-    });
-  };
+  // Combine all tasks for the modal
+  const allTasks = [
+    ...dailyTasks,
+    ...todayTasksWithRecurring,
+    ...upcomingTasks,
+    ...upcomingTasksWithRecurring
+  ];
 
   // Group tasks by section
   const groupedTasks = {
-    today: tasks.filter(task => task.section === 'today'),
-    daily: tasks.filter(task => task.section === 'daily'),
-    upcoming: tasks.filter(task => task.section === 'upcoming')
+    today: allTasks.filter(task => task.section === 'today'),
+    daily: allTasks.filter(task => task.section === 'daily'),
+    upcoming: allTasks.filter(task => task.section === 'upcoming')
+  };
+
+  // Helper function to check if a task is a recurring instance
+  const isRecurringInstance = (task: TaskData): boolean => {
+    return Boolean(task.id.includes('_') && task.parent_task_id);
+  };
+
+  // Toggle task completion using the proper function
+  const toggleTask = (taskId: string) => {
+    toggleTaskFunction(taskId, allTasks, isRecurringInstance);
   };
 
   const getPriorityColor = (priority?: string) => {
     switch (priority) {
-      case 'high': return 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300';
-      case 'medium': return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300';
-      case 'low': return 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300';
-      default: return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
-    }
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '';
-    try {
-      return new Date(dateString).toLocaleDateString();
-    } catch {
-      return dateString; // Return original if parsing fails
+      case 'high': return 'text-red-500';
+      case 'medium': return 'text-yellow-500';
+      case 'low': return 'text-green-500';
+      default: return 'text-gray-500';
     }
   };
 
@@ -100,7 +65,7 @@ export default function TodoModalButton() {
       case 'today': return 'Today';
       case 'daily': return 'Daily';
       case 'upcoming': return 'Upcoming';
-      default: return sectionKey.charAt(0).toUpperCase() + sectionKey.slice(1);
+      default: return sectionKey;
     }
   };
 
@@ -108,185 +73,179 @@ export default function TodoModalButton() {
     switch (sectionKey) {
       case 'today': return '📅';
       case 'daily': return '🔄';
-      case 'upcoming': return '📋';
-      default: return '📝';
+      case 'upcoming': return '⏳';
+      default: return '📋';
     }
   };
 
-  return (
-    <>
-      {/* Trigger Button */}
+  if (!isOpen) {
+    return (
       <Button
-        variant="outline"
-        className="h-auto min-h-[50px] w-[90px] flex flex-col gap-2 p-4 bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-950/30 dark:to-pink-900/20 border-pink-200/50 dark:border-pink-800/30 hover:from-pink-100 hover:to-pink-150 dark:hover:from-pink-950/50 dark:hover:to-pink-900/40"
         onClick={() => setIsOpen(true)}
+        size="icon"
+        variant="outline"
+        className="h-8 w-8"
       >
-        <CheckSquare className="h-6 w-6 text-pink-600 dark:text-pink-400" />
-        <div className="text-center">
-          <div className="font-semibold text-pink-900 dark:text-pink-100">To Do</div>
-        </div>
+        <CheckSquare className="h-4 w-4" />
       </Button>
+    );
+  }
 
-      {/* Custom Modal Overlay */}
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex">
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/50"
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={() => setIsOpen(false)}
+      />
+
+      {/* Modal */}
+      <div className="relative bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-xl font-semibold">Quick Todo Overview</h2>
+          <Button
             onClick={() => setIsOpen(false)}
-          />
-
-          {/* Right Side Panel */}
-          <div className="ml-auto relative">
-            <div className="h-full w-96 bg-background border-l shadow-lg overflow-y-auto">
-              {/* Header */}
-              <div className="sticky top-0 bg-background border-b p-6 flex items-center justify-between">
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-pink-800 bg-clip-text text-transparent">
-                  To Do Tasks
-                </h2>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsOpen(false)}
-                  className="h-8 w-8"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {/* Content */}
-              <div className="p-6">
-                {/* Error Display - handle both query and mutation errors */}
-                {(error || toggleTaskMutation.error) && (
-                  <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
-                    <p className="text-red-700 dark:text-red-300 text-sm">
-                      {error?.message || toggleTaskMutation.error?.message || 'An error occurred'}
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        toggleTaskMutation.reset(); // Clear mutation error
-                      }}
-                      className="mt-2"
-                    >
-                      Dismiss
-                    </Button>
-                  </div>
-                )}
-
-                {loading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="text-muted-foreground">Loading tasks...</div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {(['today', 'daily', 'upcoming'] as const).map((sectionKey) => {
-                      const sectionTasks = groupedTasks[sectionKey];
-                      const sectionTitle = getSectionTitle(sectionKey);
-                      const sectionEmoji = getSectionEmoji(sectionKey);
-
-                      return (
-                        <div
-                          key={sectionKey}
-                          className="bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-950/30 dark:to-pink-900/20 border border-pink-200/50 dark:border-pink-800/30 rounded-lg p-4"
-                        >
-                          {/* Section Header */}
-                          <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-semibold text-lg text-pink-900 dark:text-pink-100 flex items-center gap-2">
-                              <span>{sectionEmoji}</span>
-                              {sectionTitle}
-                            </h3>
-                            {sectionTasks.length > 0 && (
-                              <Badge variant="secondary" className="bg-pink-200 text-pink-800 dark:bg-pink-800 dark:text-pink-200">
-                                {sectionTasks.filter(t => t.completed).length}/{sectionTasks.length}
-                              </Badge>
-                            )}
-                          </div>
-
-                          {/* Tasks List */}
-                          <div className="space-y-3">
-                            {sectionTasks.length === 0 ? (
-                              <div className="text-center py-6 text-pink-600 dark:text-pink-400">
-                                <div className="text-2xl mb-2">{sectionEmoji}</div>
-                                <p className="text-sm">No tasks in {sectionTitle.toLowerCase()}</p>
-                              </div>
-                            ) : (
-                              sectionTasks.map((task) => (
-                                <div
-                                  key={task.id}
-                                  className="bg-white/60 dark:bg-pink-950/30 border border-pink-200/50 dark:border-pink-800/30 rounded-lg p-3 hover:bg-white/80 dark:hover:bg-pink-950/50 transition-colors"
-                                >
-                                  {/* Task header with checkbox and title */}
-                                  <div className="flex items-start gap-3">
-                                    <button
-                                      onClick={() => toggleTask(task.id)}
-                                      disabled={toggleTaskMutation.isPending}
-                                      className="flex-shrink-0 mt-0.5 disabled:opacity-50"
-                                    >
-                                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${task.completed
-                                        ? 'bg-pink-500 border-pink-500'
-                                        : 'border-pink-300 hover:border-pink-500 dark:border-pink-600 dark:hover:border-pink-400'
-                                        }`}>
-                                        {task.completed && (
-                                          <Check className="w-3 h-3 text-white" />
-                                        )}
-                                      </div>
-                                    </button>
-
-                                    <div className="flex-1 min-w-0">
-                                      <div className={`font-medium text-sm ${task.completed
-                                        ? 'line-through text-muted-foreground'
-                                        : 'text-pink-900 dark:text-pink-100'
-                                        }`}>
-                                        {task.title}
-                                      </div>
-
-                                      {/* Task metadata */}
-                                      <div className="flex flex-wrap gap-2 mt-2">
-                                        {/* Priority badge */}
-                                        {task.priority && (
-                                          <Badge className={`text-xs ${getPriorityColor(task.priority)}`}>
-                                            {task.priority}
-                                          </Badge>
-                                        )}
-
-                                        {/* Date information */}
-                                        {(task.start_date || task.end_date) && (
-                                          <Badge variant="outline" className="text-xs border-pink-300 text-pink-700 dark:border-pink-600 dark:text-pink-300">
-                                            <Calendar className="w-3 h-3 mr-1" />
-                                            {task.start_date && formatDate(task.start_date)}
-                                            {task.start_date && task.end_date && task.start_date !== task.end_date && ' - '}
-                                            {task.end_date && task.end_date !== task.start_date && formatDate(task.end_date)}
-                                          </Badge>
-                                        )}
-
-                                        {/* Time information */}
-                                        {(task.start_time || task.end_time) && (
-                                          <Badge variant="outline" className="text-xs border-pink-300 text-pink-700 dark:border-pink-600 dark:text-pink-300">
-                                            <Clock className="w-3 h-3 mr-1" />
-                                            {task.start_time}
-                                            {task.start_time && task.end_time && ' - '}
-                                            {task.end_time}
-                                          </Badge>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
-      )}
-    </>
+
+        {/* Content */}
+        <div className="p-6 overflow-y-auto max-h-[60vh]">
+          {/* Error Display */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
+              <p className="text-red-700 dark:text-red-300 text-sm">
+                {error?.message || 'An error occurred'}
+              </p>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-muted-foreground">Loading tasks...</div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {(['today', 'daily', 'upcoming'] as const).map((sectionKey) => {
+                const sectionTasks = groupedTasks[sectionKey];
+                const sectionTitle = getSectionTitle(sectionKey);
+                const sectionEmoji = getSectionEmoji(sectionKey);
+
+                return (
+                  <div
+                    key={sectionKey}
+                    className="bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-950/30 dark:to-pink-900/20 border border-pink-200/50 dark:border-pink-800/30 rounded-lg p-4"
+                  >
+                    {/* Section Header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-semibold text-lg text-pink-900 dark:text-pink-100 flex items-center gap-2">
+                        <span>{sectionEmoji}</span>
+                        {sectionTitle}
+                      </h3>
+                      {sectionTasks.length > 0 && (
+                        <Badge variant="secondary" className="bg-pink-200 text-pink-800 dark:bg-pink-800 dark:text-pink-200">
+                          {sectionTasks.filter(t => t.completed).length}/{sectionTasks.length}
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Tasks List */}
+                    <div className="space-y-3">
+                      {sectionTasks.length === 0 ? (
+                        <div className="text-center py-6 text-pink-600 dark:text-pink-400">
+                          <div className="text-2xl mb-2">{sectionEmoji}</div>
+                          <p className="text-sm">No tasks in {sectionTitle.toLowerCase()}</p>
+                        </div>
+                      ) : (
+                        sectionTasks.map((task) => (
+                          <div
+                            key={task.id}
+                            className="bg-white/60 dark:bg-pink-950/30 border border-pink-200/50 dark:border-pink-800/30 rounded-lg p-3 hover:bg-white/80 dark:hover:bg-pink-950/50 transition-colors"
+                          >
+                            {/* Task header with checkbox and title */}
+                            <div className="flex items-start gap-3">
+                              <button
+                                onClick={() => toggleTask(task.id)}
+                                className="flex-shrink-0 mt-0.5"
+                              >
+                                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${task.completed
+                                  ? 'bg-pink-500 border-pink-500'
+                                  : 'border-pink-300 hover:border-pink-500 dark:border-pink-600 dark:hover:border-pink-400'
+                                  }`}>
+                                  {task.completed && (
+                                    <Check className="w-3 h-3 text-white" />
+                                  )}
+                                </div>
+                              </button>
+
+                              <div className="flex-1 min-w-0">
+                                <div className={`font-medium text-sm ${task.completed
+                                  ? 'line-through text-pink-600 dark:text-pink-400'
+                                  : 'text-pink-900 dark:text-pink-100'
+                                  }`}>
+                                  {task.title}
+                                </div>
+
+                                {/* Task details */}
+                                <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-pink-700 dark:text-pink-300">
+                                  {task.priority && (
+                                    <span className={`font-medium ${getPriorityColor(task.priority)}`}>
+                                      {task.priority.toUpperCase()}
+                                    </span>
+                                  )}
+
+                                  {task.start_date && (
+                                    <div className="flex items-center gap-1">
+                                      <Calendar className="w-3 h-3" />
+                                      <span>{new Date(task.start_date).toLocaleDateString()}</span>
+                                    </div>
+                                  )}
+
+                                  {task.start_time && (
+                                    <div className="flex items-center gap-1">
+                                      <Clock className="w-3 h-3" />
+                                      <span>{task.start_time}</span>
+                                    </div>
+                                  )}
+
+                                  {isRecurringInstance(task) && (
+                                    <span className="bg-pink-200 dark:bg-pink-800 text-pink-800 dark:text-pink-200 px-2 py-0.5 rounded text-xs">
+                                      Recurring
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Description */}
+                                {task.description && (
+                                  <p className="text-xs text-pink-600 dark:text-pink-400 mt-1 truncate">
+                                    {task.description}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 text-center">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Visit the main todo page for full task management features
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
