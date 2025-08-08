@@ -27,6 +27,8 @@ const InteractiveMemoBoard: React.FC = () => {
     const [selectedColor, setSelectedColor] = useState(MEMO_COLORS[0]);
     const [draggedMemo, setDraggedMemo] = useState<number | null>(null);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+    const [editingId, setEditingId] = useState<number | null>(null);
+    const [editingText, setEditingText] = useState('');
     const boardRef = useRef<HTMLDivElement>(null);
 
     /** Fetch all memos from the database */
@@ -34,24 +36,20 @@ const InteractiveMemoBoard: React.FC = () => {
         const { data, error } = await supabase
             .from('memos')
             .select('*')
-            .order('last_updated', { ascending: true, nullsFirst: false }) // newest first, NULLs last
-            .order('id', { ascending: false }); // tie-breaker
-
+            .order('last_updated', { ascending: false, nullsFirst: false })
+            .order('id', { ascending: false });
+        if (error) {
+            console.error('Error fetching memos:', error);
+            return;
+        }
         setMemos((data || []).map(m => ({
             ...m,
             x: Number(m.x),
             y: Number(m.y)
         })));
-
-
-        if (error) {
-            console.error('Error fetching memos:', error);
-            return;
-        }
-        setMemos(data || []);
     };
 
-    /** Create a new memo and save it to the database */
+    /** Create a new memo */
     const createMemo = async () => {
         if (!newMemo.trim()) return;
 
@@ -73,15 +71,13 @@ const InteractiveMemoBoard: React.FC = () => {
             return;
         }
 
-        if (!error && data) {
-            // Move the new memo to the end (top)
+        if (data) {
             setMemos(prev => [...prev.filter(m => m.id !== data[0].id), data[0]]);
             setNewMemo('');
         }
-
     };
 
-    /** Delete a memo from the database */
+    /** Delete a memo */
     const deleteMemo = async (id: number) => {
         const { error } = await supabase.from('memos').delete().eq('id', id);
         if (error) {
@@ -91,7 +87,7 @@ const InteractiveMemoBoard: React.FC = () => {
         setMemos(prev => prev.filter(memo => memo.id !== id));
     };
 
-    /** Update memo position in the database */
+    /** Update position */
     const updateMemoPosition = async (id: number, x: number, y: number) => {
         const { error } = await supabase
             .from('memos')
@@ -102,6 +98,22 @@ const InteractiveMemoBoard: React.FC = () => {
         }
     };
 
+    /** Update content */
+    const updateMemoContent = async (id: number, content: string) => {
+        const { error } = await supabase
+            .from('memos')
+            .update({ content, last_updated: new Date().toISOString() })
+            .eq('id', id);
+        if (error) {
+            console.error('Error updating memo content:', error);
+        } else {
+            setMemos(prev =>
+                prev.map(m => (m.id === id ? { ...m, content } : m))
+            );
+        }
+    };
+
+    /** Handle dragging start */
     const handleMouseDown = (e: React.MouseEvent, memoId: number) => {
         const memo = memos.find(m => m.id === memoId);
         if (!memo) return;
@@ -113,7 +125,7 @@ const InteractiveMemoBoard: React.FC = () => {
         });
         setDraggedMemo(memoId);
 
-        // Bring this memo to the end (top)
+        // Bring to top
         setMemos(prev => {
             const target = prev.find(m => m.id === memoId)!;
             const others = prev.filter(m => m.id !== memoId);
@@ -121,8 +133,7 @@ const InteractiveMemoBoard: React.FC = () => {
         });
     };
 
-
-    /** Handle mouse move event for dragging */
+    /** Handle dragging */
     const handleMouseMove = (e: React.MouseEvent) => {
         if (!draggedMemo || !boardRef.current) return;
 
@@ -141,29 +152,36 @@ const InteractiveMemoBoard: React.FC = () => {
         ));
     };
 
-    /** Handle mouse up event to stop dragging and save position */
+    /** Handle drag end */
     const handleMouseUp = () => {
         if (draggedMemo !== null) {
             const memo = memos.find(m => m.id === draggedMemo);
             if (memo) {
-                // Save new position to database
                 updateMemoPosition(memo.id, memo.x, memo.y);
-
-                // Keep it visually on top immediately
-                setMemos(prev => {
-                    const target = prev.find(m => m.id === memo.id)!;
-                    const others = prev.filter(m => m.id !== memo.id);
-                    return [...others, target];
-                });
             }
         }
         setDraggedMemo(null);
         setDragOffset({ x: 0, y: 0 });
     };
 
+    /** Clamp positions on resize */
+    useEffect(() => {
+        const clampToBoard = () => {
+            if (!boardRef.current) return;
+            const rect = boardRef.current.getBoundingClientRect();
+            setMemos(prev =>
+                prev.map(m => ({
+                    ...m,
+                    x: Math.max(0, Math.min(m.x, rect.width - 150)),
+                    y: Math.max(0, Math.min(m.y, rect.height - 150))
+                }))
+            );
+        };
+        clampToBoard();
+        window.addEventListener('resize', clampToBoard);
+        return () => window.removeEventListener('resize', clampToBoard);
+    }, []);
 
-
-    /** Load memos on component mount */
     useEffect(() => {
         fetchMemos();
     }, []);
@@ -172,20 +190,18 @@ const InteractiveMemoBoard: React.FC = () => {
         <div className="min-h-screen">
             <div className="text-center pb-6">
                 <h1
-                    className={`text-4xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'
-                        }`}
+                    className={`text-4xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}
                 >
                     Memo Board
                 </h1>
             </div>
 
-            {/* Memo Board Area */}
+            {/* Board */}
             <div
                 ref={boardRef}
-                className="relative mx-auto bg-white border-10 border-gray-400 shadow-lg"
+                className="relative mx-auto bg-white border-10 border-gray-400 shadow-lg w-full max-w-[1200px]"
                 style={{
-                    width: '1000px',
-                    height: '600px',
+                    height: 'clamp(360px, 70vh, 800px)',
                     borderRadius: '6px'
                 }}
                 onMouseMove={handleMouseMove}
@@ -203,8 +219,8 @@ const InteractiveMemoBoard: React.FC = () => {
                             backgroundColor: memo.color,
                             left: memo.x,
                             top: memo.y,
-                            width: '150px',
-                            height: '150px',
+                            width: 'clamp(110px, 16vw, 150px)',
+                            height: 'clamp(110px, 16vw, 150px)',
                             zIndex: draggedMemo === memo.id ? 1000 : 1,
                             display: 'flex',
                             alignItems: 'flex-start',
@@ -214,7 +230,7 @@ const InteractiveMemoBoard: React.FC = () => {
                         }}
                         onMouseDown={(e) => handleMouseDown(e, memo.id)}
                     >
-                        {/* Delete button */}
+                        {/* Delete */}
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -226,17 +242,36 @@ const InteractiveMemoBoard: React.FC = () => {
                             ✕
                         </button>
 
-                        {/* Memo text */}
-                        <div className="text-gray-800 text-sm leading-relaxed break-words overflow-hidden">
-                            {memo.content}
-                        </div>
+                        {/* Content or Edit */}
+                        {editingId === memo.id ? (
+                            <textarea
+                                value={editingText}
+                                onChange={(e) => setEditingText(e.target.value)}
+                                onBlur={() => {
+                                    updateMemoContent(memo.id, editingText.trim());
+                                    setEditingId(null);
+                                }}
+                                autoFocus
+                                className="w-full h-full bg-transparent border-none outline-none resize-none text-sm text-gray-800"
+                            />
+                        ) : (
+                            <div
+                                className="text-gray-800 text-sm leading-relaxed break-words overflow-hidden w-full h-full"
+                                onDoubleClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingId(memo.id);
+                                    setEditingText(memo.content);
+                                }}
+                            >
+                                {memo.content}
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>
 
-            {/* Create Memo Area */}
+            {/* Create */}
             <div className="max-w-md mx-auto p-4 m-4">
-                {/* Memo preview box */}
                 <div
                     className="w-48 h-32 p-3 shadow-md border border-black/10 mx-auto mb-4"
                     style={{ backgroundColor: selectedColor }}
@@ -250,7 +285,7 @@ const InteractiveMemoBoard: React.FC = () => {
                     />
                 </div>
 
-                {/* Color picker */}
+                {/* Colors */}
                 <div className="flex justify-center mb-4">
                     {MEMO_COLORS.map((color) => (
                         <button
@@ -268,7 +303,6 @@ const InteractiveMemoBoard: React.FC = () => {
                     ))}
                 </div>
 
-                {/* Create button */}
                 <div className="text-center">
                     <button
                         onClick={createMemo}
