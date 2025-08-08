@@ -1,6 +1,6 @@
 // Main components
 export { default as TodoBoard } from './TodoBoard';
-export { default as CompletedTasks } from './CompletedTasks';
+export { default as CompletedTasks } from './CompletedTasks/index';
 
 // Existing components
 export { default as AddTaskModal } from './AddTaskModal';

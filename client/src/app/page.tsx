@@ -9,7 +9,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { NavSidebar } from "@/components/navBar/navBar"
 import { useAuth } from '@/hooks/useAuth'
 import TodoBoard from '@/components/todo/TodoBoard'
-import CompletedTasks from '@/components/todo/CompletedTasks'
+import CompletedTasks from '@/components/todo/CompletedTasks/CompletedTasks'
 
 // Sentence App Component (when not logged in)
 function SentenceApp() {
@@ -24,7 +24,7 @@ function SentenceApp() {
       setSentence('')
       setMessage('Task added successfully!')
       setMessageType('success')
-      
+
       // Clear message after 3 seconds
       setTimeout(() => setMessage(''), 3000)
     }
@@ -35,7 +35,7 @@ function SentenceApp() {
     setTasks(newTasks)
     setMessage('Task removed!')
     setMessageType('success')
-    
+
     // Clear message after 3 seconds
     setTimeout(() => setMessage(''), 3000)
   }
@@ -118,9 +118,8 @@ function SentenceApp() {
 
               {/* Status Message */}
               {message && (
-                <p className={`text-center mt-4 font-medium ${
-                  messageType === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                }`}>
+                <p className={`text-center mt-4 font-medium ${messageType === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                  }`}>
                   {message}
                 </p>
               )}
