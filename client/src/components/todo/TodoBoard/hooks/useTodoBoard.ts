@@ -184,7 +184,7 @@ export const useTodoBoard = () => {
     }
   };
 
-  const getDateRangeDisplay = (task: TaskData) => {
+  const getDateRangeDisplay = (start_date: string | undefined, end_date: string | undefined, task: TaskData) => {
     const startDate = formatDate(task.start_date);
     const endDate = formatDate(task.end_date);
     if (!startDate && !endDate) return null;
@@ -194,7 +194,7 @@ export const useTodoBoard = () => {
     return startDate || endDate;
   };
 
-  const getTimeRangeDisplay = (task: TaskData) => {
+  const getTimeRangeDisplay = (start_time: string | undefined, end_time: string | undefined, task: TaskData) => {
     const startTime = formatTime(task.start_time);
     const endTime = formatTime(task.end_time);
     if (!startTime && !endTime) return null;

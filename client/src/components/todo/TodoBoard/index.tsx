@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Settings, Trash2, Edit3, MoreVertical, Calendar, Clock, Repeat, AlertCircle, } from 'lucide-react';
+import { Settings, Trash2, Edit3, MoreVertical, Calendar, Clock, Repeat, AlertCircle, ChevronDown, ChevronUp, } from 'lucide-react';
 import { useTodoBoard } from './hooks/useTodoBoard';
 import EditTaskModal from '../EditTaskModal';
 import UpcomingDateFilter from '../UpcomingDateFilter';
@@ -158,70 +158,59 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                     </div>
                   ) : (
                     section.tasks.map((task) => {
-                      const dateRange = getDateRangeDisplay(task);
-                      const timeRange = getTimeRangeDisplay(task);
                       const recurringPattern = getRecurringPatternDisplay(task);
                       const isInstance = isRecurringInstance(task);
 
                       return (
                         <div
                           key={task.id}
-                          className="group flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
+                          className="group p-3 border border-border rounded-lg bg-card hover:bg-accent/50 transition-all duration-200 cursor-pointer"
                         >
-                          {/* Checkbox */}
-                          <button
-                            onClick={() => toggleTask(task.id)}
-                            className="flex-shrink-0"
-                          >
-                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${task.completed
-                              ? 'bg-primary border-primary'
-                              : 'border-muted-foreground hover:border-primary'
-                              }`}>
-                              {task.completed && (
-                                <div className="w-2 h-2 bg-primary-foreground rounded-sm" />
-                              )}
+                          <div className="flex items-start gap-3">
+                            {/* Checkbox */}
+                            <div className="flex-shrink-0 mt-0.5">
+                              <input
+                                type="checkbox"
+                                checked={task.completed}
+                                onChange={() => toggleTask(task.id)}
+                                className="h-4 w-4 rounded border-border"
+                              />
                             </div>
-                          </button>
 
-                          {/* Task Content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="space-y-1">
-                              <div
-                                className={`text-sm font-medium cursor-pointer flex items-center gap-2 ${task.completed ? 'line-through text-muted-foreground' : ''
-                                  }`}
-                                onClick={() => toggleTaskExpansion(task.id)}
-                              >
-                                <span>{task.title}</span>
-                                {/* Recurring task indicator */}
-                                {(task.is_recurring || isInstance) && (
-                                  <div title="Recurring task">
-                                    <Repeat className="h-3 w-3 text-blue-500" />
-                                  </div>
-                                )}
-                                {/* Recurring instance indicator */}
-                                {isInstance && (
-                                  <div title="Task instance">
-                                    <AlertCircle className="h-3 w-3 text-orange-500" />
-                                  </div>
-                                )}
+                            {/* Task Content */}
+                            <div className="flex-1 min-w-0 space-y-1">
+                              {/* Task Title and Expansion Toggle */}
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`font-medium text-sm break-words flex-1 ${task.completed ? 'line-through text-muted-foreground' : ''
+                                    }`}
+                                  onClick={() => toggleTaskExpansion(task.id)}
+                                >
+                                  {task.title}
+                                </span>
                               </div>
 
-                              {/* Date, Time, and Recurring Pattern Display */}
-                              {(dateRange || timeRange || recurringPattern) && (
-                                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                                  {dateRange && (
+                              {/* Date/Time Info - Always visible if present */}
+                              {(task.start_date || task.end_date || task.start_time || task.end_time) && (
+                                <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                                  {/* Date Range */}
+                                  {(task.start_date || task.end_date) && (
                                     <div className="flex items-center gap-1">
                                       <Calendar className="h-3 w-3" />
-                                      <span>{dateRange}</span>
+                                      <span>{getDateRangeDisplay(task.start_date, task.end_date, task)}</span>
                                     </div>
                                   )}
-                                  {timeRange && (
+
+                                  {/* Time Range */}
+                                  {(task.start_time || task.end_time) && (
                                     <div className="flex items-center gap-1">
                                       <Clock className="h-3 w-3" />
-                                      <span>{timeRange}</span>
+                                      <span>{getTimeRangeDisplay(task.start_time, task.end_time, task)}</span>
                                     </div>
                                   )}
-                                  {recurringPattern && (
+
+                                  {/* Recurring Pattern */}
+                                  {!isInstance && task.is_recurring && (
                                     <div className="flex items-center gap-1">
                                       <Repeat className="h-3 w-3" />
                                       <span>{recurringPattern}</span>
@@ -256,34 +245,57 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                                 </div>
                               )}
                             </div>
-                          </div>
 
-                          {/* Action Menu */}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
+                            {/* Action Buttons - Always Visible */}
+                            <div className="flex items-center gap-1 ml-auto">
+                              {/* Edit Button */}
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="h-7 w-7 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
+                                onClick={() => openEditModal(task)}
+                                title={isInstance ? 'Edit Pattern' : 'Edit'}
                               >
-                                <MoreVertical className="h-4 w-4" />
+                                <Edit3 className="h-4 w-4" />
                               </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => openEditModal(task)}>
-                                <Edit3 className="h-4 w-4 mr-2" />
-                                {isInstance ? 'Edit Pattern' : 'Edit'}
-                              </DropdownMenuItem>
 
-                              <DropdownMenuItem
-                                onClick={() => deleteTask(task.id)}
-                                className="text-destructive focus:text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                {isInstance ? 'Remove Pattern' : 'Move to Trash'}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                              {/* Delete Button */}
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                                    title={isInstance ? 'Remove Pattern' : 'Move to Trash'}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                      {isInstance ? 'Remove Recurring Pattern?' : 'Move Task to Trash?'}
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      {isInstance
+                                        ? 'This will remove the entire recurring pattern. This action cannot be undone.'
+                                        : 'This task will be moved to trash and can be restored later.'
+                                      }
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteTask(task.id)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      {isInstance ? 'Remove Pattern' : 'Move to Trash'}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </div>
                         </div>
                       );
                     })
