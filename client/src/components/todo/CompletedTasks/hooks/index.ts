@@ -55,7 +55,7 @@ export const useCompletedTasks = () => {
     // Search filter
     if (state.searchQuery.trim()) {
       const query = state.searchQuery.toLowerCase();
-      filtered = filtered.filter(task => 
+      filtered = filtered.filter(task =>
         task.title.toLowerCase().includes(query) ||
         task.description?.toLowerCase().includes(query)
       );
@@ -65,8 +65,14 @@ export const useCompletedTasks = () => {
     if (state.dateFilter.enabled && filtered.length > 0) {
       filtered = filtered.filter(task => {
         const completionDate = task.completion.instance_date;
-        return completionDate >= state.dateFilter.startDate && 
-               completionDate <= state.dateFilter.endDate;
+        if (!completionDate) return false;
+
+        // Extract just the date part if it includes timestamp
+        const taskDateStr = completionDate.includes('T') ?
+          completionDate.split('T')[0] : completionDate;
+
+        return taskDateStr >= state.dateFilter.startDate &&
+          taskDateStr <= state.dateFilter.endDate;
       });
     }
 
@@ -140,17 +146,17 @@ export const useCompletedTasks = () => {
     // Data
     completedTasks: filteredTasks,
     totalCompletedTasks: filteredTasks.length,
-    
+
     // State
     expandedTask: state.expandedTask,
     isTasksExpanded: state.isTasksExpanded,
     searchQuery: state.searchQuery,
     dateFilter: state.dateFilter,
-    
+
     // Loading states
     isLoading,
     error,
-    
+
     // Actions
     toggleTaskExpansion,
     toggleTasksExpansion,
@@ -159,7 +165,7 @@ export const useCompletedTasks = () => {
     updateSortedTasks,
     handleUncompleteTask,
     handleDeleteTask,
-    
+
     // Utilities
     refetch
   };

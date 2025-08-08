@@ -22,14 +22,8 @@ export const todoCompletionsApi = {
 
     if (dateRange) {
       query = query
-        .gte('completed_at', dateRange.start)
-        .lte('completed_at', dateRange.end);
-    }
-
-    if (dateRange) {
-      query = query
-        .gte('completed_at', dateRange.start)
-        .lte('completed_at', dateRange.end);
+        .gte('completed_at', `${dateRange.start}T00:00:00.000Z`)
+        .lte('completed_at', `${dateRange.end}T23:59:59.999Z`);
     }
 
     const { data: completions, error } = await query;
