@@ -3,6 +3,8 @@ import { TodoCompletion } from '@/components/todo';
 import { TaskData } from '@/types/todoTypes';
 
 export interface CompletedTaskWithDetails extends TaskData {
+  task_id: string;
+  instance_date: string;
   completion: TodoCompletion;
   completion_count: number;
 }
@@ -66,12 +68,14 @@ export const todoCompletionsApi = {
         result.push({
           ...task,
           completion,
-          completion_count: completions.length
+          completion_count: completions.length,
+          task_id: completion.task_id,
+          instance_date: completion.instance_date
         });
       });
     });
 
-    return result.sort((a, b) => 
+    return result.sort((a, b) =>
       new Date(b.completion.completed_at).getTime() - new Date(a.completion.completed_at).getTime()
     );
   },
@@ -157,7 +161,7 @@ export const todoCompletionsApi = {
       };
     }
 
-    const sortedCompletions = completions.sort((a, b) => 
+    const sortedCompletions = completions.sort((a, b) =>
       new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime()
     );
 
@@ -167,5 +171,31 @@ export const todoCompletionsApi = {
       lastCompletion: sortedCompletions[sortedCompletions.length - 1].completed_at,
       completionDates: completions.map(c => c.instance_date)
     };
-  }
+  },
+
+  deleteCompletionByTaskAndDate: async (taskId: string, instanceDate: string): Promise<void> => {
+    const { error } = await supabase
+      .from('todo_completions')
+      .delete()
+      .eq('task_id', taskId)
+      .eq('instance_date', instanceDate);
+
+    if (error) {
+      throw new Error(`Failed to delete completion: ${error.message}`);
+    }
+  },
+
+  async getTodayCompletionForTask(taskId: string, date: string): Promise<TodoCompletion | null> {
+    const { data, error } = await supabase
+      .from('todo_completions')
+      .select('*')
+      .eq('task_id', taskId)
+      .eq('instance_date', date)
+      .maybeSingle(); // Use maybeSingle() instead of single() to handle no results
+
+    if (error) {
+      throw error;
+    }
+    return data;
+  },
 }

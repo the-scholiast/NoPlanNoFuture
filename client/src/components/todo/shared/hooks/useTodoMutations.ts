@@ -3,6 +3,8 @@ import { todoApi } from '@/lib/api/todos';
 import { TaskData, CreateTaskData } from '@/types/todoTypes';
 import { useTodo } from '@/contexts/TodoContext';
 import { getTodayString } from '@/lib/utils/dateUtils';
+import { todoCompletionsApi } from '@/lib/api/todoCompletions';
+import { useQueryClient } from '@tanstack/react-query';
 
 // Centralized mutation management for all todo write operations
 export const useTodoMutations = () => {
@@ -69,61 +71,77 @@ export const useTodoMutations = () => {
     },
   });
 
-  // Complex toggle task function preserving all original logic
   const createToggleTaskFunction = () => {
-    return (taskId: string, allTasks: TaskData[], isRecurringInstanceFn: (task: TaskData) => boolean) => {
+    const queryClient = useQueryClient();
+
+    return async (taskId: string, allTasks: TaskData[], isRecurringInstanceFn: (task: TaskData) => boolean) => {
       const task = allTasks.find(t => t.id === taskId);
       if (!task) {
         console.log('Task not found with ID:', taskId);
-        console.log('Available task IDs:', allTasks.map(t => t.id));
         return;
       }
 
       const today = getTodayString();
-      const isDailyTask = task.section === 'daily';
-      const isRecurringTask = task.is_recurring || isRecurringInstanceFn(task);
+      const originalTaskId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
 
-      if (!task.completed) {
-        // Completing a task
-        const baseUpdates: Partial<TaskData> = {
-          completed: true,
-          completed_at: today,
-        };
+      try {
+        if (!task.completed) {
+          // Completing a task: Create completion record AND update task
+          console.log('Creating completion for task:', originalTaskId, 'date:', today);
+          await todoCompletionsApi.createCompletion(originalTaskId, today);
 
-        if (isDailyTask) {
-          // Additional updates for daily tasks
-          const dailyUpdates = {
-            ...baseUpdates,
-            completion_count: (task.completion_count || 0) + 1,
-            last_completed_date: today
+          // Update task completed status
+          const updates: Partial<TaskData> = {
+            completed: true,
+            completed_at: today,
           };
-          updateTaskMutation.mutate({ id: taskId, updates: dailyUpdates });
-        } else if (isRecurringTask && isRecurringInstanceFn(task)) {
-          // For recurring task instances, we only update completion status
-          updateTaskMutation.mutate({ id: taskId, updates: baseUpdates });
-        } else {
-          // Regular tasks use base updates only
-          updateTaskMutation.mutate({ id: taskId, updates: baseUpdates });
-        }
-      } else {
-        // Uncompleting a task
-        const baseUpdates: Partial<TaskData> = {
-          completed: false,
-          completed_at: undefined,
-        };
 
-        if (isDailyTask) {
-          // Additional updates for daily tasks
-          const dailyUpdates = {
-            ...baseUpdates,
-            completion_count: Math.max((task.completion_count || 1) - 1, 0),
-            last_completed_date: (task.completion_count || 1) <= 1 ? undefined : task.last_completed_date
-          };
-          updateTaskMutation.mutate({ id: taskId, updates: dailyUpdates });
+          if (task.section === 'daily') {
+            updates.completion_count = (task.completion_count || 0) + 1;
+            updates.last_completed_date = today;
+          }
+
+          await updateTaskMutation.mutateAsync({ id: taskId, updates });
+
         } else {
-          // Regular tasks and recurring instances use base updates only
-          updateTaskMutation.mutate({ id: taskId, updates: baseUpdates });
+          // Uncompleting a task: Delete completion record AND update task
+          console.log('Deleting completion for task:', originalTaskId, 'date:', today);
+
+          // Use the new helper function to find today's completion
+          const completion = await todoCompletionsApi.getTodayCompletionForTask(originalTaskId, today);
+
+          if (completion) {
+            await todoCompletionsApi.deleteCompletion(completion.id);
+          } else {
+            // Fallback: use direct delete method
+            await todoCompletionsApi.deleteCompletionByTaskAndDate(originalTaskId, today);
+          }
+
+          // Update task completed status
+          const updates: Partial<TaskData> = {
+            completed: false,
+            completed_at: undefined,
+          };
+
+          if (task.section === 'daily') {
+            updates.completion_count = Math.max((task.completion_count || 1) - 1, 0);
+            if (updates.completion_count === 0) {
+              updates.last_completed_date = undefined;
+            }
+          }
+
+          await updateTaskMutation.mutateAsync({ id: taskId, updates });
         }
+
+        // Refresh both queries
+        console.log('Refreshing queries...');
+        queryClient.invalidateQueries({ queryKey: ['completed-tasks'] });
+        refetch();
+        refetchTodayRecurring();
+        refetchUpcomingRecurring();
+
+      } catch (error) {
+        console.error('Error toggling task:', error);
       }
     };
   };
@@ -136,10 +154,10 @@ export const useTodoMutations = () => {
     clearCompletedMutation,
     clearAllMutation,
     toggleTaskFunction: createToggleTaskFunction(),
-    isLoading: createTaskMutation.isPending || 
-               updateTaskMutation.isPending || 
-               deleteTaskMutation.isPending ||
-               clearCompletedMutation.isPending ||
-               clearAllMutation.isPending,
+    isLoading: createTaskMutation.isPending ||
+      updateTaskMutation.isPending ||
+      deleteTaskMutation.isPending ||
+      clearCompletedMutation.isPending ||
+      clearAllMutation.isPending,
   };
 }

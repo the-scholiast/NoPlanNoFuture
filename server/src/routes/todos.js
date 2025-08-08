@@ -270,6 +270,34 @@ router.delete('/:id/permanent', authenticateUser, async (req, res, next) => {
   }
 });
 
+// Delete completion by task and date
+router.delete('/completions/task/:taskId/date/:instanceDate', authenticateUser, async (req, res, next) => {
+  try {
+    const { taskId, instanceDate } = req.params;
+
+    if (!taskId || !instanceDate) {
+      return res.status(400).json({ error: 'Task ID and instance date are required' });
+    }
+
+    // Delete the completion record for this task and date
+    const { error } = await supabase
+      .from('todo_completions')
+      .delete()
+      .eq('task_id', taskId)
+      .eq('instance_date', instanceDate)
+      .eq('user_id', req.user.id);
+
+    if (error) {
+      console.error('Error deleting completion:', error);
+      return res.status(500).json({ error: 'Failed to delete completion' });
+    }
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Apply error handling middleware to all routes in this router
 router.use(errorHandler);
 
