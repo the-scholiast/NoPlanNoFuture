@@ -71,11 +71,11 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               {shouldShowBreadcrumb(pathname) ? (
                 <div className="mb-2 flex justify-between">
                   <UniversalBreadcrumb />
-                  <TodoModalButton />
+                  {pathname !== '/memo' && <TodoModalButton />}
                 </div>
               ) : (
                 <div className="mb-2 flex justify-end">
-                  <TodoModalButton />
+                    {pathname !== '/memo' && <TodoModalButton />}
                 </div>
               )}
             </div>
@@ -89,6 +89,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               <UniversalDateNavigation />
 
               {/* Right: Add Button - always show for logged in users */}
+              {pathname !== '/memo' && (
               <Button
                 className="h-12 w-12 rounded-full shadow-lg"
                 size="icon"
@@ -97,6 +98,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               >
                 <Plus className="h-6 w-6" />
               </Button>
+              )}
             </div>
 
             {children}
