@@ -1,5 +1,4 @@
-import { TodoBoard } from '@/components/todo';
-import CompletedTasks from '@/components/todo/CompletedTasks/index';
+import { TodoBoard, CompletedTasks } from '@/components/todo';
 
 export default function Page() {
   return (
