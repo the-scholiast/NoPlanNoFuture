@@ -173,6 +173,38 @@ router.delete('/cleanup/old', authenticateUser, async (req, res, next) => {
   }
 });
 
+// Create completion record
+router.post('/completions', authenticateUser, async (req, res, next) => {
+  try {
+    const { task_id, instance_date } = req.body;
+
+    if (!task_id || !instance_date) {
+      return res.status(400).json({ error: 'Task ID and instance date are required' });
+    }
+
+    // Create the completion record
+    const { data, error } = await supabase
+      .from('todo_completions')
+      .insert({
+        user_id: req.user.id,
+        task_id: task_id,
+        instance_date: instance_date,
+        completed_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating completion:', error);
+      return res.status(500).json({ error: 'Failed to create completion' });
+    }
+
+    res.status(201).json(data);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // ===== PARAMETERIZED ROUTES (MUST COME LAST) =====
 
 // Endpoint gets a single todo by ID
