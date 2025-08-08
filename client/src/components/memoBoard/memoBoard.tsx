@@ -10,6 +10,7 @@ interface Memo {
     color: string;
     x: number;
     y: number;
+    last_updated: string;
 }
 
 const MEMO_COLORS = [
@@ -33,7 +34,16 @@ const InteractiveMemoBoard: React.FC = () => {
         const { data, error } = await supabase
             .from('memos')
             .select('*')
-            .order('timestamp', { ascending: false });
+            .order('last_updated', { ascending: true, nullsFirst: false }) // newest first, NULLs last
+            .order('id', { ascending: false }); // tie-breaker
+
+        setMemos((data || []).map(m => ({
+            ...m,
+            x: Number(m.x),
+            y: Number(m.y)
+        })));
+
+
         if (error) {
             console.error('Error fetching memos:', error);
             return;
@@ -49,7 +59,8 @@ const InteractiveMemoBoard: React.FC = () => {
             content: newMemo.trim(),
             color: selectedColor,
             x: Math.random() * 300 + 50,
-            y: Math.random() * 200 + 50
+            y: Math.random() * 200 + 50,
+            last_updated: new Date().toISOString()
         };
 
         const { data, error } = await supabase
@@ -62,10 +73,12 @@ const InteractiveMemoBoard: React.FC = () => {
             return;
         }
 
-        if (data) {
-            setMemos(prev => [...data, ...prev]);
+        if (!error && data) {
+            // Move the new memo to the end (top)
+            setMemos(prev => [...prev.filter(m => m.id !== data[0].id), data[0]]);
             setNewMemo('');
         }
+
     };
 
     /** Delete a memo from the database */
@@ -82,14 +95,13 @@ const InteractiveMemoBoard: React.FC = () => {
     const updateMemoPosition = async (id: number, x: number, y: number) => {
         const { error } = await supabase
             .from('memos')
-            .update({ x, y })
+            .update({ x, y, last_updated: new Date().toISOString() })
             .eq('id', id);
         if (error) {
             console.error('Error updating memo position:', error);
         }
     };
 
-    /** Handle mouse down event for dragging */
     const handleMouseDown = (e: React.MouseEvent, memoId: number) => {
         const memo = memos.find(m => m.id === memoId);
         if (!memo) return;
@@ -100,7 +112,15 @@ const InteractiveMemoBoard: React.FC = () => {
             y: e.clientY - rect.top
         });
         setDraggedMemo(memoId);
+
+        // Bring this memo to the end (top)
+        setMemos(prev => {
+            const target = prev.find(m => m.id === memoId)!;
+            const others = prev.filter(m => m.id !== memoId);
+            return [...others, target];
+        });
     };
+
 
     /** Handle mouse move event for dragging */
     const handleMouseMove = (e: React.MouseEvent) => {
@@ -126,12 +146,22 @@ const InteractiveMemoBoard: React.FC = () => {
         if (draggedMemo !== null) {
             const memo = memos.find(m => m.id === draggedMemo);
             if (memo) {
+                // Save new position to database
                 updateMemoPosition(memo.id, memo.x, memo.y);
+
+                // Keep it visually on top immediately
+                setMemos(prev => {
+                    const target = prev.find(m => m.id === memo.id)!;
+                    const others = prev.filter(m => m.id !== memo.id);
+                    return [...others, target];
+                });
             }
         }
         setDraggedMemo(null);
         setDragOffset({ x: 0, y: 0 });
     };
+
+
 
     /** Load memos on component mount */
     useEffect(() => {
@@ -140,7 +170,7 @@ const InteractiveMemoBoard: React.FC = () => {
 
     return (
         <div className="min-h-screen">
-            <div className="text-center py-6">
+            <div className="text-center pb-6">
                 <h1
                     className={`text-4xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'
                         }`}
@@ -152,10 +182,10 @@ const InteractiveMemoBoard: React.FC = () => {
             {/* Memo Board Area */}
             <div
                 ref={boardRef}
-                className="relative mx-auto mb-6 bg-white border-10 border-gray-400 shadow-lg"
+                className="relative mx-auto bg-white border-10 border-gray-400 shadow-lg"
                 style={{
-                    width: '800px',
-                    height: '500px',
+                    width: '1000px',
+                    height: '600px',
                     borderRadius: '6px'
                 }}
                 onMouseMove={handleMouseMove}
