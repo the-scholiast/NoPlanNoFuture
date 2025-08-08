@@ -11,9 +11,9 @@ import { useTodo } from '@/contexts/TodoContext';
 import { todoApi } from '@/lib/api/todos';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { TaskData } from '@/types/todoTypes';
-import EditTaskModal from './EditTaskModal';
+import EditTaskModal from '../EditTaskModal';
 import { getTodayString } from '@/lib/utils/dateUtils';
-import UpcomingDateFilter from './UpcomingDateFilter';
+import UpcomingDateFilter from '../UpcomingDateFilter';
 import { CompactTaskSorting } from '@/components/todo/TaskSortingComponent';
 
 interface TodoSection {
