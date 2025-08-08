@@ -82,17 +82,34 @@ export const todoCompletionsApi = {
 
   // Create a new completion record
   async createCompletion(taskId: string, instanceDate: string): Promise<TodoCompletion> {
-    const { data, error } = await supabase
-      .from('todo_completions')
-      .insert({
-        task_id: taskId,
-        instance_date: instanceDate,
-      })
-      .select()
-      .single();
+    // Use your backend API instead of direct Supabase
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-    if (error) throw error;
-    return data;
+    // Get auth headers the same way your other APIs do
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      throw new Error('No authentication token available');
+    }
+
+    const response = await fetch(`${API_BASE}/api/todos/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({
+        task_id: taskId,
+        instance_date: instanceDate
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create completion: ${response.status} ${errorText}`);
+    }
+
+    return response.json();
   },
 
   // Delete a specific completion

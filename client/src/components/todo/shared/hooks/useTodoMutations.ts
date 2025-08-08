@@ -81,48 +81,68 @@ export const useTodoMutations = () => {
         return;
       }
 
+      console.log('Toggling task:', task.title, 'Current status:', task.completed);
+
       const today = getTodayString();
       const originalTaskId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
 
       try {
         if (!task.completed) {
-          // Completing a task: Create completion record AND update task
+          // COMPLETING A TASK
           console.log('Creating completion for task:', originalTaskId, 'date:', today);
-          await todoCompletionsApi.createCompletion(originalTaskId, today);
 
-          // Update task completed status
+          // 1. Create the completion record first (this is what CompletedTasks component needs)
+          try {
+            await todoCompletionsApi.createCompletion(originalTaskId, today);
+            console.log('✅ Completion record created successfully');
+          } catch (completionError) {
+            console.error('❌ Failed to create completion record:', completionError);
+            // Don't throw here, continue with task update as fallback
+          }
+
+          // 2. Update the task status
           const updates: Partial<TaskData> = {
             completed: true,
             completed_at: today,
           };
 
+          // Handle daily tasks completion count
           if (task.section === 'daily') {
             updates.completion_count = (task.completion_count || 0) + 1;
             updates.last_completed_date = today;
           }
 
+          console.log('Updating task with:', updates);
           await updateTaskMutation.mutateAsync({ id: taskId, updates });
 
         } else {
-          // Uncompleting a task: Delete completion record AND update task
+          // UNCOMPLETING A TASK
           console.log('Deleting completion for task:', originalTaskId, 'date:', today);
 
-          // Use the new helper function to find today's completion
-          const completion = await todoCompletionsApi.getTodayCompletionForTask(originalTaskId, today);
-
-          if (completion) {
-            await todoCompletionsApi.deleteCompletion(completion.id);
-          } else {
-            // Fallback: use direct delete method
-            await todoCompletionsApi.deleteCompletionByTaskAndDate(originalTaskId, today);
+          // 1. Delete the completion record first
+          try {
+            // Try to find today's completion and delete it
+            const completion = await todoCompletionsApi.getTodayCompletionForTask(originalTaskId, today);
+            if (completion) {
+              await todoCompletionsApi.deleteCompletion(completion.id);
+              console.log('✅ Completion record deleted successfully');
+            } else {
+              // Fallback: use direct delete method
+              await todoCompletionsApi.deleteCompletionByTaskAndDate(originalTaskId, today);
+              console.log('✅ Completion record deleted via fallback method');
+            }
+          } catch (completionError) {
+            console.error('❌ Failed to delete completion record:', completionError);
+            // Continue with task update even if completion deletion fails
           }
 
-          // Update task completed status
+          // 2. Update the task status
           const updates: Partial<TaskData> = {
             completed: false,
             completed_at: undefined,
           };
 
+          // Handle daily tasks completion count
           if (task.section === 'daily') {
             updates.completion_count = Math.max((task.completion_count || 1) - 1, 0);
             if (updates.completion_count === 0) {
@@ -130,18 +150,32 @@ export const useTodoMutations = () => {
             }
           }
 
+          console.log('Updating task with:', updates);
           await updateTaskMutation.mutateAsync({ id: taskId, updates });
         }
 
-        // Refresh both queries
-        console.log('Refreshing queries...');
+        console.log('Task updated successfully, refreshing queries...');
+
+        // 3. Refresh all queries to update both TodoBoard and CompletedTasks
         queryClient.invalidateQueries({ queryKey: ['completed-tasks'] });
         refetch();
         refetchTodayRecurring();
         refetchUpcomingRecurring();
 
+        console.log('✅ All queries refreshed');
+
       } catch (error) {
-        console.error('Error toggling task:', error);
+        console.error('❌ Error toggling task:', error);
+
+        // More detailed error logging
+        if (error instanceof Error) {
+          console.error('Error name:', error.name);
+          console.error('Error message:', error.message);
+          console.error('Error stack:', error.stack);
+        }
+
+        // Don't throw to prevent UI from breaking
+        // The error has been logged for debugging
       }
     };
   };
