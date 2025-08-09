@@ -5,6 +5,7 @@ import { useTodoMutations } from '../../shared/hooks';
 import { getTodayString } from '@/lib/utils/dateUtils';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { TodoSection } from '../../shared/types';
+import { shouldTaskAppearOnDate } from '@/lib/utils/recurringDatesUtils';
 
 // Business logic for the TodoBoard component
 export const useTodoBoard = () => {
@@ -20,7 +21,6 @@ export const useTodoBoard = () => {
   } = useTodo();
 
   const {
-    createTaskMutation,
     toggleTaskFunction,
     clearCompletedMutation,
     clearAllMutation,
@@ -43,28 +43,55 @@ export const useTodoBoard = () => {
     endDate: '',
     enabled: true
   });
+  // Toggle for daily tasks filtering
+  const [showAllDailyTasks, setShowAllDailyTasks] = useState(false);
 
   // Get current date for filtering
   const currentDate: string = useMemo(() => {
     return getTodayString();
   }, []);
 
+  // Get current day of week for recurring task filtering
+  const currentDayOfWeek = useMemo(() => {
+    const today = new Date();
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    return dayNames[today.getDay()];
+  }, []);
+
   // Filtered daily tasks logic
   const filteredDailyTasks = useMemo(() => {
     return dailyTasks.filter(task => {
-      // Infinitely recurring tasks (no date constraints)
+      // If showing all tasks, skip day-specific filtering
+      if (showAllDailyTasks) {
+        // Still apply date range filtering
+        if (!task.start_date && !task.end_date) return true;
+        if (task.start_date && !task.end_date) return task.start_date >= currentDate;
+        if (!task.start_date && task.end_date) return currentDate <= task.end_date;
+        if (task.start_date && task.end_date) {
+          return currentDate >= task.start_date && currentDate <= task.end_date;
+        }
+        return true;
+      }
+
+      // For recurring tasks, check if they should appear today
+      if (task.is_recurring && task.recurring_days && task.recurring_days.length > 0) {
+        // First check if task should appear based on recurring schedule
+        const today = new Date();
+        if (!shouldTaskAppearOnDate(task, today)) {
+          return false;
+        }
+      }
+
+      // Apply existing date range filtering
       if (!task.start_date && !task.end_date) return true;
-      // Tasks with start date but no end date (future tasks only)
       if (task.start_date && !task.end_date) return task.start_date >= currentDate;
-      // Tasks with end date but no start date (until expiry)
       if (!task.start_date && task.end_date) return currentDate <= task.end_date;
-      // Tasks with both dates (within range)
       if (task.start_date && task.end_date) {
         return currentDate >= task.start_date && currentDate <= task.end_date;
       }
       return true;
     });
-  }, [dailyTasks, currentDate]);
+  }, [dailyTasks, currentDate, currentDayOfWeek, showAllDailyTasks]);
 
   const filteredUpcomingTasks = useMemo(() => {
     let tasks = upcomingTasks;
@@ -276,6 +303,11 @@ export const useTodoBoard = () => {
   // Loading state
   const isAnyLoading = isLoading || isLoadingTodayRecurring || isLoadingUpcomingRecurring;
 
+  // Toggle function for daily tasks filter
+  const toggleShowAllDailyTasks = () => {
+    setShowAllDailyTasks(prev => !prev);
+  };
+
   return {
     // Data
     sections,
@@ -296,6 +328,7 @@ export const useTodoBoard = () => {
     setUpcomingFilter,
     sortedTasks,
     setSortedTasks,
+    showAllDailyTasks,
 
     // Actions
     toggleTask,
@@ -305,6 +338,7 @@ export const useTodoBoard = () => {
     clearAll,
     deleteTask,
     toggleTaskExpansion,
+    toggleShowAllDailyTasks,
 
     // Helper functions
     formatDate,
