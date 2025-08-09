@@ -1,132 +1,139 @@
-'use client'
+'use client';
 
-import { useSearchParams } from 'next/navigation'
-import { Card } from "../ui/card"
-import { useEffect, useState } from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import { Button } from "../ui/button"
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Card } from '../ui/card';
+import { useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from '../ui/button';
 
 interface MonthViewProps {
-    selectedDate?: Date
+    selectedDate?: Date;
+    weekStartsOn?: 'mon' | 'sun'; // optional: choose Monday-first or Sunday-first (default: Monday)
 }
 
-export default function MonthView({ selectedDate }: MonthViewProps) {
+export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthViewProps) {
+    const router = useRouter();
     const searchParams = useSearchParams();
-    const [currentDate, setCurrentDate] = useState(selectedDate || new Date());
+    const [currentDate, setCurrentDate] = useState<Date>(selectedDate || new Date());
     const [isMounted, setIsMounted] = useState(false);
 
-    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    // Labels
     const monthNames = [
         'January', 'February', 'March', 'April', 'May', 'June',
         'July', 'August', 'September', 'October', 'November', 'December'
     ];
+    const dayNamesMonFirst = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const dayNamesSunFirst = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dayNames = weekStartsOn === 'mon' ? dayNamesMonFirst : dayNamesSunFirst;
 
-    // Set mounted state after component mounts to avoid hydration issues
+    useEffect(() => setIsMounted(true), []);
+
+    // Sync from URL: /calendar/month?year=YYYY&month=MM[&day=DD]
     useEffect(() => {
-        setIsMounted(true);
-    }, []);
-
-    // Sync with URL parameters
-    useEffect(() => {
-        const year = searchParams.get('year')
-        const month = searchParams.get('month')
-        const day = searchParams.get('day')
-
-        if (year && month) {
-            const dayParam = day ? parseInt(day) : 1;
-            const urlDate = new Date(parseInt(year), parseInt(month) - 1, dayParam)
-            setCurrentDate(urlDate)
+        const y = searchParams.get('year');
+        const m = searchParams.get('month');
+        const d = searchParams.get('day');
+        if (y && m) {
+            const day = d ? parseInt(d) : 1;
+            setCurrentDate(new Date(parseInt(y), parseInt(m) - 1, day));
         } else if (selectedDate) {
-            setCurrentDate(selectedDate)
+            setCurrentDate(selectedDate);
         }
-    }, [searchParams, selectedDate])
+    }, [searchParams, selectedDate]);
 
-    // Get calendar grid for the month
-    const getMonthCalendar = (date: Date) => {
-        const year = date.getFullYear();
-        const month = date.getMonth();
+    /**
+     * Build a month grid that:
+     * - Shows only the weeks needed to cover the current month.
+     * - Adds "overlay" days from previous/next month only to fill the first/last week.
+     * - Does NOT append an extra whole week from the next month.
+     *
+     * Returns an array of Date objects (length = 7 * number_of_weeks).
+     * You can detect overlay cells by checking date.getMonth() !== currentMonth.
+     */
+    const getMonthCellsWithOverlay = (base: Date) => {
+        const year = base.getFullYear();
+        const month = base.getMonth();
 
-        // First day of the month
+        // First/last day of current month
         const firstDay = new Date(year, month, 1);
-        // Last day of the month
         const lastDay = new Date(year, month + 1, 0);
+        const daysInMonth = lastDay.getDate();
 
-        // Get day of week for first day (0 = Sunday, 1 = Monday, etc.)
-        // Convert to Monday = 0 format
-        const firstDayWeek = (firstDay.getDay() + 6) % 7;
+        // Day-of-week index for the first day, adjusted by weekStartsOn
+        // JS: 0=Sun..6=Sat
+        const firstDowJS = firstDay.getDay();
+        const firstDow = weekStartsOn === 'mon'
+            ? (firstDowJS + 6) % 7 // Mon-first (Mon=0..Sun=6)
+            : firstDowJS;          // Sun-first (Sun=0..Sat=6)
 
-        // Calculate how many days from previous month to show
-        const daysFromPrevMonth = firstDayWeek;
+        // Total cells needed = leading blanks + month days
+        const totalCells = firstDow + daysInMonth;
+        const weeks = Math.ceil(totalCells / 7);     // minimal weeks to cover the month
+        const neededCells = weeks * 7;               // exact number of cells to render
 
-        // Calculate start date (may be from previous month)
-        const startDate = new Date(firstDay);
-        startDate.setDate(firstDay.getDate() - daysFromPrevMonth);
+        const cells: Date[] = [];
 
-        // Generate 6 weeks (42 days) to ensure consistent grid
-        const calendar: Date[] = [];
-        const currentDay = new Date(startDate);
-
-        for (let i = 0; i < 42; i++) {
-            calendar.push(new Date(currentDay));
-            currentDay.setDate(currentDay.getDate() + 1);
+        // 1) Leading overlay from previous month (only what’s needed)
+        if (firstDow > 0) {
+            // Start from firstDay minus `firstDow` days
+            const startPrev = new Date(firstDay);
+            startPrev.setDate(firstDay.getDate() - firstDow);
+            for (let i = 0; i < firstDow; i++) {
+                const d = new Date(startPrev);
+                d.setDate(startPrev.getDate() + i);
+                cells.push(d);
+            }
         }
 
-        return calendar;
+        // 2) Actual current month days
+        for (let day = 1; day <= daysInMonth; day++) {
+            cells.push(new Date(year, month, day));
+        }
+
+        // 3) Trailing overlay from next month (only to fill the last week)
+        while (cells.length < neededCells) {
+            const last = cells[cells.length - 1];
+            const next = new Date(last);
+            next.setDate(last.getDate() + 1);
+            cells.push(next);
+        }
+
+        return cells;
     };
 
-    // Navigation functions
-    const goToPrevMonth = () => {
-        const prevMonth = new Date(currentDate);
-        prevMonth.setMonth(currentDate.getMonth() - 1);
-        setCurrentDate(prevMonth);
-    };
+    const isSameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+    const isSameMonth = (a: Date, b: Date) =>
+        a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
 
-    const goToNextMonth = () => {
-        const nextMonth = new Date(currentDate);
-        nextMonth.setMonth(currentDate.getMonth() + 1);
-        setCurrentDate(nextMonth);
-    };
+    // Build cells only when mounted (to avoid hydration mismatch)
+    const cells = useMemo(
+        () => (isMounted ? getMonthCellsWithOverlay(currentDate) : []),
+        [currentDate, isMounted, weekStartsOn]
+    );
 
-    const goToToday = () => {
-        setCurrentDate(new Date());
-    };
+    // Split into weeks
+    const weeks: Date[][] = useMemo(() => {
+        const out: Date[][] = [];
+        for (let i = 0; i < cells.length; i += 7) out.push(cells.slice(i, i + 7));
+        return out;
+    }, [cells]);
 
-    // Check if date is today
-    const isToday = (date: Date) => {
-        const today = new Date();
-        return date.toDateString() === today.toDateString();
-    };
-
-    // Check if date is in current month
-    const isCurrentMonth = (date: Date) => {
-        return date.getMonth() === currentDate.getMonth() &&
-            date.getFullYear() === currentDate.getFullYear();
-    };
-
-    // Check if date is selected
-    const isSelected = (date: Date) => {
-        return date.toDateString() === currentDate.toDateString();
-    };
-
-    const calendar = isMounted ? getMonthCalendar(currentDate) : [];
-
-    // Split calendar into weeks
-    const weeks = [];
-    for (let i = 0; i < calendar.length; i += 7) {
-        weeks.push(calendar.slice(i, i + 7));
-    }
+    // Navigation
+    const goToPrevMonth = () =>
+        setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1));
+    const goToNextMonth = () =>
+        setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1));
+    const goToToday = () => setCurrentDate(new Date());
 
     return (
         <div className="w-full flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
-            {/* Header */}
+            {/* Header
             <div className="flex items-center justify-between p-4 border-b">
                 <div className="flex items-center gap-4">
                     <h2 className="text-2xl font-semibold">
                         {isMounted ? `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}` : '--'}
                     </h2>
-                    <Button variant="outline" size="sm" onClick={goToToday}>
-                        Today
-                    </Button>
+                    <Button variant="outline" size="sm" onClick={goToToday}>Today</Button>
                 </div>
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" onClick={goToPrevMonth}>
@@ -136,68 +143,58 @@ export default function MonthView({ selectedDate }: MonthViewProps) {
                         <ChevronRight className="h-4 w-4" />
                     </Button>
                 </div>
-            </div>
+            </div> */}
 
-            {/* Calendar Grid */}
+            {/* Month grid (only the needed weeks; overlays included only to complete edges) */}
             <Card className="flex-1 overflow-auto">
-                <div className="p-4">
+                <div className="p-2">
                     {/* Day headers */}
                     <div className="grid grid-cols-7 gap-1 mb-2">
-                        {dayNames.map((dayName) => (
-                            <div
-                                key={dayName}
-                                className="p-2 text-center text-sm font-medium text-muted-foreground border-b"
-                            >
-                                {dayName}
+                        {dayNames.map((n) => (
+                            <div key={n} className="p-2 text-center text-sm font-medium text-muted-foreground border-b">
+                                {n}
                             </div>
                         ))}
                     </div>
 
-                    {/* Calendar weeks */}
+                    {/* Weeks */}
                     <div className="grid gap-1">
-                        {weeks.map((week, weekIndex) => (
-                            <div key={weekIndex} className="grid grid-cols-7 gap-1">
-                                {week.map((date, dayIndex) => (
-                                    <div
-                                        key={dayIndex}
-                                        className={`
-                      min-h-[120px] p-2 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors
-                      ${isCurrentMonth(date) ? 'bg-background' : 'bg-muted/20'}
-                      ${isToday(date) ? 'ring-2 ring-blue-500' : ''}
-                      ${isSelected(date) ? 'bg-blue-50 dark:bg-blue-950/30' : ''}
-                    `}
-                                        onClick={() => setCurrentDate(new Date(date))}
-                                    >
-                                        {/* Date number */}
-                                        <div className={`
-                      text-sm font-medium mb-1
-                      ${isCurrentMonth(date) ? 'text-foreground' : 'text-muted-foreground'}
-                      ${isToday(date) ? 'text-blue-600 dark:text-blue-400 font-bold' : ''}
-                    `}>
-                                            {date.getDate()}
-                                        </div>
+                        {weeks.map((week, wi) => (
+                            <div key={wi} className="grid grid-cols-7 gap-1">
+                                {week.map((date) => {
+                                    const overlay = !isSameMonth(date, currentDate); // overlay detection
+                                    const isToday = isSameDay(date, new Date());
+                                    const isSelected = isSameDay(date, currentDate);
 
-                                        {/* Event area - placeholder for future events */}
-                                        <div className="space-y-1">
-                                            {/* Example event items */}
-                                            {date.getDate() % 7 === 0 && isCurrentMonth(date) && (
-                                                <div className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-1 py-0.5 rounded truncate">
-                                                    Sample Event
-                                                </div>
-                                            )}
-                                            {date.getDate() % 11 === 0 && isCurrentMonth(date) && (
-                                                <div className="text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 px-1 py-0.5 rounded truncate">
-                                                    Meeting
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
+                                    return (
+                                        <button
+                                            key={date.toISOString()}
+                                            className={`
+                        min-h-[110px] p-2 border rounded-lg text-left transition-colors
+                        ${overlay ? 'bg-muted/20 text-muted-foreground' : 'bg-background'}
+                        ${isToday ? 'ring-2 ring-blue-500' : ''}
+                        ${isSelected ? 'bg-blue-50 dark:bg-blue-950/30' : ''}
+                        ${overlay ? 'hover:bg-muted/30' : 'hover:bg-muted/50'}
+                      `}
+                                            // Clicking a day goes to the Week view of that day
+                                            onClick={() => {
+                                                router.push(
+                                                    `/calendar/week?year=${date.getFullYear()}&month=${date.getMonth() + 1}&day=${date.getDate()}`
+                                                );
+                                            }}
+                                        >
+                                            <div className="text-sm font-medium mb-1">
+                                                {date.getDate()}
+                                            </div>
+                                            {/* Place your day’s events here if needed */}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         ))}
                     </div>
                 </div>
             </Card>
         </div>
-    )
+    );
 }
