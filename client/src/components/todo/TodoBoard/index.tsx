@@ -5,12 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Settings, Trash2, Edit3, MoreVertical, Calendar, Clock, Repeat, AlertCircle, ChevronDown, ChevronUp, } from 'lucide-react';
+import { Settings, Trash2, Edit3, Calendar, Clock, Repeat, } from 'lucide-react';
 import { useTodoBoard } from './hooks/useTodoBoard';
 import EditTaskModal from '../EditTaskModal';
 import UpcomingDateFilter from '../UpcomingDateFilter';
 import { CompactTaskSorting } from '../TaskSortingComponent';
 import { TodoBoardProps } from '../shared/types';
+import { TaskData } from '@/types/todoTypes';
+import { useTodoMutations } from '../shared/hooks/useTodoMutations';
 
 export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   const {
@@ -25,25 +27,62 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     taskToEdit,
     upcomingFilter,
     setUpcomingFilter,
-    toggleTask,
     openEditModal,
     handleTasksSort,
-    clearCompleted,
-    clearAll,
-    deleteTask,
     toggleTaskExpansion,
     formatDate,
     formatTime,
-    getDateRangeDisplay,
-    getTimeRangeDisplay,
     isRecurringInstance,
     getRecurringPatternDisplay,
     isLoading,
     error,
   } = useTodoBoard();
 
+  // Use shared mutations for all task operations
+  const {
+    updateTaskMutation,
+    deleteTaskMutation,
+    clearCompletedMutation,
+    clearAllMutation,
+    toggleTaskFunction
+  } = useTodoMutations();
+
   const handleTaskUpdated = () => {
     // Handled by mutations in the hook
+  };
+
+  // Get all tasks for the toggle function
+  const allTasks = [
+    ...filteredDailyTasks,
+    ...todayTasksWithRecurring,
+    ...filteredUpcomingTasks,
+    ...filteredUpcomingRecurringTasks,
+  ];
+
+  // Use shared toggle function
+  const toggleTask = (taskId: string) => {
+    // Create a proper function wrapper that ensures boolean return
+    const isRecurringInstanceFn = (task: TaskData): boolean => {
+      return Boolean(task.id?.includes('_') && task.parent_task_id);
+    };
+
+    toggleTaskFunction(taskId, allTasks, isRecurringInstanceFn);
+  };
+
+  // Use shared delete function
+  const deleteTask = (taskId: string) => {
+    deleteTaskMutation.mutate(taskId);
+  };
+
+  // Use shared clear functions
+  const clearCompleted = (sectionIndex: number) => {
+    const section = sections[sectionIndex];
+    clearCompletedMutation.mutate(section.sectionKey);
+  };
+
+  const clearAll = (sectionIndex: number) => {
+    const section = sections[sectionIndex];
+    clearAllMutation.mutate(section.sectionKey);
   };
 
   if (isLoading) {
@@ -63,6 +102,32 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
       </div>
     );
   }
+
+  const getDateRangeDisplay = (task: TaskData) => {
+    const startDate = formatDate(task.start_date);
+    const endDate = formatDate(task.end_date);
+
+    if (!startDate && !endDate) return null;
+
+    if (startDate && endDate && startDate !== endDate) {
+      return `${startDate} - ${endDate}`;
+    }
+
+    return startDate || endDate;
+  };
+
+  const getTimeRangeDisplay = (task: TaskData) => {
+    const startTime = formatTime(task.start_time);
+    const endTime = formatTime(task.end_time);
+
+    if (!startTime && !endTime) return null;
+
+    if (startTime && endTime) {
+      return `${startTime} - ${endTime}`;
+    }
+
+    return startTime || endTime;
+  };
 
   return (
     <>
@@ -107,6 +172,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
                             onClick={() => clearCompleted(sectionIndex)}
+                            disabled={clearCompletedMutation.isPending}
                           >
                             Move completed to trash
                           </DropdownMenuItem>
@@ -129,6 +195,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                                 <AlertDialogAction
                                   onClick={() => clearAll(sectionIndex)}
                                   className="bg-destructive text-destructive-foreground"
+                                  disabled={clearAllMutation.isPending}
                                 >
                                   Move to Trash
                                 </AlertDialogAction>
@@ -158,143 +225,120 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                     </div>
                   ) : (
                     section.tasks.map((task) => {
+                      const dateRange = getDateRangeDisplay(task);
+                      const timeRange = getTimeRangeDisplay(task);
                       const recurringPattern = getRecurringPatternDisplay(task);
                       const isInstance = isRecurringInstance(task);
 
                       return (
                         <div
                           key={task.id}
-                          className="group p-3 border border-border rounded-lg bg-card hover:bg-accent/50 transition-all duration-200 cursor-pointer"
+                          className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
                         >
-                          <div className="flex items-start gap-3">
-                            {/* Checkbox */}
-                            <div className="flex-shrink-0 mt-0.5">
-                              <input
-                                type="checkbox"
-                                checked={task.completed}
-                                onChange={() => toggleTask(task.id)}
-                                className="h-4 w-4 rounded border-border"
-                              />
+                          {/* Checkbox */}
+                          <button
+                            onClick={() => toggleTask(task.id)}
+                            disabled={updateTaskMutation.isPending}
+                            className="flex-shrink-0"
+                          >
+                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${task.completed
+                              ? 'bg-primary border-primary text-primary-foreground'
+                              : 'border-muted-foreground hover:border-primary'
+                              }`}>
+                              {task.completed && <span className="text-xs">✓</span>}
                             </div>
+                          </button>
 
-                            {/* Task Content */}
-                            <div className="flex-1 min-w-0 space-y-1">
-                              {/* Task Title and Expansion Toggle */}
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={`font-medium text-sm break-words flex-1 ${task.completed ? 'line-through text-muted-foreground' : ''
-                                    }`}
-                                  onClick={() => toggleTaskExpansion(task.id)}
-                                >
-                                  {task.title}
-                                </span>
-                              </div>
-
-                              {/* Date/Time Info - Always visible if present */}
-                              {(task.start_date || task.end_date || task.start_time || task.end_time) && (
-                                <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                                  {/* Date Range */}
-                                  {(task.start_date || task.end_date) && (
-                                    <div className="flex items-center gap-1">
-                                      <Calendar className="h-3 w-3" />
-                                      <span>{getDateRangeDisplay(task.start_date, task.end_date, task)}</span>
-                                    </div>
-                                  )}
-
-                                  {/* Time Range */}
-                                  {(task.start_time || task.end_time) && (
-                                    <div className="flex items-center gap-1">
-                                      <Clock className="h-3 w-3" />
-                                      <span>{getTimeRangeDisplay(task.start_time, task.end_time, task)}</span>
-                                    </div>
-                                  )}
-
-                                  {/* Recurring Pattern */}
-                                  {!isInstance && task.is_recurring && (
-                                    <div className="flex items-center gap-1">
-                                      <Repeat className="h-3 w-3" />
-                                      <span>{recurringPattern}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-
-                              {/* Task Description - Shows when expanded */}
-                              {expandedTask === task.id && task.description && (
-                                <div className="text-xs text-muted-foreground mt-1 p-2 bg-muted/30 rounded break-words overflow-hidden">
-                                  {task.description}
-                                </div>
-                              )}
-
-                              {/* Priority Badge */}
-                              {task.priority && (
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${task.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
-                                    task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
-                                      'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                                    }`}>
-                                    {task.priority}
-                                  </span>
-                                </div>
-                              )}
-
-                              {/* Recurring Instance Info */}
-                              {isInstance && (
-                                <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                                  Instance for {formatDate(task.start_date)}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Action Buttons - Always Visible */}
-                            <div className="flex items-center gap-1 ml-auto">
-                              {/* Edit Button */}
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
-                                onClick={() => openEditModal(task)}
-                                title={isInstance ? 'Edit Pattern' : 'Edit'}
+                          {/* Task Content */}
+                          <div className="flex-1 min-w-0">
+                            {/* Task Title - Clickable to expand/collapse description */}
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`font-medium text-sm cursor-pointer hover:text-primary transition-colors ${task.completed ? 'line-through text-muted-foreground hover:text-muted-foreground/80' : ''
+                                  } ${task.description ? 'select-none' : ''}`}
+                                onClick={() => task.description && toggleTaskExpansion(task.id)}
+                                title={task.description ? (expandedTask === task.id ? "Click to collapse description" : "Click to expand description") : undefined}
                               >
-                                <Edit3 className="h-4 w-4" />
-                              </Button>
+                                {task.title}
+                              </span>
 
-                              {/* Delete Button */}
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
-                                    title={isInstance ? 'Remove Pattern' : 'Move to Trash'}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>
-                                      {isInstance ? 'Remove Recurring Pattern?' : 'Move Task to Trash?'}
-                                    </AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      {isInstance
-                                        ? 'This will remove the entire recurring pattern. This action cannot be undone.'
-                                        : 'This task will be moved to trash and can be restored later.'
-                                      }
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => deleteTask(task.id)}
-                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                    >
-                                      {isInstance ? 'Remove Pattern' : 'Move to Trash'}
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
+                              {/* Recurring badge for instances */}
+                              {isInstance && (
+                                <span className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-xs">
+                                  Recurring
+                                </span>
+                              )}
                             </div>
+
+                            {/* Task Details Row */}
+                            <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">
+                              {/* Priority */}
+                              {task.priority && (
+                                <span className={`px-2 py-0.5 rounded-full font-medium ${task.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
+                                  task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
+                                    'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                  }`}>
+                                  {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                                </span>
+                              )}
+
+                              {/* Date Range */}
+                              {dateRange && (
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  <span>{dateRange}</span>
+                                </div>
+                              )}
+
+                              {/* Time Range */}
+                              {timeRange && (
+                                <div className="flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  <span>{timeRange}</span>
+                                </div>
+                              )}
+
+                              {/* Recurring Pattern */}
+                              {!isInstance && task.is_recurring && recurringPattern && (
+                                <div className="flex items-center gap-1">
+                                  <Repeat className="w-3 h-3" />
+                                  <span>{recurringPattern}</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Description (if expanded) */}
+                            {expandedTask === task.id && task.description && (
+                              <p className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
+                                {task.description}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Task Actions - Always visible now */}
+                          <div className="flex items-center gap-1">
+                            {/* Edit Task */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEditModal(task)}
+                              className="h-6 w-6 p-0"
+                              title="Edit task"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                            </Button>
+
+                            {/* Delete Task */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteTask(task.id)}
+                              className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                              disabled={deleteTaskMutation.isPending}
+                              title="Delete task"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
                           </div>
                         </div>
                       );
