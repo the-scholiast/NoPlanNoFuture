@@ -3,7 +3,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Settings, Trash2, Edit3, Calendar, Clock, Repeat, } from 'lucide-react';
 import { useTodoBoard } from './hooks/useTodoBoard';
@@ -13,6 +13,8 @@ import { CompactTaskSorting } from '../TaskSortingComponent';
 import { TodoBoardProps } from '../shared/types';
 import { TaskData } from '@/types/todoTypes';
 import { useTodoMutations } from '../shared/hooks/useTodoMutations';
+import { DailyTaskToggle } from '@/components/todo/DailyTaskToggle';
+import TaskCard from '../TaskCard';
 
 export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   const {
@@ -21,6 +23,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     todayTasksWithRecurring,
     filteredUpcomingTasks,
     filteredUpcomingRecurringTasks,
+    showAllDailyTasks,
     expandedTask,
     editModalOpen,
     setEditModalOpen,
@@ -30,6 +33,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     openEditModal,
     handleTasksSort,
     toggleTaskExpansion,
+    toggleShowAllDailyTasks,
     formatDate,
     formatTime,
     isRecurringInstance,
@@ -156,6 +160,14 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                       className="mr-2"
                     />
 
+                    {section.sectionKey === 'daily' && (
+                      <DailyTaskToggle
+                        showAllTasks={showAllDailyTasks}
+                        onToggle={toggleShowAllDailyTasks}
+                        className="mr-2"
+                      />
+                    )}
+
                     {/* Conditional rendering based on section */}
                     {section.sectionKey === 'upcoming' ? (
                       <UpcomingDateFilter
@@ -170,9 +182,10 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => clearCompleted(sectionIndex)}
-                            disabled={clearCompletedMutation.isPending}
                           >
                             Move completed to trash
                           </DropdownMenuItem>
@@ -194,10 +207,9 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => clearAll(sectionIndex)}
-                                  className="bg-destructive text-destructive-foreground"
-                                  disabled={clearAllMutation.isPending}
+                                  className="bg-red-600 hover:bg-red-700"
                                 >
-                                  Move to Trash
+                                  Move to trash
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -211,138 +223,40 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
 
               <CardContent className="flex-1">
                 {/* Task List */}
-                <div className="space-y-2 mb-4">
+                <div className="p-4">
                   {section.tasks.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
-                      <p className="text-sm">
-                        {section.sectionKey === 'today'
-                          ? 'No tasks scheduled for today'
-                          : section.sectionKey === 'upcoming'
-                            ? 'No upcoming tasks'
-                            : 'No daily tasks'
-                        }
-                      </p>
+                      {section.sectionKey === 'daily' && !showAllDailyTasks ? (
+                        <div>
+                          <p className="mb-2">No tasks scheduled for today</p>
+                          <p className="text-sm">
+                            Toggle "Show All" to see all daily tasks regardless of recurring schedule
+                          </p>
+                        </div>
+                      ) : (
+                        <p>No tasks in {section.title.toLowerCase()}</p>
+                      )}
                     </div>
                   ) : (
-                    section.tasks.map((task) => {
-                      const dateRange = getDateRangeDisplay(task);
-                      const timeRange = getTimeRangeDisplay(task);
-                      const recurringPattern = getRecurringPatternDisplay(task);
-                      const isInstance = isRecurringInstance(task);
-
-                      return (
-                        <div
+                    <div className="space-y-2">
+                      {section.tasks.map((task) => (
+                        <TaskCard
                           key={task.id}
-                          className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
-                        >
-                          {/* Checkbox */}
-                          <button
-                            onClick={() => toggleTask(task.id)}
-                            disabled={updateTaskMutation.isPending}
-                            className="flex-shrink-0"
-                          >
-                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${task.completed
-                              ? 'bg-primary border-primary text-primary-foreground'
-                              : 'border-muted-foreground hover:border-primary'
-                              }`}>
-                              {task.completed && <span className="text-xs">✓</span>}
-                            </div>
-                          </button>
-
-                          {/* Task Content */}
-                          <div className="flex-1 min-w-0">
-                            {/* Task Title - Clickable to expand/collapse description */}
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={`font-medium text-sm cursor-pointer hover:text-primary transition-colors ${task.completed ? 'line-through text-muted-foreground hover:text-muted-foreground/80' : ''
-                                  } ${task.description ? 'select-none' : ''}`}
-                                onClick={() => task.description && toggleTaskExpansion(task.id)}
-                                title={task.description ? (expandedTask === task.id ? "Click to collapse description" : "Click to expand description") : undefined}
-                              >
-                                {task.title}
-                              </span>
-
-                              {/* Recurring badge for instances */}
-                              {isInstance && (
-                                <span className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-xs">
-                                  Recurring
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Task Details Row */}
-                            <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">
-                              {/* Priority */}
-                              {task.priority && (
-                                <span className={`px-2 py-0.5 rounded-full font-medium ${task.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
-                                  task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
-                                    'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                                  }`}>
-                                  {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-                                </span>
-                              )}
-
-                              {/* Date Range */}
-                              {dateRange && (
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
-                                  <span>{dateRange}</span>
-                                </div>
-                              )}
-
-                              {/* Time Range */}
-                              {timeRange && (
-                                <div className="flex items-center gap-1">
-                                  <Clock className="w-3 h-3" />
-                                  <span>{timeRange}</span>
-                                </div>
-                              )}
-
-                              {/* Recurring Pattern */}
-                              {!isInstance && task.is_recurring && recurringPattern && (
-                                <div className="flex items-center gap-1">
-                                  <Repeat className="w-3 h-3" />
-                                  <span>{recurringPattern}</span>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Description (if expanded) */}
-                            {expandedTask === task.id && task.description && (
-                              <p className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
-                                {task.description}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Task Actions - Always visible now */}
-                          <div className="flex items-center gap-1">
-                            {/* Edit Task */}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openEditModal(task)}
-                              className="h-6 w-6 p-0"
-                              title="Edit task"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                            </Button>
-
-                            {/* Delete Task */}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteTask(task.id)}
-                              className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                              disabled={deleteTaskMutation.isPending}
-                              title="Delete task"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })
+                          task={task}
+                          isExpanded={expandedTask === task.id}
+                          onToggle={() => toggleTask(task.id)}
+                          onExpand={() => toggleTaskExpansion(task.id)}
+                          onEdit={() => openEditModal(task)}
+                          onDelete={() => deleteTask(task.id)}
+                          formatDate={formatDate}
+                          formatTime={formatTime}
+                          getDateRangeDisplay={getDateRangeDisplay}
+                          getTimeRangeDisplay={getTimeRangeDisplay}
+                          isRecurringInstance={isRecurringInstance}
+                          getRecurringPatternDisplay={getRecurringPatternDisplay}
+                        />
+                      ))}
+                    </div>
                   )}
                 </div>
               </CardContent>

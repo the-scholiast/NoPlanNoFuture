@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { TaskData } from '@/types/todoTypes';
 import { useTodo } from '@/contexts/TodoContext';
 import { useTodoMutations } from '../../shared/hooks';
@@ -231,9 +231,9 @@ export const useTodoBoard = () => {
     return startTime || endTime;
   };
 
-  const isRecurringInstance = (task: TaskData) => {
-    return task.id.includes('_') && task.parent_task_id;
-  };
+  const isRecurringInstance = useCallback((task: TaskData): boolean => {
+    return Boolean(task.id?.includes('_') && task.parent_task_id);
+  }, []);
 
   const getRecurringPatternDisplay = (task: TaskData) => {
     return recurringTodoApi.getRecurringDescription(task);
