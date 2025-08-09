@@ -1,105 +1,65 @@
-'use client'
+'use client';
 
-import { useSearchParams } from 'next/navigation'
-import { Card } from "../ui/card"
-import { useEffect, useState } from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import { Button } from "../ui/button"
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Card } from '../ui/card';
+import { useEffect, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from '../ui/button';
 
 interface YearViewProps {
-    selectedDate?: Date
+    selectedDate?: Date;
 }
 
 export default function YearView({ selectedDate }: YearViewProps) {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const [currentDate, setCurrentDate] = useState(selectedDate || new Date());
     const [isMounted, setIsMounted] = useState(false);
 
-    const monthNames = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-    // Set mounted state after component mounts to avoid hydration issues
-    useEffect(() => {
-        setIsMounted(true);
-    }, []);
+    useEffect(() => setIsMounted(true), []);
 
-    // Sync with URL parameters
+    // sync from url
     useEffect(() => {
-        const year = searchParams.get('year')
-        const month = searchParams.get('month')
-        const day = searchParams.get('day')
+        const year = searchParams.get('year');
+        const month = searchParams.get('month');
+        const day = searchParams.get('day');
 
         if (year) {
             const monthParam = month ? parseInt(month) - 1 : 0;
             const dayParam = day ? parseInt(day) : 1;
-            const urlDate = new Date(parseInt(year), monthParam, dayParam)
-            setCurrentDate(urlDate)
+            setCurrentDate(new Date(parseInt(year), monthParam, dayParam));
         } else if (selectedDate) {
-            setCurrentDate(selectedDate)
+            setCurrentDate(selectedDate);
         }
-    }, [searchParams, selectedDate])
+    }, [searchParams, selectedDate]);
 
-    // Get mini calendar for a specific month
+    // build a mini calendar for a month
     const getMiniMonthCalendar = (year: number, month: number) => {
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
+        const firstDayWeek = firstDay.getDay(); // 0..6 Sun..Sat
+        const cells: (Date | null)[] = [];
 
-        // Get day of week for first day (0 = Sunday)
-        const firstDayWeek = firstDay.getDay();
+        for (let i = 0; i < firstDayWeek; i++) cells.push(null);
+        for (let d = 1; d <= lastDay.getDate(); d++) cells.push(new Date(year, month, d));
+        while (cells.length % 7 !== 0) cells.push(null); // pad to full weeks
 
-        const calendar: (Date | null)[] = [];
-
-        // Add empty cells for days before month starts
-        for (let i = 0; i < firstDayWeek; i++) {
-            calendar.push(null);
-        }
-
-        // Add all days of the month
-        for (let day = 1; day <= lastDay.getDate(); day++) {
-            calendar.push(new Date(year, month, day));
-        }
-
-        // Fill remaining cells to complete the grid (6 weeks = 42 cells)
-        while (calendar.length < 42) {
-            calendar.push(null);
-        }
-
-        return calendar;
+        return cells;
     };
 
-    // Navigation functions
-    const goToPrevYear = () => {
-        const prevYear = new Date(currentDate);
-        prevYear.setFullYear(currentDate.getFullYear() - 1);
-        setCurrentDate(prevYear);
-    };
+    // nav
+    const goToPrevYear = () => setCurrentDate(d => new Date(d.getFullYear() - 1, d.getMonth(), d.getDate()));
+    const goToNextYear = () => setCurrentDate(d => new Date(d.getFullYear() + 1, d.getMonth(), d.getDate()));
+    const goToToday = () => setCurrentDate(new Date());
 
-    const goToNextYear = () => {
-        const nextYear = new Date(currentDate);
-        nextYear.setFullYear(currentDate.getFullYear() + 1);
-        setCurrentDate(nextYear);
-    };
+    const isToday = (date: Date | null) =>
+        !!date && date.toDateString() === new Date().toDateString();
 
-    const goToToday = () => {
-        setCurrentDate(new Date());
-    };
-
-    // Check if date is today
-    const isToday = (date: Date | null) => {
-        if (!date) return false;
-        const today = new Date();
-        return date.toDateString() === today.toDateString();
-    };
-
-    // Check if date is selected
-    const isSelected = (date: Date | null) => {
-        if (!date) return false;
-        return date.toDateString() === currentDate.toDateString();
-    };
+    const isSelected = (date: Date | null) =>
+        !!date && date.toDateString() === currentDate.toDateString();
 
     const currentYear = currentDate.getFullYear();
 
@@ -108,87 +68,64 @@ export default function YearView({ selectedDate }: YearViewProps) {
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b">
                 <div className="flex items-center gap-4">
-                    <h2 className="text-3xl font-semibold">
-                        {isMounted ? currentYear : '--'}
-                    </h2>
-                    <Button variant="outline" size="sm" onClick={goToToday}>
-                        Today
-                    </Button>
+                    <h2 className="text-3xl font-semibold">{isMounted ? currentYear : '--'}</h2>
+                    <Button variant="outline" size="sm" onClick={goToToday}>Today</Button>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={goToPrevYear}>
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={goToNextYear}>
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
+                    <Button variant="outline" size="sm" onClick={goToPrevYear}><ChevronLeft className="h-4 w-4" /></Button>
+                    <Button variant="outline" size="sm" onClick={goToNextYear}><ChevronRight className="h-4 w-4" /></Button>
                 </div>
             </div>
 
-            {/* Year Grid - 4 rows x 3 columns of months */}
+            {/* Grid 12 months */}
             <Card className="flex-1 overflow-auto">
                 <div className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {Array.from({ length: 12 }, (_, monthIndex) => {
-                            const calendar = isMounted ? getMiniMonthCalendar(currentYear, monthIndex) : [];
-                            const weeks = [];
-
-                            // Split calendar into weeks
-                            for (let i = 0; i < calendar.length; i += 7) {
-                                weeks.push(calendar.slice(i, i + 7));
-                            }
+                            const cells = isMounted ? getMiniMonthCalendar(currentYear, monthIndex) : [];
+                            const weeks: (Date | null)[][] = [];
+                            for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
 
                             return (
                                 <div key={monthIndex} className="border rounded-lg p-3 hover:bg-muted/30 transition-colors">
-                                    {/* Month header */}
-                                    <div className="text-center font-semibold mb-2 text-sm">
+                                    {/* Month header → click to month view */}
+                                    <button
+                                        className="w-full text-center font-semibold mb-2 text-sm hover:underline"
+                                        onClick={() => router.push(`/calendar/month?year=${currentYear}&month=${monthIndex + 1}`)}
+                                    >
                                         {monthNames[monthIndex]}
-                                    </div>
+                                    </button>
 
                                     {/* Mini calendar */}
                                     <div className="space-y-1">
-                                        {/* Day headers */}
                                         <div className="grid grid-cols-7 gap-1">
-                                            {dayNames.map((day) => (
-                                                <div key={day} className="text-center text-xs font-medium text-muted-foreground p-1">
-                                                    {day}
-                                                </div>
+                                            {dayNames.map((d) => (
+                                                <div key={d} className="text-center text-xs font-medium text-muted-foreground p-1">{d}</div>
                                             ))}
                                         </div>
 
-                                        {/* Calendar grid */}
-                                        {weeks.map((week, weekIndex) => (
-                                            <div key={weekIndex} className="grid grid-cols-7 gap-1">
-                                                {week.map((date, dayIndex) => (
-                                                    <div
-                                                        key={dayIndex}
+                                        {weeks.map((week, wi) => (
+                                            <div key={wi} className="grid grid-cols-7 gap-1">
+                                                {week.map((date, di) => (
+                                                    <button
+                                                        key={di}
                                                         className={`
-                              aspect-square flex items-center justify-center text-xs rounded cursor-pointer
-                              hover:bg-muted/50 transition-colors
-                              ${date ? 'text-foreground' : ''}
+                              aspect-square flex items-center justify-center text-xs rounded
+                              ${date ? 'cursor-pointer hover:bg-muted/50 transition-colors' : 'opacity-0 cursor-default'}
                               ${isToday(date) ? 'bg-blue-500 text-white font-bold' : ''}
                               ${isSelected(date) ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' : ''}
                             `}
                                                         onClick={() => {
-                                                            if (date) {
-                                                                setCurrentDate(new Date(date));
-                                                            }
+                                                            if (!date) return;
+                                                            // click on a day → go to week view
+                                                            router.push(`/calendar/week?year=${date.getFullYear()}&month=${date.getMonth() + 1}&day=${date.getDate()}`);
                                                         }}
                                                     >
                                                         {date ? date.getDate() : ''}
-                                                    </div>
+                                                    </button>
                                                 ))}
                                             </div>
                                         ))}
-                                    </div>
-
-                                    {/* Event indicators - placeholder */}
-                                    <div className="mt-2 space-y-1">
-                                        {monthIndex % 3 === 0 && (
-                                            <div className="text-xs text-muted-foreground">
-                                                • {Math.floor(Math.random() * 5) + 1} events
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
                             );
@@ -197,5 +134,5 @@ export default function YearView({ selectedDate }: YearViewProps) {
                 </div>
             </Card>
         </div>
-    )
+    );
 }
