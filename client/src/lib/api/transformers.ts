@@ -64,6 +64,23 @@ export function transformTaskData(data: any): TaskData {
   }
 }
 
+// Transform TaskFormData to backend format for editing tasks
+export function transformTaskFormDataBackend(data: any): Partial<TaskData> {
+  return {
+    title: data.title,
+    section: data.section,
+    priority: data.priority,
+    description: data.description || null,
+    start_date: data.start_date || null,
+    end_date: data.end_date || null,
+    start_time: data.start_time || null,
+    end_time: data.end_time || null,
+    is_recurring: data.is_recurring || false,
+    recurring_days: data.recurring_days || null,
+    is_schedule: data.is_schedule || false,
+  }
+}
+
 // Transform data to CreateTaskData
 export function transformCreateTaskData(data: any): CreateTaskData {
   return {
