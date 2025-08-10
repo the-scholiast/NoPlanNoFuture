@@ -14,6 +14,7 @@ import { CompletedTaskItem } from './CompletedTaskItem';
 import { useCompletedTasks } from './hooks';
 import { CompletedTasksProps, CompletedTaskWithCompletion } from './types';
 import { formatDateString } from '@/lib/utils/dateUtils';
+import { getSectionLabel } from '../shared/utils';
 
 export default function CompletedTasks({ className }: CompletedTasksProps) {
   const {
@@ -73,104 +74,44 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     }
   };
 
-  const getSectionLabel = (section: string) => {
-    switch (section) {
-      case 'daily': return 'Daily';
-      case 'today': return 'Today';
-      case 'upcoming': return 'Upcoming';
-      default: return 'Other';
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (priority?: string) => {
     switch (priority) {
-      case 'high':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      case 'medium':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-      case 'low':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+      case 'high': return 'bg-red-100 text-red-800 border-red-200';
+      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'low': return 'bg-green-100 text-green-800 border-green-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
-  };
-
-  // Quick filter functions
-  const setTodayFilter = () => {
-    const today = new Date().toISOString().split('T')[0];
-    updateDateFilter({
-      startDate: today,
-      endDate: today,
-      enabled: true
-    });
-  };
-
-  const setWeekFilter = () => {
-    const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert Sunday to 6, others to dayOfWeek - 1
-
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - daysFromMonday);
-
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-
-    updateDateFilter({
-      startDate: formatDateString(monday),
-      endDate: formatDateString(sunday),
-      enabled: true
-    });
-  };
-
-  const setMonthFilter = () => {
-    const today = new Date();
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-
-    updateDateFilter({
-      startDate: startOfMonth.toISOString().split('T')[0],
-      endDate: endOfMonth.toISOString().split('T')[0],
-      enabled: true
-    });
-  };
-
-  const clearDateFilter = () => {
-    updateDateFilter({ enabled: false });
   };
 
   const getFilterDisplayText = () => {
     if (!dateFilter.enabled) return 'All dates';
 
+    const formatLocalDate = (dateStr: string) => {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      return date.toLocaleDateString();
+    };
+
     const today = new Date().toISOString().split('T')[0];
 
+    if (dateFilter.startDate === dateFilter.endDate && dateFilter.startDate === today) {
+      return 'Today only';
+    }
+
     if (dateFilter.startDate === dateFilter.endDate) {
-      if (dateFilter.startDate === today) {
-        return 'Today only';
-      }
-      return formatDate(dateFilter.startDate) || 'Selected date';
+      return formatLocalDate(dateFilter.startDate);
     }
 
-    return `${formatDate(dateFilter.startDate)} - ${formatDate(dateFilter.endDate)}`;
+    return `${formatLocalDate(dateFilter.startDate)} - ${formatLocalDate(dateFilter.endDate)}`;
   };
 
-  // Handle clear all completed tasks
-  const handleClearAllCompleted = () => {
-    if (window.confirm('Are you sure you want to delete all completed tasks? This action cannot be undone.')) {
-      // Implementation would go here
-      console.log('Clear all completed tasks');
-    }
-  };
-
-  // Loading state
   if (isLoading) {
     return (
       <div className={`w-full mt-6 ${className}`}>
         <Card>
-          <CardContent className="py-12">
+          <CardContent className="p-6">
             <div className="text-center text-muted-foreground">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p>Loading completed tasks...</p>
+              Loading completed tasks...
             </div>
           </CardContent>
         </Card>
@@ -178,15 +119,14 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className={`w-full mt-6 ${className}`}>
         <Card>
-          <CardContent className="py-12">
+          <CardContent className="p-6">
             <div className="text-center text-destructive">
-              <p>Error loading completed tasks</p>
-              <p className="text-sm mt-2">{error instanceof Error ? error.message : 'Unknown error'}</p>
+              Error loading completed tasks: {error instanceof Error ? 
+                error.message : 'Unknown error'}
             </div>
           </CardContent>
         </Card>
@@ -218,6 +158,16 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
               </Button>
             )}
           </div>
+
+          {/* Compact Task Sorting - between search and date filter */}
+          {totalCompletedTasks > 0 && (
+            <CompactTaskSorting
+              tasks={completedTasks}
+              onTasksChange={(sortedTasks) => updateSortedTasks(sortedTasks as CompletedTaskWithCompletion[])}
+              defaultSort={{ field: 'created_at', order: 'desc' }}
+              className="flex-shrink-0"
+            />
+          )}
 
           {/* Date Filter */}
           <Popover>
@@ -261,19 +211,73 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      <Button variant="outline" size="sm" onClick={setTodayFilter}>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          const today = new Date().toISOString().split('T')[0];
+                          updateDateFilter({ startDate: today, endDate: today });
+                        }}
+                      >
                         Today
                       </Button>
-                      <Button variant="outline" size="sm" onClick={setWeekFilter}>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          // Set to current week (Monday to Sunday)
+                          const now = new Date();
+                          const dayOfWeek = now.getDay();
+                          const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                          
+                          const monday = new Date(now);
+                          monday.setDate(now.getDate() - daysFromMonday);
+                          
+                          const sunday = new Date(monday);
+                          sunday.setDate(monday.getDate() + 6);
+                          
+                          const formatDate = (date: Date) => date.toISOString().split('T')[0];
+                          
+                          updateDateFilter({ 
+                            startDate: formatDate(monday), 
+                            endDate: formatDate(sunday) 
+                          });
+                        }}
+                      >
                         This Week
                       </Button>
-                      <Button variant="outline" size="sm" onClick={setMonthFilter}>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          // Set to current month
+                          const now = new Date();
+                          const year = now.getFullYear();
+                          const month = now.getMonth();
+                          
+                          const firstDay = new Date(year, month, 1);
+                          const lastDay = new Date(year, month + 1, 0);
+                          
+                          const formatDate = (date: Date) => date.toISOString().split('T')[0];
+                          
+                          updateDateFilter({ 
+                            startDate: formatDate(firstDay), 
+                            endDate: formatDate(lastDay) 
+                          });
+                        }}
+                      >
                         This Month
                       </Button>
-                      <Button variant="outline" size="sm" onClick={clearDateFilter}>
-                        Show All
-                      </Button>
                     </div>
+
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => updateDateFilter({ enabled: false })}
+                      className="w-full"
+                    >
+                      Clear Filter
+                    </Button>
                   </>
                 )}
               </div>
@@ -289,7 +293,11 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleClearAllCompleted}
+              onClick={() => {
+                if (window.confirm('Are you sure you want to delete all completed tasks? This action cannot be undone.')) {
+                  console.log('Clear all completed tasks');
+                }
+              }}
               className="text-muted-foreground hover:text-destructive"
             >
               <Trash2 className="w-4 h-4 mr-2" />
@@ -340,16 +348,6 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
 
           {isTasksExpanded && (
             <CardContent>
-              {/* Sorting */}
-              {totalCompletedTasks > 1 && (
-                <div className="mb-4">
-                  <CompactTaskSorting
-                    tasks={completedTasks}
-                    onTasksChange={(sortedTasks) => updateSortedTasks(sortedTasks as CompletedTaskWithCompletion[])}
-                  />
-                </div>
-              )}
-
               {/* Tasks List */}
               <div className="space-y-3">
                 {completedTasks.map((task) => (
