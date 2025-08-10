@@ -1,4 +1,4 @@
-import { TodoBoard, CompletedTasks } from '@/components/todo';
+import { TodoBoard, CompletedTasks, IncompleteTasks } from '@/components/todo';
 
 export default function Page() {
   return (
@@ -14,6 +14,7 @@ export default function Page() {
 
       <TodoBoard />
       <CompletedTasks />
+      <IncompleteTasks />
     </div>
   );
 }
