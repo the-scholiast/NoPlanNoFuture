@@ -1,5 +1,5 @@
-// Shared utlity functions for TodoBoard and CompletedTasks components
 import { formatDateString, ensureLocalDate } from "@/lib/utils/dateUtils";
+import { TaskData } from "@/types/todoTypes";
 
 export const formatDate = (dateString?: string): string | null => {
   if (!dateString) return null;
@@ -8,7 +8,6 @@ export const formatDate = (dateString?: string): string | null => {
     if (!year || !month || !day) return dateString;
 
     const date = new Date(year, month - 1, day);
-    const currentYear = new Date().getFullYear();
 
     return formatDateString(date);
   } catch {
@@ -134,7 +133,7 @@ export const calculateInstanceDate = (task: any, instanceIndex: number): string 
     instanceDate.setDate(lastCompleted.getDate() - daysBack);
     return instanceDate.toISOString().split('T')[0];
   }
-  
+
   const created = new Date(task.created_at);
   created.setDate(created.getDate() + instanceIndex);
   return created.toISOString().split('T')[0];
@@ -161,3 +160,47 @@ export const createRecurringTaskInstances = (task: any, completionCount?: number
 
   return instances;
 };
+
+// Formats date range display for a task
+export const getDateRangeDisplay = (task: TaskData): string | null => {
+  const startDate = formatDate(task.start_date);
+  const endDate = formatDate(task.end_date);
+
+  if (!startDate && !endDate) return null;
+
+  if (startDate && endDate && startDate !== endDate) {
+    return `${startDate} - ${endDate}`;
+  }
+
+  return startDate || endDate;
+};
+
+// Formats time range display for a task
+export const getTimeRangeDisplay = (task: TaskData): string | null => {
+  const startTime = formatTime(task.start_time);
+  const endTime = formatTime(task.end_time);
+
+  if (!startTime && !endTime) return null;
+
+  if (startTime && endTime) {
+    return `${startTime} - ${endTime}`;
+  }
+
+  return startTime || endTime;
+};
+
+// Combines all task arrays into a single array for operations
+export const combineAllTasks = (
+  filteredDailyTasks: TaskData[],
+  todayTasksWithRecurring: TaskData[],
+  upcomingTasks: TaskData[],
+  upcomingTasksWithRecurring: TaskData[]
+): TaskData[] => {
+  return [
+    ...filteredDailyTasks,
+    ...todayTasksWithRecurring,
+    ...upcomingTasks,
+    ...upcomingTasksWithRecurring,
+  ];
+};
+

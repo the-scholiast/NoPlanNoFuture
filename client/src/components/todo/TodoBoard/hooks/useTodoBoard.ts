@@ -6,6 +6,14 @@ import { getTodayString, parseToLocalDate } from '@/lib/utils/dateUtils';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { TodoSection } from '../../shared/types';
 import { shouldTaskAppearOnDate } from '@/lib/utils/recurringDatesUtils';
+import {
+  formatDate,
+  formatTime,
+  getDateRangeDisplay,
+  getTimeRangeDisplay,
+  isRecurringInstance,
+  combineAllTasks,
+} from '../../shared';
 
 // Business logic for the TodoBoard component
 export const useTodoBoard = () => {
@@ -20,12 +28,7 @@ export const useTodoBoard = () => {
     error,                         // Any query errors
   } = useTodo();
 
-  const {
-    toggleTaskFunction,
-    clearCompletedMutation,
-    clearAllMutation,
-    deleteTaskMutation,
-  } = useTodoMutations();
+  const { deleteTaskMutation, } = useTodoMutations();
 
   // UI interaction states
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
@@ -218,93 +221,8 @@ export const useTodoBoard = () => {
     }
   ];
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return null;
-    try {
-      const [year, month, day] = dateString.split('-').map(Number);
-      if (!year || !month || !day) return dateString;
-      const date = new Date(year, month - 1, day);
-      const currentYear = new Date().getFullYear();
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: date.getFullYear() !== currentYear ? 'numeric' : undefined
-      });
-    } catch {
-      return dateString;
-    }
-  };
-
-  const formatTime = (timeString?: string) => {
-    if (!timeString) return null;
-    try {
-      const [hours, minutes] = timeString.split(':');
-      const date = new Date();
-      date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-      return date.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
-    } catch {
-      return timeString;
-    }
-  };
-
-  const getDateRangeDisplay = (start_date: string | undefined, end_date: string | undefined, task: TaskData) => {
-    const startDate = formatDate(task.start_date);
-    const endDate = formatDate(task.end_date);
-    if (!startDate && !endDate) return null;
-    if (startDate && endDate && startDate !== endDate) {
-      return `${startDate} - ${endDate}`;
-    }
-    return startDate || endDate;
-  };
-
-  const getTimeRangeDisplay = (start_time: string | undefined, end_time: string | undefined, task: TaskData) => {
-    const startTime = formatTime(task.start_time);
-    const endTime = formatTime(task.end_time);
-    if (!startTime && !endTime) return null;
-    if (startTime && endTime) {
-      return `${startTime} - ${endTime}`;
-    }
-    return startTime || endTime;
-  };
-
-  const isRecurringInstance = useCallback((task: TaskData): boolean => {
-    return Boolean(task.id?.includes('_') && task.parent_task_id);
-  }, []);
-
   const getRecurringPatternDisplay = (task: TaskData) => {
     return recurringTodoApi.getRecurringDescription(task);
-  };
-
-  // Updated toggle task function to handle recurring task instances
-  const toggleTask = (taskId: string) => {
-    // Include upcomingTasksWithRecurring in the search
-    const allTasks = [
-      ...filteredDailyTasks, // Use filtered daily tasks
-      ...todayTasksWithRecurring,
-      ...upcomingTasks,
-      ...upcomingTasksWithRecurring
-    ];
-
-    // Create a proper boolean function for isRecurringInstance
-    const isRecurringInstanceBoolean = (task: TaskData): boolean => {
-      return Boolean(task.id.includes('_') && task.parent_task_id);
-    };
-
-    toggleTaskFunction(taskId, allTasks, isRecurringInstanceBoolean);
-  };
-
-  const clearCompleted = (sectionIndex: number) => {
-    const section = sections[sectionIndex];
-    clearCompletedMutation.mutate(section.sectionKey);
-  };
-
-  const clearAll = (sectionIndex: number) => {
-    const section = sections[sectionIndex];
-    clearAllMutation.mutate(section.sectionKey);
   };
 
   const deleteTask = (taskId: string) => {
@@ -348,8 +266,6 @@ export const useTodoBoard = () => {
     setShowAllDailyTasks(prev => !prev);
   };
 
-  
-
   return {
     // Data
     sections,
@@ -373,11 +289,8 @@ export const useTodoBoard = () => {
     showAllDailyTasks,
 
     // Actions
-    toggleTask,
     openEditModal,
     handleTasksSort,
-    clearCompleted,
-    clearAll,
     deleteTask,
     toggleTaskExpansion,
     toggleShowAllDailyTasks,
