@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { TaskData } from '@/types/todoTypes';
 import { useTodo } from '@/contexts/TodoContext';
 import { useTodoMutations } from '../../shared/hooks';
-import { getTodayString } from '@/lib/utils/dateUtils';
+import { getTodayString, parseToLocalDate } from '@/lib/utils/dateUtils';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { TodoSection } from '../../shared/types';
 import { shouldTaskAppearOnDate } from '@/lib/utils/recurringDatesUtils';
@@ -100,19 +100,37 @@ export const useTodoBoard = () => {
         const taskDate = task.start_date || task.created_at?.split('T')[0];
         if (!taskDate) return false;
         const taskDateStr = taskDate.includes('T') ? taskDate.split('T')[0] : taskDate;
-        return taskDateStr >= upcomingFilter.startDate && taskDateStr <= upcomingFilter.endDate;
+
+        const taskDateObj = parseToLocalDate(taskDateStr);
+        const startDateObj = parseToLocalDate(upcomingFilter.startDate);
+        const endDateObj = parseToLocalDate(upcomingFilter.endDate);
+
+        // Compare using Date objects instead of strings to avoid timezone issues
+        return taskDateObj >= startDateObj && taskDateObj <= endDateObj;
       });
     }
 
     return tasks.sort((a, b) => {
       const dateA = a.start_date || a.created_at?.split('T')[0] || '';
       const dateB = b.start_date || b.created_at?.split('T')[0] || '';
-      if (dateA !== dateB) return dateA.localeCompare(dateB);
+
+      const dateObjA = dateA ? parseToLocalDate(dateA.split('T')[0]) : new Date(0);
+      const dateObjB = dateB ? parseToLocalDate(dateB.split('T')[0]) : new Date(0);
+
+      if (dateObjA.getTime() !== dateObjB.getTime()) {
+        return dateObjA.getTime() - dateObjB.getTime();
+      }
+
       const timeA = a.start_time || '';
       const timeB = b.start_time || '';
-      if (timeA && timeB) return timeA.localeCompare(timeB);
+
+      if (timeA && timeB) {
+        return timeA.localeCompare(timeB);
+      }
+
       if (timeA && !timeB) return -1;
       if (!timeA && timeB) return 1;
+
       return a.title.localeCompare(b.title);
     });
   }, [upcomingTasks, upcomingFilter]);
@@ -126,21 +144,43 @@ export const useTodoBoard = () => {
         const taskDate = task.start_date || task.created_at?.split('T')[0];
         if (!taskDate) return false;
 
-        const taskDateStr = taskDate.includes('T') ?
-          taskDate.split('T')[0] : taskDate;
-        return taskDateStr >= upcomingFilter.startDate && taskDateStr <= upcomingFilter.endDate;
+        const taskDateStr = taskDate.includes('T') ? taskDate.split('T')[0] : taskDate;
+
+        const taskDateObj = parseToLocalDate(taskDateStr);
+        const startDateObj = parseToLocalDate(upcomingFilter.startDate);
+        const endDateObj = parseToLocalDate(upcomingFilter.endDate);
+
+        // Compare using Date objects instead of strings to avoid timezone issues
+        return taskDateObj >= startDateObj && taskDateObj <= endDateObj;
       });
     }
 
     return tasks.sort((a, b) => {
       const dateA = a.start_date || a.created_at?.split('T')[0] || '';
       const dateB = b.start_date || b.created_at?.split('T')[0] || '';
-      if (dateA !== dateB) return dateA.localeCompare(dateB);
+
+      // Parse dates consistently using local timezone
+      const dateObjA = dateA ? parseToLocalDate(dateA.split('T')[0]) : new Date(0);
+      const dateObjB = dateB ? parseToLocalDate(dateB.split('T')[0]) : new Date(0);
+
+      // First, sort by date using Date objects
+      if (dateObjA.getTime() !== dateObjB.getTime()) {
+        return dateObjA.getTime() - dateObjB.getTime();
+      }
+
+      // If dates are the same, sort by start time
       const timeA = a.start_time || '';
       const timeB = b.start_time || '';
-      if (timeA && timeB) return timeA.localeCompare(timeB);
+
+      if (timeA && timeB) {
+        return timeA.localeCompare(timeB);
+      }
+
+      // If only one has time, put the one with time first
       if (timeA && !timeB) return -1;
       if (!timeA && timeB) return 1;
+
+      // If neither has time, maintain original order (or sort by title)
       return a.title.localeCompare(b.title);
     });
   }, [upcomingTasksWithRecurring, upcomingFilter]);
@@ -307,6 +347,8 @@ export const useTodoBoard = () => {
   const toggleShowAllDailyTasks = () => {
     setShowAllDailyTasks(prev => !prev);
   };
+
+  
 
   return {
     // Data

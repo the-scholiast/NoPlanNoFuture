@@ -13,7 +13,7 @@ import { CompactTaskSorting } from '@/components/todo/TaskSortingComponent';
 import { CompletedTaskItem } from './CompletedTaskItem';
 import { useCompletedTasks } from './hooks';
 import { CompletedTasksProps, CompletedTaskWithCompletion } from './types';
-import { formatDateString } from '@/lib/utils/dateUtils';
+import { formatDateString, getTodayString } from '@/lib/utils/dateUtils';
 import { getSectionLabel } from '../shared/utils';
 
 export default function CompletedTasks({ className }: CompletedTasksProps) {
@@ -35,21 +35,18 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     handleDeleteTask,
   } = useCompletedTasks();
 
-  // Helper functions (from original component)
   const formatDate = (dateString?: string) => {
     if (!dateString) return null;
     try {
       const [year, month, day] = dateString.split('-').map(Number);
       if (!year || !month || !day) return dateString;
 
-      const date = new Date(year, month - 1, day);
-      const currentYear = new Date().getFullYear();
+      // Return in YYYY-MM-DD format
+      const formattedYear = year.toString();
+      const formattedMonth = month.toString().padStart(2, '0');
+      const formattedDay = day.toString().padStart(2, '0');
 
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: date.getFullYear() !== currentYear ? 'numeric' : undefined
-      });
+      return `${formattedYear}-${formattedMonth}-${formattedDay}`;
     } catch {
       return dateString;
     }
@@ -92,7 +89,7 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
       return date.toLocaleDateString();
     };
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayString();
 
     if (dateFilter.startDate === dateFilter.endDate && dateFilter.startDate === today) {
       return 'Today only';
@@ -125,7 +122,7 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
         <Card>
           <CardContent className="p-6">
             <div className="text-center text-destructive">
-              Error loading completed tasks: {error instanceof Error ? 
+              Error loading completed tasks: {error instanceof Error ?
                 error.message : 'Unknown error'}
             </div>
           </CardContent>
@@ -211,58 +208,54 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => {
-                          const today = new Date().toISOString().split('T')[0];
+                          const today = getTodayString();
                           updateDateFilter({ startDate: today, endDate: today });
                         }}
                       >
                         Today
                       </Button>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => {
                           // Set to current week (Monday to Sunday)
                           const now = new Date();
                           const dayOfWeek = now.getDay();
                           const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                          
+
                           const monday = new Date(now);
                           monday.setDate(now.getDate() - daysFromMonday);
-                          
+
                           const sunday = new Date(monday);
                           sunday.setDate(monday.getDate() + 6);
-                          
-                          const formatDate = (date: Date) => date.toISOString().split('T')[0];
-                          
-                          updateDateFilter({ 
-                            startDate: formatDate(monday), 
-                            endDate: formatDate(sunday) 
+
+                          updateDateFilter({
+                            startDate: formatDateString(monday),
+                            endDate: formatDateString(sunday)
                           });
                         }}
                       >
                         This Week
                       </Button>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => {
                           // Set to current month
                           const now = new Date();
                           const year = now.getFullYear();
                           const month = now.getMonth();
-                          
+
                           const firstDay = new Date(year, month, 1);
                           const lastDay = new Date(year, month + 1, 0);
-                          
-                          const formatDate = (date: Date) => date.toISOString().split('T')[0];
-                          
-                          updateDateFilter({ 
-                            startDate: formatDate(firstDay), 
-                            endDate: formatDate(lastDay) 
+
+                          updateDateFilter({
+                            startDate: formatDateString(firstDay),
+                            endDate: formatDateString(lastDay)
                           });
                         }}
                       >
@@ -270,9 +263,9 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
                       </Button>
                     </div>
 
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => updateDateFilter({ enabled: false })}
                       className="w-full"
                     >

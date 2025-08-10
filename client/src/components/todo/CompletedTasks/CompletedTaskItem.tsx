@@ -28,7 +28,6 @@ export function CompletedTaskItem({
   getPriorityColor,
 }: CompletedTaskItemProps) {
   const completionDate = formatDate(task.completion.instance_date);
-  const completedAtTime = task.completion.completed_at.split('T')[1]?.split('.')[0];
 
   return (
     <div className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors">
@@ -109,19 +108,7 @@ export function CompletedTaskItem({
 
           {/* Completion Status */}
           <div className="text-xs text-muted-foreground">
-            <div>
-              <strong>Completed on:</strong> {completionDate}
-              {completedAtTime && (
-                <span className="ml-2">
-                  at {formatTime(completedAtTime)}
-                </span>
-              )}
-            </div>
-            {task.completion.instance_date !== task.completion.completed_at.split('T')[0] && (
-              <div className="mt-1">
-                <strong>Instance date:</strong> {completionDate}
-              </div>
-            )}
+            <strong>Completed on:</strong> {completionDate}
           </div>
 
           {/* Expanded Details */}

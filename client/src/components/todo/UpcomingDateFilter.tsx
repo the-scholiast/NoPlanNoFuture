@@ -52,19 +52,12 @@ export default function UpcomingDateFilter({ onFilterChange, className = '' }: U
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
 
-    const formatDate = (date: Date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
     // Ensure we don't go before tomorrow
-    const startDate = firstDay < new Date(tomorrow) ? tomorrow : formatDate(firstDay);
+    const startDate = firstDay < new Date(tomorrow) ? tomorrow : formatDateString(firstDay);
 
     return {
       start: startDate,
-      end: formatDate(lastDay)
+      end: formatDateString(lastDay)
     };
   }, [tomorrow]);
 

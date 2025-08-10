@@ -75,15 +75,8 @@ export const getCurrentWeekEnd = (): string => {
 // Format completion timestamp for display
 export const formatCompletionTimestamp = (timestamp: string): string => {
   try {
-    const date = new Date(timestamp);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
+    // Simply extract the date part from ISO timestamp
+    return timestamp.split('T')[0];
   } catch {
     return timestamp;
   }

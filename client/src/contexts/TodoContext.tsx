@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { todoApi } from '@/lib/api/todos';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { TaskData } from '@/types/todoTypes';
+import { getTodayString } from '@/lib/utils/dateUtils';
 
 interface TodoContextType {
   // Original data
@@ -92,7 +93,7 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
     if (task.section !== 'today') return false;
     if (task.is_recurring) return false; // Recurring tasks handled by separate query
     
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayString();
     return !task.start_date || task.start_date === today;
   });
   
@@ -100,7 +101,7 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
     if (task.section !== 'upcoming') return false;
     if (task.is_recurring) return false; // Recurring tasks handled by separate query
     
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayString();
     return !task.start_date || task.start_date > today;
   });
 
@@ -109,7 +110,7 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
     const checkForNewDay = () => {
       const now = new Date();
       const lastCheck = localStorage.getItem('lastDailyTaskCheck');
-      const today = now.toISOString().split('T')[0];
+      const today = getTodayString();
       
       if (lastCheck !== today) {
         // New day detected, reset daily tasks
