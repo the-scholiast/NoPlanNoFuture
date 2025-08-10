@@ -11,16 +11,7 @@ import { TaskData } from '@/types/todoTypes';
 import { todoApi } from '@/lib/api/todos';
 import { CreateTaskData, EditTaskModalProps } from '@/types/todoTypes';
 import { updateTaskData } from '@/lib/api/transformers';
-
-const DAYS_OF_WEEK = [
-  { key: 'sunday', label: 'Sun' },
-  { key: 'monday', label: 'Mon' },
-  { key: 'tuesday', label: 'Tue' },
-  { key: 'wednesday', label: 'Wed' },
-  { key: 'thursday', label: 'Thu' },
-  { key: 'friday', label: 'Fri' },
-  { key: 'saturday', label: 'Sat' }
-];
+import { DAYS_OF_WEEK, DAY_ABBREVIATIONS } from '@/lib/utils/constants';
 
 interface EditableTaskData extends CreateTaskData {
   is_recurring?: boolean;
@@ -87,7 +78,7 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
 
   const toggleEveryDay = (checked: boolean) => {
     setEditableTask(prev => {
-      const newDays = checked ? DAYS_OF_WEEK.map(d => d.key) : [];
+      const newDays = checked ? [...DAYS_OF_WEEK] : [];
       return {
         ...prev,
         recurring_days: newDays,
@@ -324,18 +315,18 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
                   <label className="text-sm font-medium">Or select specific days:</label>
                   <div className="grid grid-cols-7 gap-2">
                     {DAYS_OF_WEEK.map((day) => (
-                      <div key={day.key} className="flex flex-col items-center">
+                      <div key={day} className="flex flex-col items-center">
                         <Checkbox
-                          id={day.key}
-                          checked={isDaySelected(day.key)}
-                          onCheckedChange={() => toggleDay(day.key)}
+                          id={day}
+                          checked={isDaySelected(day)}
+                          onCheckedChange={() => toggleDay(day)}
                           disabled={isSubmitting}
                         />
                         <Label
-                          htmlFor={day.key}
+                          htmlFor={day}
                           className="text-xs mt-1 cursor-pointer"
                         >
-                          {day.label}
+                          {DAY_ABBREVIATIONS[day]}
                         </Label>
                       </div>
                     ))}
