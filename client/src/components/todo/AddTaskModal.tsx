@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,11 @@ const DAYS_OF_WEEK = [
 ];
 
 export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTaskModalProps) {
+  // Get current date for today tasks
+  const getCurrentDate = () => {
+    return new Date().toISOString().split('T')[0];
+  };
+
   const placeholderTask: InternalTaskData = {
     id: '1',
     title: '',
@@ -33,8 +38,8 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
     end_date: '',
     start_time: '',
     end_time: '',
-    is_recurring: false,
-    recurring_days: [],
+    is_recurring: true,
+    recurring_days: DAYS_OF_WEEK.map(d => d.key), // Default to every day for daily tasks
     is_schedule: false,
   };
 
@@ -46,15 +51,65 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
   const addNewTask = () => {
     const newTask: InternalTaskData = {
       ...placeholderTask,
-      id: Date.now().toString() // Unique ID for each task
+      id: Date.now().toString(), // Unique ID for each task
+      is_recurring: true,
+      recurring_days: DAYS_OF_WEEK.map(d => d.key), // Default to every day for daily tasks
     };
     setTasks(prev => [...prev, newTask]);
   };
 
   const updateTask = (id: string, field: keyof InternalTaskData, value: any) => {
-    setTasks(prev => prev.map(task =>
-      task.id === id ? { ...task, [field]: value } : task
-    ));
+    setTasks(prev => prev.map(task => {
+      if (task.id === id) {
+        const updatedTask = { ...task, [field]: value };
+
+        // Handle section-specific logic
+        if (field === 'section') {
+          if (value === 'daily') {
+            // Daily tasks: automatically make recurring and select every day
+            updatedTask.is_recurring = true;
+            updatedTask.recurring_days = DAYS_OF_WEEK.map(d => d.key);
+            // Clear dates for daily tasks
+            updatedTask.start_date = '';
+            updatedTask.end_date = '';
+          } else if (value === 'today') {
+            // Today tasks: set start date to current date, disable end date and recurring
+            updatedTask.start_date = getCurrentDate();
+            updatedTask.end_date = '';
+            updatedTask.is_recurring = false;
+            updatedTask.recurring_days = [];
+          } else if (value === 'upcoming') {
+            // Upcoming tasks: disable recurring
+            updatedTask.is_recurring = false;
+            updatedTask.recurring_days = [];
+            // Clear start date if it's today's date
+            if (updatedTask.start_date === getCurrentDate()) {
+              updatedTask.start_date = '';
+            }
+          }
+        }
+
+        // Handle date validation logic
+        if (field === 'start_date' && value) {
+          // If end date exists and is less than or equal to start date, clear it
+          if (updatedTask.end_date && updatedTask.end_date <= value) {
+            updatedTask.end_date = '';
+          }
+        }
+
+        if (field === 'start_time' && value) {
+          // If end time exists and start time >= end time on same date, clear end time
+          if (updatedTask.end_time &&
+            updatedTask.start_date === updatedTask.end_date &&
+            value >= updatedTask.end_time) {
+            updatedTask.end_time = '';
+          }
+        }
+
+        return updatedTask;
+      }
+      return task;
+    }));
   };
 
   const removeTask = (id: string) => {
@@ -106,6 +161,44 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
     return task?.recurring_days?.includes(day) || false;
   };
 
+  // Check if recurring section should be shown (only for daily tasks)
+  const shouldShowRecurring = (task: InternalTaskData): boolean => {
+    return task.section === 'daily';
+  };
+
+  // Check if end date should be disabled (for today tasks)
+  const isEndDateDisabled = (task: InternalTaskData): boolean => {
+    return task.section === 'today';
+  };
+
+  // Check if recurring checkbox should be disabled (for today and upcoming tasks)
+  const isRecurringDisabled = (task: InternalTaskData): boolean => {
+    return task.section === 'today' || task.section === 'upcoming';
+  };
+
+  // Get minimum date for end date (must be after start date)
+  const getMinEndDate = (task: InternalTaskData): string => {
+    if (!task.start_date) return '';
+
+    // Add one day to start date
+    const startDate = new Date(task.start_date);
+    startDate.setDate(startDate.getDate() + 1);
+    return startDate.toISOString().split('T')[0];
+  };
+
+  // Validate end date when user finishes typing (onBlur)
+  const handleEndDateBlur = (taskId: string, value: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || !task.start_date || !value) {
+      return;
+    }
+
+    // If end date is invalid (less than or equal to start date), clear it
+    if (value <= task.start_date) {
+      updateTask(taskId, 'end_date', '');
+    }
+  };
+
   const handleApply = async () => {
     setError(null);
     setIsSubmitting(true);
@@ -120,13 +213,84 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
         return;
       }
 
-      // Validate recurring tasks have at least one day selected
-      const invalidRecurringTasks = validTasks.filter(task =>
-        task.is_recurring && (!task.recurring_days || task.recurring_days.length === 0)
-      );
+      // Comprehensive validation checks
+      const validationErrors: string[] = [];
 
-      if (invalidRecurringTasks.length > 0) {
-        setError('Recurring tasks must have at least one day selected.');
+      validTasks.forEach((task, index) => {
+        const taskNum = index + 1;
+
+        // Validate recurring tasks have at least one day selected
+        if (task.is_recurring && (!task.recurring_days || task.recurring_days.length === 0)) {
+          validationErrors.push(`Task ${taskNum}: Recurring tasks must have at least one day selected.`);
+        }
+
+        // Validate date ranges
+        if (task.start_date && task.end_date) {
+          if (task.end_date <= task.start_date) {
+            validationErrors.push(`Task ${taskNum}: End date must be after start date.`);
+          }
+        }
+
+        // Validate time ranges when both dates and times are set
+        if (task.start_time && task.end_time) {
+          // If same date or no dates set, validate time order
+          if (!task.start_date || !task.end_date || task.start_date === task.end_date) {
+            if (task.end_time <= task.start_time) {
+              validationErrors.push(`Task ${taskNum}: End time must be after start time when on the same date.`);
+            }
+          }
+        }
+
+        // Validate section-specific rules
+        if (task.section === 'today') {
+          if (task.is_recurring) {
+            validationErrors.push(`Task ${taskNum}: Today tasks cannot be recurring.`);
+          }
+          if (task.end_date) {
+            validationErrors.push(`Task ${taskNum}: Today tasks cannot have an end date.`);
+          }
+          if (task.start_date && task.start_date !== getCurrentDate()) {
+            validationErrors.push(`Task ${taskNum}: Today tasks must have today's date as start date.`);
+          }
+        }
+
+        if (task.section === 'upcoming') {
+          if (task.is_recurring) {
+            validationErrors.push(`Task ${taskNum}: Upcoming tasks cannot be recurring.`);
+          }
+        }
+
+        if (task.section === 'daily') {
+          if (!task.is_recurring) {
+            validationErrors.push(`Task ${taskNum}: Daily tasks must be recurring.`);
+          }
+          if (!task.recurring_days || task.recurring_days.length === 0) {
+            validationErrors.push(`Task ${taskNum}: Daily tasks must have either everyday selected or at least one specific day selected.`);
+          }
+        }
+
+        // Validate date formats (basic check)
+        if (task.start_date && !/^\d{4}-\d{2}-\d{2}$/.test(task.start_date)) {
+          validationErrors.push(`Task ${taskNum}: Invalid start date format.`);
+        }
+
+        if (task.end_date && !/^\d{4}-\d{2}-\d{2}$/.test(task.end_date)) {
+          validationErrors.push(`Task ${taskNum}: Invalid end date format.`);
+        }
+
+        // Validate time formats (basic check)
+        if (task.start_time && !/^\d{2}:\d{2}$/.test(task.start_time)) {
+          validationErrors.push(`Task ${taskNum}: Invalid start time format.`);
+        }
+
+        if (task.end_time && !/^\d{2}:\d{2}$/.test(task.end_time)) {
+          validationErrors.push(`Task ${taskNum}: Invalid end time format.`);
+        }
+      });
+
+      // If there are validation errors, show them and stop
+      if (validationErrors.length > 0) {
+        setError(validationErrors.join('\n'));
         setIsSubmitting(false);
         return;
       }
@@ -142,8 +306,13 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
       // Pass the created tasks to the parent component
       onAddTasks(createdTasks);
 
-      // Reset the modal state
-      setTasks([placeholderTask]);
+      // Reset the modal state with proper defaults
+      const resetTask = {
+        ...placeholderTask,
+        is_recurring: true,
+        recurring_days: DAYS_OF_WEEK.map(d => d.key),
+      };
+      setTasks([resetTask]);
 
       onOpenChange(false);
 
@@ -156,8 +325,13 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
   };
 
   const handleCancel = () => {
-    // Reset the modal state
-    setTasks([placeholderTask]);
+    // Reset the modal state with proper default values
+    const resetTask = {
+      ...placeholderTask,
+      is_recurring: true,
+      recurring_days: DAYS_OF_WEEK.map(d => d.key),
+    };
+    setTasks([resetTask]);
     setError(null);
     onOpenChange(false);
   };
@@ -197,7 +371,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
         </DialogHeader>
 
         {error && (
-          <div className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 text-sm p-3 rounded-md">
+          <div className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 text-sm p-3 rounded-md whitespace-pre-line">
             {error}
           </div>
         )}
@@ -222,34 +396,32 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 w-6 p-0 text-gray-500 hover:text-red-500"
                     onClick={() => removeTask(task.id)}
                     disabled={isSubmitting}
+                    className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                   >
                     <X className="h-4 w-4" />
                   </Button>
                 )}
               </div>
 
-              {/* Task Input */}
+              {/* Task Name */}
               <div>
                 <Input
                   placeholder="Enter task name..."
                   value={task.title}
                   onChange={(e) => updateTask(task.id, 'title', e.target.value)}
-                  className="w-full"
                   disabled={isSubmitting}
                 />
               </div>
 
-              {/* Description Input */}
+              {/* Description */}
               <div>
                 <label className="text-sm font-medium mb-2 block">Description (Optional)</label>
                 <Input
                   placeholder="Enter task description..."
                   value={task.description}
                   onChange={(e) => updateTask(task.id, 'description', e.target.value)}
-                  className="w-full"
                   disabled={isSubmitting}
                 />
               </div>
@@ -263,7 +435,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
                     onValueChange={(value) => updateTask(task.id, 'section', value)}
                     disabled={isSubmitting}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -281,7 +453,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
                     onValueChange={(value) => updateTask(task.id, 'priority', value)}
                     disabled={isSubmitting}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -293,40 +465,9 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
                 </div>
               </div>
 
-              {/* Recurring Section */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`recurring-${task.id}`}
-                      checked={task.is_recurring}
-                      onCheckedChange={(checked) => {
-                        updateTask(task.id, 'is_recurring', checked === true);
-                        if (checked !== true) {
-                          updateTask(task.id, 'recurring_days', []);
-                        }
-                      }}
-                      disabled={isSubmitting}
-                    />
-                    <Label htmlFor={`recurring-${task.id}`} className="text-sm font-medium">
-                      Make this task recurring
-                    </Label>
-                  </div>
-                  {/* Calendar/timetable checkbox */}
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`schedule-${task.id}`}
-                      checked={task.is_schedule || false}
-                      onCheckedChange={(checked) => updateTask(task.id, 'is_schedule', checked)}
-                      disabled={isSubmitting}
-                    />
-                    <Label htmlFor={`schedule-${task.id}`} className="text-sm">
-                      Add to calendar/timetable
-                    </Label>
-                  </div>
-                </div>
-
-                {task.is_recurring && (
+              {/* Recurring Section - Only show day selection for daily tasks */}
+              {shouldShowRecurring(task) && (
+                <div className="space-y-3">
                   <div className="space-y-3 p-3 bg-blue-50 dark:bg-blue-950 rounded-md">
                     {/* Everyday Toggle */}
                     <div className="flex items-center gap-2">
@@ -364,8 +505,8 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
                       </div>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Date Range Row */}
               <div className="grid grid-cols-2 gap-4">
@@ -375,19 +516,18 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
                     type="date"
                     value={task.start_date}
                     onChange={(e) => updateTask(task.id, 'start_date', e.target.value)}
-                    className="w-full"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || task.section === 'today'}
                   />
                 </div>
-
                 <div>
                   <label className="text-sm font-medium mb-2 block">End Date</label>
                   <Input
                     type="date"
                     value={task.end_date}
                     onChange={(e) => updateTask(task.id, 'end_date', e.target.value)}
-                    className="w-full"
-                    disabled={isSubmitting}
+                    onBlur={(e) => handleEndDateBlur(task.id, e.target.value)}
+                    disabled={isSubmitting || isEndDateDisabled(task)}
+                    min={getMinEndDate(task)}
                   />
                 </div>
               </div>
@@ -400,50 +540,54 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
                     type="time"
                     value={task.start_time}
                     onChange={(e) => updateTask(task.id, 'start_time', e.target.value)}
-                    className="w-full"
                     disabled={isSubmitting}
                   />
                 </div>
-
                 <div>
                   <label className="text-sm font-medium mb-2 block">End Time</label>
                   <Input
                     type="time"
                     value={task.end_time}
                     onChange={(e) => updateTask(task.id, 'end_time', e.target.value)}
-                    className="w-full"
                     disabled={isSubmitting}
+                    min={task.start_date === task.end_date ? task.start_time : undefined}
                   />
                 </div>
+              </div>
+
+              {/* Add to Calendar/Timetable */}
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id={`schedule-${task.id}`}
+                  checked={task.is_schedule}
+                  onCheckedChange={(checked) => updateTask(task.id, 'is_schedule', checked === true)}
+                  disabled={isSubmitting}
+                />
+                <Label htmlFor={`schedule-${task.id}`} className="text-sm font-medium">
+                  Add to calendar/timetable
+                </Label>
               </div>
             </div>
           ))}
 
-          {/* Add Task Button */}
+          {/* Add Another Task Button */}
           <Button
             variant="outline"
             onClick={addNewTask}
-            className="w-full border-dashed"
             disabled={isSubmitting}
+            className="w-full"
           >
             + Add Another Task
           </Button>
         </div>
 
-        {/* Footer */}
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <Button
-            variant="outline"
-            onClick={handleCancel}
-            disabled={isSubmitting}
-          >
+        {/* Modal Actions */}
+        <div className="flex justify-end gap-2 pt-4">
+          <Button variant="outline" onClick={handleCancel} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button
-            onClick={handleApply}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Creating...' : 'Apply'}
+          <Button onClick={handleApply} disabled={isSubmitting}>
+            {isSubmitting ? 'Adding...' : 'Apply'}
           </Button>
         </div>
       </DialogContent>
