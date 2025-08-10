@@ -2,38 +2,37 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { TaskData } from '@/types/todoTypes';
 import { todoApi } from '@/lib/api/todos';
-import { CreateTaskData, EditTaskModalProps } from '@/types/todoTypes';
+import { EditTaskModalProps } from '@/types/todoTypes';
 import { updateTaskData } from '@/lib/api/transformers';
-import { DAYS_OF_WEEK, DAY_ABBREVIATIONS } from '@/lib/utils/constants';
 
-interface EditableTaskData extends CreateTaskData {
-  is_recurring?: boolean;
-  recurring_days?: string[];
-  is_schedule?: boolean;
-}
+// Import shared components and hooks
+import {
+  TaskBasicFields,
+  RecurringSection,
+  DateTimeFields,
+  TaskFormData
+} from './shared/';
+import { useTaskFormLogic } from './shared/';
+import { validateEditTask } from './shared/';
 
 export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated }: EditTaskModalProps) {
-  const [editableTask, setEditableTask] = useState<EditableTaskData>({
-    title: '',
-    section: 'daily',
-    priority: 'low',
-    description: '',
-    start_date: '',
-    end_date: '',
-    start_time: '',
-    end_time: '',
-    is_recurring: false,
-    recurring_days: []
-  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Use shared hook for task logic
+  const {
+    task: editableTask,
+    setTask: setEditableTask,
+    updateField,
+    toggleDay,
+    toggleEveryDay,
+    isEveryDaySelected,
+    isDaySelected,
+    getRecurringDescription
+  } = useTaskFormLogic();
 
   // Reset form when task changes or modal opens
   useEffect(() => {
@@ -53,74 +52,7 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
       });
       setError(null);
     }
-  }, [task, open]);
-
-  // HELPER FUNCTIONS
-  const updateField = (field: keyof EditableTaskData, value: any) => {
-    setEditableTask(prev => ({ ...prev, [field]: value }));
-  };
-
-  // Day selection helpers
-  const toggleDay = (day: string) => {
-    setEditableTask(prev => {
-      const currentDays = prev.recurring_days || [];
-      const newDays = currentDays.includes(day)
-        ? currentDays.filter(d => d !== day)
-        : [...currentDays, day];
-
-      return {
-        ...prev,
-        recurring_days: newDays,
-        is_recurring: newDays.length > 0
-      };
-    });
-  };
-
-  const toggleEveryDay = (checked: boolean) => {
-    setEditableTask(prev => {
-      const newDays = checked ? [...DAYS_OF_WEEK] : [];
-      return {
-        ...prev,
-        recurring_days: newDays,
-        is_recurring: newDays.length > 0
-      };
-    });
-  };
-
-  const isEveryDaySelected = (): boolean => {
-    return editableTask.recurring_days?.length === 7 || false;
-  };
-
-  const isDaySelected = (day: string): boolean => {
-    return editableTask.recurring_days?.includes(day) || false;
-  };
-
-  const getRecurringDescription = (): string => {
-    if (!editableTask.is_recurring || !editableTask.recurring_days || editableTask.recurring_days.length === 0) {
-      return '';
-    }
-
-    const days = editableTask.recurring_days;
-    const dayNames = days.map(day => day.charAt(0).toUpperCase() + day.slice(1));
-
-    if (days.length === 7) {
-      return 'Every day';
-    }
-
-    if (days.length === 5 && !days.includes('saturday') && !days.includes('sunday')) {
-      return 'Weekdays only';
-    }
-
-    if (days.length === 2 && days.includes('saturday') && days.includes('sunday')) {
-      return 'Weekends only';
-    }
-
-    if (days.length <= 3) {
-      return dayNames.join(', ');
-    }
-
-    return `${days.length} days per week`;
-  };
+  }, [task, open, setEditableTask]);
 
   const handleSave = async () => {
     if (!task?.id) return;
@@ -129,29 +61,27 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
     setIsSubmitting(true);
 
     try {
-      // Validate required fields
-      if (!editableTask.title.trim()) {
-        setError('Task title is required.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Validate recurring tasks have at least one day selected
-      if (editableTask.is_recurring && (!editableTask.recurring_days || editableTask.recurring_days.length === 0)) {
-        setError('Recurring tasks must have at least one day selected.');
+      // Validate the task
+      const validation = validateEditTask(editableTask);
+      if (!validation.isValid) {
+        setError(validation.errors.join('\n'));
         setIsSubmitting(false);
         return;
       }
 
       // Prepare the task data with proper formatting
-      let taskDataToUpdate = {
-        ...editableTask,
+      let taskDataToUpdate: Partial<TaskData> = {
+        title: editableTask.title,
+        section: editableTask.section as 'daily' | 'today' | 'upcoming' | 'none',
+        priority: editableTask.priority as 'low' | 'medium' | 'high',
         recurring_days: editableTask.recurring_days?.map(day => day.toLowerCase()) || [],
         start_date: editableTask.start_date?.trim() || undefined,
         end_date: editableTask.end_date?.trim() || undefined,
         start_time: editableTask.start_time?.trim() || undefined,
         end_time: editableTask.end_time?.trim() || undefined,
-        description: editableTask.description?.trim() || undefined
+        description: editableTask.description?.trim() || undefined,
+        is_recurring: editableTask.is_recurring,
+        is_schedule: editableTask.is_schedule
       };
 
       // If not recurring, explicitly set recurring fields to their default values
@@ -213,178 +143,33 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
         )}
 
         <div className="space-y-4">
-          {/* Task Input */}
-          <div>
-            <label className="text-sm font-medium mb-2 block">Task Name *</label>
-            <Input
-              placeholder="Enter task name..."
-              value={editableTask.title}
-              onChange={(e) => updateField('title', e.target.value)}
-              className="w-full"
-              disabled={isSubmitting}
-            />
-          </div>
-
-          {/* Description Input */}
-          <div>
-            <label className="text-sm font-medium mb-2 block">Description (Optional)</label>
-            <Input
-              placeholder="Enter task description..."
-              value={editableTask.description}
-              onChange={(e) => updateField('description', e.target.value)}
-              className="w-full"
-              disabled={isSubmitting}
-            />
-          </div>
-
-          {/* Section and Priority Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Section</label>
-              <Select
-                value={editableTask.section}
-                onValueChange={(value) => updateField('section', value)}
-                disabled={isSubmitting}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="upcoming">Upcoming</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block">Priority</label>
-              <Select
-                value={editableTask.priority}
-                onValueChange={(value) => updateField('priority', value)}
-                disabled={isSubmitting}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          {/* Basic task fields */}
+          <TaskBasicFields
+            task={editableTask}
+            updateField={updateField}
+            isSubmitting={isSubmitting}
+          />
 
           {/* Recurring Section */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="recurring"
-                checked={editableTask.is_recurring}
-                onCheckedChange={(checked) => {
-                  updateField('is_recurring', checked === true);
-                  if (checked !== true) {
-                    updateField('recurring_days', []);
-                  }
-                }}
-                disabled={isSubmitting}
-              />
-              <Label htmlFor="recurring" className="text-sm font-medium">
-                Make this task recurring
-              </Label>
-            </div>
+          <RecurringSection
+            task={editableTask}
+            updateField={updateField}
+            isSubmitting={isSubmitting}
+            showRecurringToggle={true}
+            shouldShowSection={true}
+            toggleDay={toggleDay}
+            toggleEveryDay={toggleEveryDay}
+            isEveryDaySelected={isEveryDaySelected}
+            isDaySelected={isDaySelected}
+            getRecurringDescription={getRecurringDescription}
+          />
 
-            {editableTask.is_recurring && (
-              <div className="space-y-3 p-3 bg-blue-50 dark:bg-blue-950 rounded-md">
-                {/* Everyday Toggle */}
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="everyday"
-                    checked={isEveryDaySelected()}
-                    onCheckedChange={(checked) => toggleEveryDay(checked === true)}
-                    disabled={isSubmitting}
-                  />
-                  <Label htmlFor="everyday" className="text-sm font-medium">
-                    Every day
-                  </Label>
-                </div>
-
-                {/* Individual Day Selection */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Or select specific days:</label>
-                  <div className="grid grid-cols-7 gap-2">
-                    {DAYS_OF_WEEK.map((day) => (
-                      <div key={day} className="flex flex-col items-center">
-                        <Checkbox
-                          id={day}
-                          checked={isDaySelected(day)}
-                          onCheckedChange={() => toggleDay(day)}
-                          disabled={isSubmitting}
-                        />
-                        <Label
-                          htmlFor={day}
-                          className="text-xs mt-1 cursor-pointer"
-                        >
-                          {DAY_ABBREVIATIONS[day]}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Date Range Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Start Date</label>
-              <Input
-                type="date"
-                value={editableTask.start_date}
-                onChange={(e) => updateField('start_date', e.target.value)}
-                className="w-full"
-                disabled={isSubmitting}
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block">End Date</label>
-              <Input
-                type="date"
-                value={editableTask.end_date}
-                onChange={(e) => updateField('end_date', e.target.value)}
-                className="w-full"
-                disabled={isSubmitting}
-              />
-            </div>
-          </div>
-
-          {/* Time Range Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Start Time</label>
-              <Input
-                type="time"
-                value={editableTask.start_time}
-                onChange={(e) => updateField('start_time', e.target.value)}
-                className="w-full"
-                disabled={isSubmitting}
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block">End Time</label>
-              <Input
-                type="time"
-                value={editableTask.end_time}
-                onChange={(e) => updateField('end_time', e.target.value)}
-                className="w-full"
-                disabled={isSubmitting}
-              />
-            </div>
-          </div>
+          {/* Date and Time Fields */}
+          <DateTimeFields
+            task={editableTask}
+            updateField={updateField}
+            isSubmitting={isSubmitting}
+          />
         </div>
 
         {/* Footer */}
