@@ -7,6 +7,7 @@ import { TaskData } from '@/types/todoTypes';
 import { todoApi } from '@/lib/api/todos';
 import { EditTaskModalProps } from '@/types/todoTypes';
 import { updateTaskData } from '@/lib/api/transformers';
+import { transformTaskFormDataBackend } from '@/lib/api/transformers';
 
 // Import shared components and hooks
 import {
@@ -70,19 +71,7 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
       }
 
       // Prepare the task data with proper formatting
-      let taskDataToUpdate: Partial<TaskData> = {
-        title: editableTask.title,
-        section: editableTask.section as 'daily' | 'today' | 'upcoming' | 'none',
-        priority: editableTask.priority as 'low' | 'medium' | 'high',
-        recurring_days: editableTask.recurring_days?.map(day => day.toLowerCase()) || [],
-        start_date: editableTask.start_date?.trim() || undefined,
-        end_date: editableTask.end_date?.trim() || undefined,
-        start_time: editableTask.start_time?.trim() || undefined,
-        end_time: editableTask.end_time?.trim() || undefined,
-        description: editableTask.description?.trim() || undefined,
-        is_recurring: editableTask.is_recurring,
-        is_schedule: editableTask.is_schedule
-      };
+      let taskDataToUpdate: Partial<TaskData> = transformTaskFormDataBackend(editableTask);
 
       // If not recurring, explicitly set recurring fields to their default values
       if (!editableTask.is_recurring) {
@@ -94,7 +83,7 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
       }
 
       // Prepare updates (only send fields that actually have values)
-      const updates: Partial<TaskData> = updateTaskData(taskDataToUpdate);
+      const updates = updateTaskData(taskDataToUpdate);
 
       console.log('Sending updates to backend:', updates);
 
