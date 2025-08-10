@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,16 +12,7 @@ import { transformCreateTaskData } from '@/lib/api/transformers';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { formatDateString, getTodayString } from '@/lib/utils/dateUtils';
-
-const DAYS_OF_WEEK = [
-  { key: 'sunday', label: 'Sun' },
-  { key: 'monday', label: 'Mon' },
-  { key: 'tuesday', label: 'Tue' },
-  { key: 'wednesday', label: 'Wed' },
-  { key: 'thursday', label: 'Thu' },
-  { key: 'friday', label: 'Fri' },
-  { key: 'saturday', label: 'Sat' }
-];
+import { DAYS_OF_WEEK, DAY_ABBREVIATIONS } from '@/lib/utils/constants';
 
 export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTaskModalProps) {
 
@@ -36,7 +27,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
     start_time: '',
     end_time: '',
     is_recurring: true,
-    recurring_days: DAYS_OF_WEEK.map(d => d.key), // Default to every day for daily tasks
+    recurring_days: [...DAYS_OF_WEEK], // Default to every day for daily tasks
     is_schedule: false,
   };
 
@@ -50,7 +41,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
       ...placeholderTask,
       id: Date.now().toString(), // Unique ID for each task
       is_recurring: true,
-      recurring_days: DAYS_OF_WEEK.map(d => d.key), // Default to every day for daily tasks
+      recurring_days: [...DAYS_OF_WEEK], // Default to every day for daily tasks
     };
     setTasks(prev => [...prev, newTask]);
   };
@@ -65,7 +56,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
           if (value === 'daily') {
             // Daily tasks: automatically make recurring and select every day
             updatedTask.is_recurring = true;
-            updatedTask.recurring_days = DAYS_OF_WEEK.map(d => d.key);
+            updatedTask.recurring_days = [...DAYS_OF_WEEK];
             // Clear dates for daily tasks
             updatedTask.start_date = '';
             updatedTask.end_date = '';
@@ -137,7 +128,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
   const toggleEveryDay = (taskId: string, checked: boolean) => {
     setTasks(prev => prev.map(task => {
       if (task.id === taskId) {
-        const newDays = checked ? DAYS_OF_WEEK.map(d => d.key) : [];
+        const newDays = checked ? [...DAYS_OF_WEEK] : [];
         return {
           ...task,
           recurring_days: newDays,
@@ -307,7 +298,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
       const resetTask = {
         ...placeholderTask,
         is_recurring: true,
-        recurring_days: DAYS_OF_WEEK.map(d => d.key),
+        recurring_days: [...DAYS_OF_WEEK],
       };
       setTasks([resetTask]);
 
@@ -326,7 +317,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
     const resetTask = {
       ...placeholderTask,
       is_recurring: true,
-      recurring_days: DAYS_OF_WEEK.map(d => d.key),
+      recurring_days: [...DAYS_OF_WEEK],
     };
     setTasks([resetTask]);
     setError(null);
@@ -484,18 +475,18 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
                       <label className="text-sm font-medium">Or select specific days:</label>
                       <div className="grid grid-cols-7 gap-2">
                         {DAYS_OF_WEEK.map((day) => (
-                          <div key={day.key} className="flex flex-col items-center">
+                          <div key={day} className="flex flex-col items-center">
                             <Checkbox
-                              id={`${task.id}-${day.key}`}
-                              checked={isDaySelected(task.id, day.key)}
-                              onCheckedChange={() => toggleDay(task.id, day.key)}
+                              id={`${task.id}-${day}`}
+                              checked={isDaySelected(task.id, day)}
+                              onCheckedChange={() => toggleDay(task.id, day)}
                               disabled={isSubmitting}
                             />
                             <Label
-                              htmlFor={`${task.id}-${day.key}`}
+                              htmlFor={`${task.id}-${day}`}
                               className="text-xs mt-1 cursor-pointer"
                             >
-                              {day.label}
+                              {DAY_ABBREVIATIONS[day]}
                             </Label>
                           </div>
                         ))}
