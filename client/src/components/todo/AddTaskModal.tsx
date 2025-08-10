@@ -11,6 +11,7 @@ import { todoApi } from '@/lib/api/todos';
 import { transformCreateTaskData } from '@/lib/api/transformers';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { formatDateString, getTodayString } from '@/lib/utils/dateUtils';
 
 const DAYS_OF_WEEK = [
   { key: 'sunday', label: 'Sun' },
@@ -23,10 +24,6 @@ const DAYS_OF_WEEK = [
 ];
 
 export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTaskModalProps) {
-  // Get current date for today tasks
-  const getCurrentDate = () => {
-    return new Date().toISOString().split('T')[0];
-  };
 
   const placeholderTask: InternalTaskData = {
     id: '1',
@@ -74,7 +71,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
             updatedTask.end_date = '';
           } else if (value === 'today') {
             // Today tasks: set start date to current date, disable end date and recurring
-            updatedTask.start_date = getCurrentDate();
+            updatedTask.start_date = getTodayString();
             updatedTask.end_date = '';
             updatedTask.is_recurring = false;
             updatedTask.recurring_days = [];
@@ -83,7 +80,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
             updatedTask.is_recurring = false;
             updatedTask.recurring_days = [];
             // Clear start date if it's today's date
-            if (updatedTask.start_date === getCurrentDate()) {
+            if (updatedTask.start_date === getTodayString()) {
               updatedTask.start_date = '';
             }
           }
@@ -183,7 +180,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
     // Add one day to start date
     const startDate = new Date(task.start_date);
     startDate.setDate(startDate.getDate() + 1);
-    return startDate.toISOString().split('T')[0];
+    return formatDateString(startDate);
   };
 
   // Validate end date when user finishes typing (onBlur)
@@ -249,7 +246,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
           if (task.end_date) {
             validationErrors.push(`Task ${taskNum}: Today tasks cannot have an end date.`);
           }
-          if (task.start_date && task.start_date !== getCurrentDate()) {
+          if (task.start_date && task.start_date !== getTodayString()) {
             validationErrors.push(`Task ${taskNum}: Today tasks must have today's date as start date.`);
           }
         }
