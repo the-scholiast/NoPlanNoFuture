@@ -188,16 +188,44 @@ export const useTodoBoard = () => {
     });
   }, [upcomingTasksWithRecurring, upcomingFilter]);
 
-  // Sync sorted tasks
+  // Helper function to apply default sorting (same logic as CompactTaskSorting)
+  const applyDefaultSort = (tasks: TaskData[]) => {
+    const hasDateTime = (task: TaskData) => !!(task.start_date || task.start_time || task.end_date || task.end_time);
+
+    const completedTasks = tasks.filter(task => task.completed);
+    const incompleteTasksWithDateTime = tasks.filter(task => !task.completed && hasDateTime(task));
+    const incompleteTasksWithoutDateTime = tasks.filter(task => !task.completed && !hasDateTime(task));
+
+    // Sort by start time within each group
+    const sortByTime = (taskGroup: TaskData[]) => {
+      return taskGroup.sort((a, b) => {
+        const getTimeInMinutes = (timeString?: string): number => {
+          if (!timeString) return 0;
+          const [hours, minutes] = timeString.split(':').map(Number);
+          return (hours || 0) * 60 + (minutes || 0);
+        };
+
+        return getTimeInMinutes(a.start_time) - getTimeInMinutes(b.start_time);
+      });
+    };
+
+    return [
+      ...sortByTime(incompleteTasksWithDateTime),
+      ...sortByTime(incompleteTasksWithoutDateTime),
+      ...sortByTime(completedTasks)
+    ];
+  };
+
+  // Sync sorted tasks with default sorting applied
   useEffect(() => {
     setSortedTasks(prev => ({
       ...prev,
-      daily: filteredDailyTasks,
-      today: todayTasksWithRecurring.filter(task => task.section !== 'daily'),
-      upcoming: [
+      daily: applyDefaultSort(filteredDailyTasks),
+      today: applyDefaultSort(todayTasksWithRecurring.filter(task => task.section !== 'daily')),
+      upcoming: applyDefaultSort([
         ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
         ...filteredUpcomingRecurringTasks
-      ]
+      ])
     }));
   }, [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks]);
 

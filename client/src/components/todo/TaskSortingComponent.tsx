@@ -86,58 +86,101 @@ export const CompactTaskSorting: React.FC<CompactTaskSortingProps> = ({
     return endTime1 - endTime2;
   };
 
+  // Helper function to check if a task has date/time information
+  const hasDateTime = (task: TaskData): boolean => {
+    return !!(task.start_date || task.start_time || task.end_date || task.end_time);
+  };
+
+  // Sort function for all groups
+  const sortTaskGroup = (taskGroup: TaskData[], config: SortConfig) => {
+    return taskGroup.sort((a, b) => {
+      let comparison = 0;
+
+      switch (config.field) {
+        case 'start_time':
+          comparison = getTimeInMinutes(a.start_time) - getTimeInMinutes(b.start_time);
+          if (comparison === 0) {
+            comparison = getDateTimeComparison(a, b);
+          }
+          break;
+        case 'start_date':
+          comparison = getDateObject(a.start_date).getTime() - getDateObject(b.start_date).getTime();
+          if (comparison === 0) {
+            comparison = getDateTimeComparison(a, b);
+          }
+          break;
+        case 'priority':
+          comparison = getPriorityWeight(b.priority) - getPriorityWeight(a.priority);
+          if (comparison === 0) {
+            comparison = getDateTimeComparison(a, b);
+          }
+          break;
+        case 'created_at':
+          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          break;
+        default:
+          comparison = 0;
+      }
+
+      return config.order === 'asc' ? comparison : -comparison;
+    });
+  };
+
+  // Use a ref to track if we need to apply initial sorting
+  const needsInitialSort = React.useRef(true);
+  
+  // Apply sorting when needed
+  React.useEffect(() => {
+    if (needsInitialSort.current && tasks.length > 0) {
+      needsInitialSort.current = false;
+      performSort(sortConfig);
+    }
+  }, [tasks.length]); // Only re-run when task count changes
+
+  const performSort = (config: SortConfig) => {
+    // Separate tasks into three groups based on completion and date/time presence
+    const completedTasks = tasks.filter(task => task.completed);
+    const incompleteTasksWithDateTime = tasks.filter(task => !task.completed && hasDateTime(task));
+    const incompleteTasksWithoutDateTime = tasks.filter(task => !task.completed && !hasDateTime(task));
+
+    // Sort all three groups and combine in the desired order
+    const sortedIncompleteWithDateTime = sortTaskGroup(incompleteTasksWithDateTime, config);
+    const sortedIncompleteWithoutDateTime = sortTaskGroup(incompleteTasksWithoutDateTime, config);
+    const sortedCompletedTasks = sortTaskGroup(completedTasks, config);
+    
+    const finalSortedTasks = [
+      ...sortedIncompleteWithDateTime,
+      ...sortedIncompleteWithoutDateTime,
+      ...sortedCompletedTasks
+    ];
+
+    onTasksChange(finalSortedTasks);
+  };
+
   const handleSortChange = (field: SortField, order?: SortOrder) => {
     const newSortConfig = {
       field,
       order: order || (sortConfig.field === field && sortConfig.order === 'asc' ? 'desc' : 'asc')
     };
 
-    // Update local state immediately
+    // Update local state
     setSortConfig(newSortConfig);
-
-    // Separate completed and active tasks
+    
+    // Separate tasks into three groups based on completion and date/time presence
     const completedTasks = tasks.filter(task => task.completed);
-    const activeTasks = tasks.filter(task => !task.completed);
+    const incompleteTasksWithDateTime = tasks.filter(task => !task.completed && hasDateTime(task));
+    const incompleteTasksWithoutDateTime = tasks.filter(task => !task.completed && !hasDateTime(task));
 
-    // Sort function for both groups
-    const sortTaskGroup = (taskGroup: typeof tasks) => {
-      return taskGroup.sort((a, b) => {
-        let comparison = 0;
-
-        switch (newSortConfig.field) {
-          case 'start_time':
-            comparison = getTimeInMinutes(a.start_time) - getTimeInMinutes(b.start_time);
-            if (comparison === 0) {
-              comparison = getDateTimeComparison(a, b);
-            }
-            break;
-          case 'start_date':
-            comparison = getDateObject(a.start_date).getTime() - getDateObject(b.start_date).getTime();
-            if (comparison === 0) {
-              comparison = getDateTimeComparison(a, b);
-            }
-            break;
-          case 'priority':
-            comparison = getPriorityWeight(b.priority) - getPriorityWeight(a.priority);
-            if (comparison === 0) {
-              comparison = getDateTimeComparison(a, b);
-            }
-            break;
-          case 'created_at':
-            comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-            break;
-          default:
-            comparison = 0;
-        }
-
-        return newSortConfig.order === 'asc' ? comparison : -comparison;
-      });
-    };
-
-    // Sort both groups and combine with completed tasks at the bottom
-    const sortedActiveTasks = sortTaskGroup(activeTasks);
-    const sortedCompletedTasks = sortTaskGroup(completedTasks);
-    const finalSortedTasks = [...sortedActiveTasks, ...sortedCompletedTasks];
+    // Sort all three groups and combine in the desired order
+    const sortedIncompleteWithDateTime = sortTaskGroup(incompleteTasksWithDateTime, newSortConfig);
+    const sortedIncompleteWithoutDateTime = sortTaskGroup(incompleteTasksWithoutDateTime, newSortConfig);
+    const sortedCompletedTasks = sortTaskGroup(completedTasks, newSortConfig);
+    
+    const finalSortedTasks = [
+      ...sortedIncompleteWithDateTime,
+      ...sortedIncompleteWithoutDateTime,
+      ...sortedCompletedTasks
+    ];
 
     onTasksChange(finalSortedTasks);
   };
