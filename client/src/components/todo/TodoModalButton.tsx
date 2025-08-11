@@ -4,16 +4,12 @@ import React, { useState, useMemo } from 'react';
 import { CheckSquare, Check, Calendar, Clock, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { TaskData } from '@/types/todoTypes';
 import { useTodo } from '@/contexts/TodoContext';
-import { useTodoMutations } from '@/components/todo/shared/hooks';
+import { useTodoMutations } from '@/components/todo/';
 import { getTodayString, parseToLocalDate } from '@/lib/utils/dateUtils';
 import { shouldTaskAppearOnDate } from '@/lib/utils/recurringDatesUtils';
 import {
-  formatDate,
-  formatTime,
   getSectionLabel,
-  getPriorityColor,
   isRecurringInstance,
   getDateRangeDisplay,
   getTimeRangeDisplay,
