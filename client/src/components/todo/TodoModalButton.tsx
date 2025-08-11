@@ -6,8 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useTodo } from '@/contexts/TodoContext';
 import { useTodoMutations } from '@/components/todo/';
-import { getTodayString, parseToLocalDate } from '@/lib/utils/dateUtils';
-import { shouldTaskAppearOnDate } from '@/lib/utils/recurringDatesUtils';
+import { getTodayString } from '@/lib/utils/dateUtils';
 import {
   getSectionLabel,
   isRecurringInstance,
@@ -15,6 +14,12 @@ import {
   getTimeRangeDisplay,
   combineAllTasks,
 } from '@/components/todo/shared';
+import {
+  filterDailyTasksByDate,
+  sortTasksByDateTimeAndCompletion,
+  sortDailyTasksTimeFirst,
+  hasDateTime
+} from '@/components/todo/shared/utils';
 
 export default function TodoModalButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -32,214 +37,46 @@ export default function TodoModalButton() {
   // Use the shared mutations hook
   const { toggleTaskFunction } = useTodoMutations();
 
-  // Get current date and day for filtering (same as useTodoBoard)
+  // Get current date for filtering
   const currentDate = useMemo(() => getTodayString(), []);
-  const currentDayOfWeek = useMemo(() => {
-    const today = new Date();
-    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    return dayNames[today.getDay()];
-  }, []);
 
-  // Apply the same date filtering logic from useTodoBoard with current day filtering
+  // Apply date filtering and time-first sorting using existing utilities
   const filteredDailyTasks = useMemo(() => {
-    const filtered = dailyTasks.filter(task => {
-      // For recurring tasks, check if they should appear today (like useTodoBoard)
-      if (task.is_recurring && task.recurring_days && task.recurring_days.length > 0) {
-        // First check if task should appear based on recurring schedule
-        const today = new Date();
-        if (!shouldTaskAppearOnDate(task, today)) {
-          return false;
-        }
-      }
+    const filtered = filterDailyTasksByDate(dailyTasks, currentDate, false);
+    return sortDailyTasksTimeFirst(filtered);
+  }, [dailyTasks, currentDate]);
 
-      // Apply date range filtering (same as useTodoBoard)
-      if (!task.start_date && !task.end_date) return true;
-      if (task.start_date && !task.end_date) return task.start_date >= currentDate;
-      if (!task.start_date && task.end_date) return currentDate <= task.end_date;
-      if (task.start_date && task.end_date) {
-        return currentDate >= task.start_date && currentDate <= task.end_date;
-      }
-
-      return true;
-    });
-
-    // Sort with time priority: incomplete tasks with time first, then without time, then completed
-    return filtered.sort((a, b) => {
-      // First, sort by completion status (incomplete tasks first)
-      if (a.completed !== b.completed) {
-        return a.completed ? 1 : -1;
-      }
-
-      // For incomplete tasks, prioritize by time first, then by date/time presence
-      const aHasTime = !!(a.start_time || a.end_time);
-      const bHasTime = !!(b.start_time || b.end_time);
-      
-      // If one has time and other doesn't, prioritize the one with time
-      if (aHasTime !== bHasTime) {
-        return aHasTime ? -1 : 1; // Tasks with time first
-      }
-
-      // If both have times, sort by start_time ascending
-      if (aHasTime && bHasTime) {
-        const timeA = a.start_time || '';
-        const timeB = b.start_time || '';
-        
-        if (timeA && timeB) {
-          return timeA.localeCompare(timeB);
-        }
-        
-        if (timeA && !timeB) return -1;
-        if (!timeA && timeB) return 1;
-      }
-
-      // For tasks without time, check for date/time presence
-      const aHasDateTime = !!(a.start_date || a.end_date || a.start_time || a.end_time);
-      const bHasDateTime = !!(b.start_date || b.end_date || b.start_time || b.end_time);
-
-      if (aHasDateTime !== bHasDateTime) {
-        return aHasDateTime ? -1 : 1; // Tasks with date/time first
-      }
-
-      // If both have same date/time status, sort by date then time
-      const dateA = a.start_date || a.created_at?.split('T')[0] || '';
-      const dateB = b.start_date || b.created_at?.split('T')[0] || '';
-
-      const dateObjA = dateA ? parseToLocalDate(dateA.split('T')[0]) : new Date(0);
-      const dateObjB = dateB ? parseToLocalDate(dateB.split('T')[0]) : new Date(0);
-
-      if (dateObjA.getTime() !== dateObjB.getTime()) {
-        return dateObjA.getTime() - dateObjB.getTime();
-      }
-
-      return a.title.localeCompare(b.title);
-    });
-  }, [dailyTasks, currentDate, currentDayOfWeek]);
-
-  // Apply the same sorting logic from useTodoBoard to upcoming tasks with custom sorting
+  // Apply sorting using existing utility
   const filteredUpcomingTasks = useMemo(() => {
-    return upcomingTasks.sort((a, b) => {
-      // First, sort by completion status (incomplete tasks first)
-      if (a.completed !== b.completed) {
-        return a.completed ? 1 : -1;
-      }
-
-      // For incomplete tasks, prioritize those with dates/times first
-      const aHasDateTime = !!(a.start_date || a.end_date || a.start_time || a.end_time);
-      const bHasDateTime = !!(b.start_date || b.end_date || b.start_time || b.end_time);
-
-      if (aHasDateTime !== bHasDateTime) {
-        return aHasDateTime ? -1 : 1; // Tasks with date/time first
-      }
-
-      // If both have same date/time status, sort by date then time
-      const dateA = a.start_date || a.created_at?.split('T')[0] || '';
-      const dateB = b.start_date || b.created_at?.split('T')[0] || '';
-
-      const dateObjA = dateA ? parseToLocalDate(dateA.split('T')[0]) : new Date(0);
-      const dateObjB = dateB ? parseToLocalDate(dateB.split('T')[0]) : new Date(0);
-
-      if (dateObjA.getTime() !== dateObjB.getTime()) {
-        return dateObjA.getTime() - dateObjB.getTime();
-      }
-
-      const timeA = a.start_time || '';
-      const timeB = b.start_time || '';
-
-      if (timeA && timeB) {
-        return timeA.localeCompare(timeB);
-      }
-
-      if (timeA && !timeB) return -1;
-      if (!timeA && timeB) return 1;
-
-      return a.title.localeCompare(b.title);
-    });
+    return sortTasksByDateTimeAndCompletion(upcomingTasks);
   }, [upcomingTasks]);
 
-  // Apply the same sorting to upcoming recurring tasks with custom sorting
+  // Apply sorting to upcoming recurring tasks using existing utility
   const filteredUpcomingRecurringTasks = useMemo(() => {
-    return upcomingTasksWithRecurring
-      .filter(task => task.section !== 'daily')
-      .sort((a, b) => {
-        // First, sort by completion status (incomplete tasks first)
-        if (a.completed !== b.completed) {
-          return a.completed ? 1 : -1;
-        }
-
-        // For incomplete tasks, prioritize those with dates/times first
-        const aHasDateTime = !!(a.start_date || a.end_date || a.start_time || a.end_time);
-        const bHasDateTime = !!(b.start_date || b.end_date || b.start_time || b.end_time);
-
-        if (aHasDateTime !== bHasDateTime) {
-          return aHasDateTime ? -1 : 1; // Tasks with date/time first
-        }
-
-        // If both have same date/time status, sort by date then time
-        const dateA = a.start_date || a.created_at?.split('T')[0] || '';
-        const dateB = b.start_date || b.created_at?.split('T')[0] || '';
-
-        const dateObjA = dateA ? parseToLocalDate(dateA.split('T')[0]) : new Date(0);
-        const dateObjB = dateB ? parseToLocalDate(dateB.split('T')[0]) : new Date(0);
-
-        if (dateObjA.getTime() !== dateObjB.getTime()) {
-          return dateObjA.getTime() - dateObjB.getTime();
-        }
-
-        const timeA = a.start_time || '';
-        const timeB = b.start_time || '';
-
-        if (timeA && timeB) {
-          return timeA.localeCompare(timeB);
-        }
-
-        if (timeA && !timeB) return -1;
-        if (!timeA && timeB) return 1;
-
-        return a.title.localeCompare(b.title);
-      });
+    const filtered = upcomingTasksWithRecurring.filter(task => task.section !== 'daily');
+    return sortTasksByDateTimeAndCompletion(filtered);
   }, [upcomingTasksWithRecurring]);
 
   // Group tasks by section with proper filtering and sorting
   const groupedTasks = useMemo(() => {
-    // Apply the same sorting logic to today tasks
+    // Apply sorting to today tasks using existing utility
     const todayTasks = todayTasksWithRecurring
       .filter(task => task.section !== 'daily')
       .sort((a, b) => {
-        // First, sort by completion status (incomplete tasks first)
+        // Custom sorting for today tasks (prioritize tasks without dates/times)
         if (a.completed !== b.completed) {
           return a.completed ? 1 : -1;
         }
 
-        // For incomplete tasks, prioritize those without dates/times
-        const aHasDateTime = !!(a.start_date || a.end_date || a.start_time || a.end_time);
-        const bHasDateTime = !!(b.start_date || b.end_date || b.start_time || b.end_time);
+        const aHasDateTime = hasDateTime(a);
+        const bHasDateTime = hasDateTime(b);
 
         if (aHasDateTime !== bHasDateTime) {
           return bHasDateTime ? -1 : 1; // Tasks without date/time first
         }
 
-        // If both have same date/time status, sort by date then time
-        const dateA = a.start_date || a.created_at?.split('T')[0] || '';
-        const dateB = b.start_date || b.created_at?.split('T')[0] || '';
-
-        const dateObjA = dateA ? parseToLocalDate(dateA.split('T')[0]) : new Date(0);
-        const dateObjB = dateB ? parseToLocalDate(dateB.split('T')[0]) : new Date(0);
-
-        if (dateObjA.getTime() !== dateObjB.getTime()) {
-          return dateObjA.getTime() - dateObjB.getTime();
-        }
-
-        const timeA = a.start_time || '';
-        const timeB = b.start_time || '';
-
-        if (timeA && timeB) {
-          return timeA.localeCompare(timeB);
-        }
-
-        if (timeA && !timeB) return -1;
-        if (!timeA && timeB) return 1;
-
-        return a.title.localeCompare(b.title);
+        // Use existing sorting for the rest
+        return sortTasksByDateTimeAndCompletion([a, b])[0] === a ? -1 : 1;
       });
 
     const upcomingCombined = [
@@ -254,7 +91,7 @@ export default function TodoModalButton() {
     };
   }, [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks]);
 
-  // Toggle task completion using the proper function with combined tasks
+  // Toggle task completion with combined tasks
   const toggleTask = (taskId: string) => {
     const allTasks = combineAllTasks(
       filteredDailyTasks,
@@ -265,7 +102,6 @@ export default function TodoModalButton() {
     toggleTaskFunction(taskId, allTasks, isRecurringInstance);
   };
 
-  // Use the decomposed function for priority colors with updated logic
   const getPriorityColorForModal = (priority?: string) => {
     switch (priority) {
       case 'high': return 'text-red-500';

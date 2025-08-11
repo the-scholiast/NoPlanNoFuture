@@ -60,3 +60,40 @@ export const applyDefaultTaskSort = (tasks: TaskData[]) => {
     ...sortTasksByDateTimeAndCompletion(completedTasks)
   ];
 };
+
+export const sortDailyTasksTimeFirst = (tasks: TaskData[]) => {
+  return tasks.sort((a, b) => {
+    if (a.completed !== b.completed) {
+      return a.completed ? 1 : -1;
+    }
+
+    const aHasTime = !!(a.start_time || a.end_time);
+    const bHasTime = !!(b.start_time || b.end_time);
+    
+    if (aHasTime !== bHasTime) {
+      return aHasTime ? -1 : 1;
+    }
+
+    if (aHasTime && bHasTime) {
+      const timeA = a.start_time || '';
+      const timeB = b.start_time || '';
+      
+      if (timeA && timeB) {
+        return timeA.localeCompare(timeB);
+      }
+      
+      if (timeA && !timeB) return -1;
+      if (!timeA && timeB) return 1;
+    }
+
+    const aHasDateTime = hasDateTime(a);
+    const bHasDateTime = hasDateTime(b);
+
+    if (aHasDateTime !== bHasDateTime) {
+      return aHasDateTime ? -1 : 1;
+    }
+
+    // Fall back to default sorting
+    return sortTasksByDateTimeAndCompletion([a, b])[0] === a ? -1 : 1;
+  });
+};
