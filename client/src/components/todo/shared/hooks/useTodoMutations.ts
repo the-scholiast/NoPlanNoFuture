@@ -21,7 +21,7 @@ export const useTodoMutations = () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
       // Use predicate for completed-tasks to catch all variations
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         predicate: (query) => query.queryKey[0] === 'completed-tasks'
       });
     },
@@ -42,7 +42,7 @@ export const useTodoMutations = () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
       // Use predicate for completed-tasks to catch all variations
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         predicate: (query) => query.queryKey[0] === 'completed-tasks'
       });
     },
@@ -63,7 +63,7 @@ export const useTodoMutations = () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
       // Use predicate for completed-tasks to catch all variations
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         predicate: (query) => query.queryKey[0] === 'completed-tasks'
       });
     },
@@ -82,7 +82,7 @@ export const useTodoMutations = () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
       // Use predicate for completed-tasks to catch all variations
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         predicate: (query) => query.queryKey[0] === 'completed-tasks'
       });
     },
@@ -101,7 +101,7 @@ export const useTodoMutations = () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
       // Use predicate for completed-tasks to catch all variations
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         predicate: (query) => query.queryKey[0] === 'completed-tasks'
       });
     },
@@ -109,66 +109,48 @@ export const useTodoMutations = () => {
 
   // Helper function to invalidate all queries - FIXED: No circular dependencies
   const invalidateAllQueries = () => {
-    console.log('Invalidating all queries...');
-    
-    // Invalidate React Query caches
-    queryClient.invalidateQueries({ queryKey: ['todos'] }); // For TodoBoard
-    queryClient.invalidateQueries({ queryKey: ['tasks'] }); // For other components
-    
-    // CRITICAL FIX: Invalidate completed-tasks queries with partial matching
-    // This handles the ['completed-tasks', dateFilter] structure used by CompletedTasks
-    queryClient.invalidateQueries({ 
+
+    // Force refetch of the main tasks query that TodoContext uses
+    refetch();
+    refetchTodayRecurring();
+    refetchUpcomingRecurring();
+
+    // Invalidate React Query caches - THIS IS THE KEY LINE:
+    queryClient.invalidateQueries({
       predicate: (query) => {
         return query.queryKey[0] === 'completed-tasks';
       }
     });
-    
-    queryClient.invalidateQueries({ queryKey: ['recurring-todos'] }); // For recurring task instances
-    
-    // Call refetch functions as backup
-    refetch();
-    refetchTodayRecurring();
-    refetchUpcomingRecurring();
-    
-    console.log('✅ All queries invalidated');
+
+    queryClient.invalidateQueries({ queryKey: ['todos'] });
+    queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
+
   };
 
   const createToggleTaskFunction = () => {
     return async (taskId: string, allTasks: TaskData[], isRecurringInstanceFn: (task: TaskData) => boolean) => {
       const task = allTasks.find(t => t.id === taskId);
       if (!task) {
-        console.log('❌ Task not found with ID:', taskId);
-        console.log('Available tasks:', allTasks.map(t => ({ id: t.id, title: t.title, completed: t.completed })));
         return;
       }
-
-      console.log(`🔄 Toggling task: "${task.title}" (${taskId})`);
-      console.log(`Current status: ${task.completed ? 'COMPLETED' : 'INCOMPLETE'}`);
-      console.log(`Task section: ${task.section}`);
 
       const today = getTodayString();
       const originalTaskId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
       const isRecurringInstance = taskId.includes('_') && !!task.parent_task_id;
-      
-      console.log(`Original task ID: ${originalTaskId}`);
-      console.log(`Is recurring instance: ${isRecurringInstance}`);
 
       try {
         if (!task.completed) {
-          // ========== COMPLETING A TASK ==========
-          console.log('📝 COMPLETING TASK...');
 
-          // 1. Create completion record for CompletedTasks component
-          console.log(`Creating completion record for task ${originalTaskId} on ${today}`);
+          // Create completion record for CompletedTasks component
           try {
             await todoCompletionsApi.createCompletion(originalTaskId, today);
-            console.log('✅ Completion record created successfully');
           } catch (completionError) {
             console.error('❌ Failed to create completion record:', completionError);
             // Continue anyway - the task update is more important
           }
 
-          // 2. Update the task directly via API (avoiding circular dependency)
+          // Update the task directly via API (avoiding circular dependency)
           const updates: Partial<TaskData> = {
             completed: true,
             completed_at: getTodayString(),
@@ -178,29 +160,19 @@ export const useTodoMutations = () => {
           if (task.section === 'daily') {
             updates.completion_count = (task.completion_count || 0) + 1;
             updates.last_completed_date = today;
-            console.log(`Daily task - incrementing completion count to: ${updates.completion_count}`);
           }
 
-          console.log('📤 Updating task with:', updates);
-          
           // CRITICAL FIX: Use todoApi directly instead of mutation to avoid circular dependency
           await todoApi.update(originalTaskId, updates);
-          
-          console.log('✅ Task marked as completed');
 
         } else {
-          // ========== UNCOMPLETING A TASK ==========
-          console.log('↩️ UNCOMPLETING TASK...');
-
-          // 1. Delete completion record
-          console.log(`Deleting completion record for task ${originalTaskId} on ${today}`);
+          // Delete completion record
           try {
             // Find and delete today's completion
             const completions = await todoCompletionsApi.getCompletionsForTaskAndDate(originalTaskId, today);
-            
+
             if (completions && completions.length > 0) {
               await todoCompletionsApi.deleteCompletion(completions[0].id);
-              console.log('✅ Completion record deleted successfully');
             } else {
               console.log('⚠️ No completion record found for today');
             }
@@ -222,24 +194,18 @@ export const useTodoMutations = () => {
             if (newCount === 0) {
               updates.last_completed_date = undefined;
             }
-            console.log(`Daily task - decrementing completion count to: ${newCount}`);
           }
 
-          console.log('📤 Updating task with:', updates);
-          
-          // CRITICAL FIX: Use todoApi directly instead of mutation to avoid circular dependency
+          // Use todoApi directly instead of mutation to avoid circular dependency
           await todoApi.update(originalTaskId, updates);
-          
-          console.log('✅ Task marked as incomplete');
+
         }
 
         // 3. Refresh all UI components
-        console.log('🔄 Refreshing UI...');
         invalidateAllQueries();
 
       } catch (error) {
         console.error('❌ ERROR toggling task:', error);
-
         // Enhanced error logging
         if (error instanceof Error) {
           console.error('Error details:', {
@@ -248,9 +214,10 @@ export const useTodoMutations = () => {
             stack: error.stack
           });
         }
-
         // Don't throw to prevent UI from breaking
-        console.log('⚠️ Task toggle failed, but UI will remain functional');
+      } finally {
+        // Always invalidate queries regardless of success or failure
+        invalidateAllQueries();
       }
     };
   };

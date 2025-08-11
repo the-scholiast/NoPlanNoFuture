@@ -29,7 +29,6 @@ export const todoCompletionsApi = {
       .order('completed_at', { ascending: false });
 
     if (dateRange) {
-      console.log('🔍 Applying date filter:', dateRange);
 
       // Method 2: Use next day approach to catch all completions on end date
       const startDateTime = `${dateRange.start}T00:00:00`;
@@ -43,15 +42,6 @@ export const todoCompletionsApi = {
       query = query
         .gte('completed_at', startDateTime)
         .lt('completed_at', endDateTime); // Use lt (less than) to include all of end date
-
-      console.log('🔍 Date filter applied (Method 2 - DEBUG):', {
-        originalRange: dateRange,
-        startDateTime: startDateTime,
-        endDateTime: endDateTime,
-        nextDay: nextDay,
-        getNextDayTest: getNextDay('2025-08-10'),
-        explanation: `Filtering: completed_at >= '${startDateTime}' AND completed_at < '${endDateTime}'`
-      });
     }
 
     const { data: completions, error } = await query;
@@ -60,16 +50,6 @@ export const todoCompletionsApi = {
       console.error('❌ Error fetching completions:', error);
       throw error;
     }
-
-    console.log('📊 Raw completions fetched:', {
-      count: completions?.length || 0,
-      dateFilter: dateRange,
-      sampleDates: completions?.slice(0, 3).map(c => ({
-        id: c.id,
-        completed_at: c.completed_at,
-        task_title: c.todos?.title
-      })) || []
-    });
 
     // Group completions by task and add completion count
     const taskCompletionMap = new Map<string, { task: TaskData; completions: TodoCompletion[] }>();
@@ -113,15 +93,6 @@ export const todoCompletionsApi = {
     const sortedResult = result.sort((a, b) =>
       new Date(b.completion.completed_at).getTime() - new Date(a.completion.completed_at).getTime()
     );
-
-    console.log('✅ Final result after processing:', {
-      count: sortedResult.length,
-      sampleTasks: sortedResult.slice(0, 3).map(r => ({
-        title: r.title,
-        completed_at: r.completion.completed_at,
-        completion_id: r.completion.id
-      }))
-    });
 
     return sortedResult;
   },

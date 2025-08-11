@@ -48,10 +48,17 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   };
 
   // Use shared toggle function
-  const toggleTask = (taskId: string) => {
+  const toggleTask = async (taskId: string) => {
+  console.log('🖱️ TodoBoard: toggleTask called with taskId:', taskId);
+  try {
     const allTasks = combineAllTasks(filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks);
-    toggleTaskFunction(taskId, allTasks, isRecurringInstance);
-  };
+    console.log('🖱️ TodoBoard: Combined tasks count:', allTasks.length);
+    await toggleTaskFunction(taskId, allTasks, isRecurringInstance);
+    console.log('🖱️ TodoBoard: toggleTaskFunction completed');
+  } catch (error) {
+    console.error('🖱️ TodoBoard: Error in toggleTask:', error);
+  }
+};
 
   if (isLoading) {
     return (

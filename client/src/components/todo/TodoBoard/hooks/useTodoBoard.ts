@@ -81,11 +81,11 @@ export const useTodoBoard = () => {
     setSortedTasks(prev => ({
       ...prev,
       daily: applyDefaultTaskSort(filteredDailyTasks),
-      today: prev.today.length === 0 ? applyDefaultTaskSort(todayTasksWithRecurring.filter(task => task.section !== 'daily')) : prev.today,
-      upcoming: prev.upcoming.length === 0 ? applyDefaultTaskSort([
+      today: applyDefaultTaskSort(todayTasksWithRecurring.filter(task => task.section !== 'daily')),
+      upcoming: applyDefaultTaskSort([
         ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
         ...filteredUpcomingRecurringTasks
-      ]) : prev.upcoming
+      ])
     }));
   }, [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks, showAllDailyTasks]);
 
