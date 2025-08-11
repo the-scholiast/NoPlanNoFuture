@@ -14,7 +14,6 @@ import {
   TaskBasicFields,
   RecurringSection,
   DateTimeFields,
-  TaskFormData
 } from './shared/';
 import { useTaskFormLogic } from './shared/';
 import { validateEditTask } from './shared/';
