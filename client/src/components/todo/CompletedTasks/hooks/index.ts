@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CompletedTasksState, DateFilterState, CompletedTaskWithCompletion } from '../../shared/types';
 import { useCompletedTasksMutations } from '../../shared/hooks/useCompletedTasksMutations';
@@ -19,6 +19,14 @@ export const useCompletedTasks = () => {
     }
   });
 
+  // Create a stable query key that changes when date filter changes
+  const queryKey = useMemo(() => [
+    'completed-tasks',
+    state.dateFilter.enabled,
+    state.dateFilter.startDate,
+    state.dateFilter.endDate
+  ], [state.dateFilter.enabled, state.dateFilter.startDate, state.dateFilter.endDate]);
+
   // Query for completed tasks with completions
   const {
     data: completedTasksData = [],
@@ -26,8 +34,14 @@ export const useCompletedTasks = () => {
     error,
     refetch
   } = useQuery({
-    queryKey: ['completed-tasks', state.dateFilter],
+    queryKey,
     queryFn: () => {
+      console.log('🔄 Fetching completed tasks with filter:', {
+        enabled: state.dateFilter.enabled,
+        startDate: state.dateFilter.startDate,
+        endDate: state.dateFilter.endDate
+      });
+      
       if (state.dateFilter.enabled) {
         return todoCompletionsApi.getCompletionsInRange(
           state.dateFilter.startDate,
@@ -36,8 +50,17 @@ export const useCompletedTasks = () => {
       }
       return todoCompletionsApi.getCompletedTasks();
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 2, // Reduced to 2 minutes for better debugging
   });
+
+  // Log data changes for debugging
+  useEffect(() => {
+    console.log('📊 Completed tasks data updated:', {
+      count: completedTasksData.length,
+      filter: state.dateFilter,
+      timestamp: new Date().toISOString()
+    });
+  }, [completedTasksData, state.dateFilter]);
 
   // Transform API data to component format
   const processedCompletedTasks = useMemo(() => {
@@ -52,6 +75,8 @@ export const useCompletedTasks = () => {
   const filteredTasks = useMemo(() => {
     let filtered = processedCompletedTasks;
 
+    console.log('🧹 Starting with tasks:', filtered.length);
+
     // Search filter
     if (state.searchQuery.trim()) {
       const query = state.searchQuery.toLowerCase();
@@ -59,21 +84,42 @@ export const useCompletedTasks = () => {
         task.title.toLowerCase().includes(query) ||
         task.description?.toLowerCase().includes(query)
       );
+      console.log('🔍 After search filter:', filtered.length);
     }
 
-    // Apply date filter if enabled (this is now handled by the query, but keeping for client-side refinement)
+    // Apply date filter if enabled - This should be redundant now since API handles it
+    // But keeping as a safety net for client-side data that might slip through
     if (state.dateFilter.enabled && filtered.length > 0) {
+      const initialCount = filtered.length;
       filtered = filtered.filter(task => {
-        const completionDate = task.completion.instance_date;
-        if (!completionDate) return false;
+        const completionDate = task.completion.instance_date || task.completion.completed_at;
+        if (!completionDate) {
+          console.log('⚠️ Task without completion date:', task.id);
+          return false;
+        }
 
         // Extract just the date part if it includes timestamp
         const taskDateStr = completionDate.includes('T') ?
           completionDate.split('T')[0] : completionDate;
 
-        return taskDateStr >= state.dateFilter.startDate &&
+        const isInRange = taskDateStr >= state.dateFilter.startDate &&
           taskDateStr <= state.dateFilter.endDate;
+
+        if (!isInRange) {
+          console.log('🚫 Filtering out task:', {
+            taskId: task.id,
+            taskDate: taskDateStr,
+            filterStart: state.dateFilter.startDate,
+            filterEnd: state.dateFilter.endDate
+          });
+        }
+
+        return isInRange;
       });
+      
+      if (initialCount !== filtered.length) {
+        console.log(`🧹 Client-side date filter: ${initialCount} → ${filtered.length}`);
+      }
     }
 
     // Sort by completion date (most recent first)
@@ -84,7 +130,10 @@ export const useCompletedTasks = () => {
     });
 
     // Use sorted tasks if manually sorted, otherwise use filtered
-    return state.sortedCompletedTasks.length > 0 ? state.sortedCompletedTasks : filtered;
+    const result = state.sortedCompletedTasks.length > 0 ? state.sortedCompletedTasks : filtered;
+    
+    console.log('✅ Final filtered tasks:', result.length);
+    return result;
   }, [processedCompletedTasks, state.searchQuery, state.dateFilter, state.sortedCompletedTasks]);
 
   // Get mutations
@@ -113,10 +162,17 @@ export const useCompletedTasks = () => {
   };
 
   const updateDateFilter = (filter: Partial<DateFilterState>) => {
-    setState(prev => ({
-      ...prev,
-      dateFilter: { ...prev.dateFilter, ...filter }
-    }));
+    console.log('🔧 updateDateFilter called with:', filter);
+    setState(prev => {
+      const newDateFilter = { ...prev.dateFilter, ...filter };
+      console.log('🔧 Date filter updated:', { old: prev.dateFilter, new: newDateFilter });
+      return {
+        ...prev,
+        dateFilter: newDateFilter,
+        // Clear sorted tasks when filter changes to ensure fresh data
+        sortedCompletedTasks: []
+      };
+    });
   };
 
   const updateSortedTasks = (tasks: CompletedTaskWithCompletion[]) => {

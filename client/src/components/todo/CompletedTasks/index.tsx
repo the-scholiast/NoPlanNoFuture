@@ -15,6 +15,7 @@ import { useCompletedTasks } from './hooks';
 import { CompletedTasksProps, CompletedTaskWithCompletion } from './types';
 import { formatDateString, getTodayString } from '@/lib/utils/dateUtils';
 import { getSectionLabel } from '../shared/utils';
+import { formatDate, formatTime, getPriorityColor, } from '../shared/utils';
 
 export default function CompletedTasks({ className }: CompletedTasksProps) {
   const {
@@ -34,51 +35,6 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     handleUncompleteTask,
     handleDeleteTask,
   } = useCompletedTasks();
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return null;
-    try {
-      const [year, month, day] = dateString.split('-').map(Number);
-      if (!year || !month || !day) return dateString;
-
-      // Return in YYYY-MM-DD format
-      const formattedYear = year.toString();
-      const formattedMonth = month.toString().padStart(2, '0');
-      const formattedDay = day.toString().padStart(2, '0');
-
-      return `${formattedYear}-${formattedMonth}-${formattedDay}`;
-    } catch {
-      return dateString;
-    }
-  };
-
-  const formatTime = (timeString?: string) => {
-    if (!timeString) return null;
-    try {
-      const [hours, minutes] = timeString.split(':').map(Number);
-      if (isNaN(hours) || isNaN(minutes)) return timeString;
-
-      const date = new Date();
-      date.setHours(hours, minutes);
-
-      return date.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
-    } catch {
-      return timeString;
-    }
-  };
-
-  const getPriorityColor = (priority?: string) => {
-    switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800 border-red-200';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'low': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
 
   const getFilterDisplayText = () => {
     if (!dateFilter.enabled) return 'All dates';
@@ -100,6 +56,16 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     }
 
     return `${formatLocalDate(dateFilter.startDate)} - ${formatLocalDate(dateFilter.endDate)}`;
+  };
+
+  // Handle filter changes with debug logging
+  const handleDateFilterChange = (filter: any) => {
+    console.log('🔍 Date filter changing:', {
+      old: dateFilter,
+      new: { ...dateFilter, ...filter },
+      timestamp: getTodayString(),
+    });
+    updateDateFilter(filter);
   };
 
   if (isLoading) {
@@ -133,6 +99,7 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
 
   return (
     <div className={`w-full mt-6 ${className}`}>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
@@ -180,7 +147,7 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
                   <Label>Enable Date Filter</Label>
                   <Switch
                     checked={dateFilter.enabled}
-                    onCheckedChange={(checked) => updateDateFilter({ enabled: checked })}
+                    onCheckedChange={(checked) => handleDateFilterChange({ enabled: checked })}
                   />
                 </div>
 
@@ -193,7 +160,11 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
                           id="start-date"
                           type="date"
                           value={dateFilter.startDate}
-                          onChange={(e) => updateDateFilter({ startDate: e.target.value })}
+                          onChange={(e) => {
+                            const newStartDate = e.target.value;
+                            console.log('📅 Start date changed to:', newStartDate);
+                            handleDateFilterChange({ startDate: newStartDate });
+                          }}
                         />
                       </div>
                       <div>
@@ -202,7 +173,11 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
                           id="end-date"
                           type="date"
                           value={dateFilter.endDate}
-                          onChange={(e) => updateDateFilter({ endDate: e.target.value })}
+                          onChange={(e) => {
+                            const newEndDate = e.target.value;
+                            console.log('📅 End date changed to:', newEndDate);
+                            handleDateFilterChange({ endDate: newEndDate });
+                          }}
                         />
                       </div>
                     </div>
@@ -213,7 +188,8 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
                         size="sm"
                         onClick={() => {
                           const today = getTodayString();
-                          updateDateFilter({ startDate: today, endDate: today });
+                          console.log('📅 Setting filter to today:', today);
+                          handleDateFilterChange({ startDate: today, endDate: today });
                         }}
                       >
                         Today
@@ -233,10 +209,11 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
                           const sunday = new Date(monday);
                           sunday.setDate(monday.getDate() + 6);
 
-                          updateDateFilter({
-                            startDate: formatDateString(monday),
-                            endDate: formatDateString(sunday)
-                          });
+                          const startDate = formatDateString(monday);
+                          const endDate = formatDateString(sunday);
+
+                          console.log('📅 Setting filter to this week:', { startDate, endDate });
+                          handleDateFilterChange({ startDate, endDate });
                         }}
                       >
                         This Week
@@ -253,10 +230,11 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
                           const firstDay = new Date(year, month, 1);
                           const lastDay = new Date(year, month + 1, 0);
 
-                          updateDateFilter({
-                            startDate: formatDateString(firstDay),
-                            endDate: formatDateString(lastDay)
-                          });
+                          const startDate = formatDateString(firstDay);
+                          const endDate = formatDateString(lastDay);
+
+                          console.log('📅 Setting filter to this month:', { startDate, endDate });
+                          handleDateFilterChange({ startDate, endDate });
                         }}
                       >
                         This Month
@@ -266,7 +244,10 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => updateDateFilter({ enabled: false })}
+                      onClick={() => {
+                        console.log('📅 Clearing filter');
+                        handleDateFilterChange({ enabled: false });
+                      }}
                       className="w-full"
                     >
                       Clear Filter
