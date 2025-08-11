@@ -1,11 +1,13 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CompletedTasksState, DateFilterState, CompletedTaskWithCompletion } from '../../shared/types';
 import { useCompletedTasksMutations } from '../../shared/hooks/useCompletedTasksMutations';
 import { getCurrentWeekStart, getCurrentWeekEnd } from '../../shared/utils';
 import { todoCompletionsApi, CompletedTaskWithDetails } from '@/lib/api/todoCompletions';
 
+
 export const useCompletedTasks = () => {
+  const queryClient = useQueryClient();
   // Component state
   const [state, setState] = useState<CompletedTasksState>({
     expandedTask: null,
@@ -44,7 +46,6 @@ export const useCompletedTasks = () => {
       }
       return todoCompletionsApi.getCompletedTasks();
     },
-    staleTime: 1000 * 60 * 2, // Reduced to 2 minutes for better debugging
   });
 
   // Transform API data to component format

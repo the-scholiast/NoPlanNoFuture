@@ -11,6 +11,7 @@ import { useTodoMutations } from '../shared/hooks/useTodoMutations';
 import { DailyTaskToggle } from '@/components/todo/TodoBoard/components/DailyTaskToggle';
 import TaskCard from '../shared/components/TaskCard';
 import { combineAllTasks, } from '../shared';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   const {
@@ -43,22 +44,29 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   // Use shared mutations for all task operations
   const { toggleTaskFunction } = useTodoMutations();
 
+  const queryClient = useQueryClient();
+
   const handleTaskUpdated = () => {
     // Handled by mutations in the hook
   };
 
   // Use shared toggle function
   const toggleTask = async (taskId: string) => {
-  console.log('🖱️ TodoBoard: toggleTask called with taskId:', taskId);
-  try {
-    const allTasks = combineAllTasks(filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks);
-    console.log('🖱️ TodoBoard: Combined tasks count:', allTasks.length);
-    await toggleTaskFunction(taskId, allTasks, isRecurringInstance);
-    console.log('🖱️ TodoBoard: toggleTaskFunction completed');
-  } catch (error) {
-    console.error('🖱️ TodoBoard: Error in toggleTask:', error);
-  }
-};
+    console.log('🖱️ TodoBoard: toggleTask called with taskId:', taskId);
+    try {
+      const allTasks = combineAllTasks(filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks);
+      console.log('🖱️ TodoBoard: Combined tasks count:', allTasks.length);
+      await toggleTaskFunction(taskId, allTasks, isRecurringInstance);
+      console.log('🖱️ TodoBoard: toggleTaskFunction completed');
+
+      // Force immediate refetch of completed tasks
+      queryClient.refetchQueries({
+        predicate: (query) => query.queryKey[0] === 'completed-tasks'
+      });
+    } catch (error) {
+      console.error('🖱️ TodoBoard: Error in toggleTask:', error);
+    }
+  };
 
   if (isLoading) {
     return (

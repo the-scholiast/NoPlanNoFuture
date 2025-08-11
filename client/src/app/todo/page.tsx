@@ -1,6 +1,16 @@
+'use client'
+
 import { TodoBoard, CompletedTasks, IncompleteTasks } from '@/components/todo';
+import { useTodo } from '@/contexts/TodoContext';
 
 export default function Page() {
+  const { allTasks } = useTodo();
+  
+  // Create a key that changes when task completion status changes
+  const completedTasksKey = allTasks
+    .map(task => `${task.id}-${task.completed}-${task.completed_at}`)
+    .join('|');
+
   return (
     <div className="flex-1">
       {/* Header positioned to align with the add button that's above */}
@@ -13,7 +23,7 @@ export default function Page() {
       </div>
 
       <TodoBoard />
-      <CompletedTasks />
+      <CompletedTasks key={completedTasksKey} />
       <IncompleteTasks />
     </div>
   );

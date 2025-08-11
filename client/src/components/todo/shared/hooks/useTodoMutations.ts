@@ -109,23 +109,28 @@ export const useTodoMutations = () => {
 
   // Helper function to invalidate all queries - FIXED: No circular dependencies
   const invalidateAllQueries = () => {
-
     // Force refetch of the main tasks query that TodoContext uses
     refetch();
     refetchTodayRecurring();
     refetchUpcomingRecurring();
 
-    // Invalidate React Query caches - THIS IS THE KEY LINE:
-    queryClient.invalidateQueries({
-      predicate: (query) => {
-        return query.queryKey[0] === 'completed-tasks';
-      }
-    });
-
+    // Invalidate React Query caches
     queryClient.invalidateQueries({ queryKey: ['todos'] });
     queryClient.invalidateQueries({ queryKey: ['tasks'] });
     queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
 
+    // CRITICAL FIX: Invalidate completed-tasks with exact matching
+    // This matches the queryKey structure in CompletedTasks hook
+    queryClient.invalidateQueries({
+      queryKey: ['completed-tasks'],
+      exact: false // This ensures it matches all variations with different parameters
+    });
+
+    // Also force refetch to be sure
+    queryClient.refetchQueries({
+      queryKey: ['completed-tasks'],
+      exact: false
+    });
   };
 
   const createToggleTaskFunction = () => {
@@ -145,9 +150,14 @@ export const useTodoMutations = () => {
           // Create completion record for CompletedTasks component
           try {
             await todoCompletionsApi.createCompletion(originalTaskId, today);
+
+            // Immediately refetch completed tasks to show the new completion
+            queryClient.refetchQueries({
+              predicate: (query) => query.queryKey[0] === 'completed-tasks'
+            });
+
           } catch (completionError) {
             console.error('❌ Failed to create completion record:', completionError);
-            // Continue anyway - the task update is more important
           }
 
           // Update the task directly via API (avoiding circular dependency)
@@ -168,17 +178,17 @@ export const useTodoMutations = () => {
         } else {
           // Delete completion record
           try {
-            // Find and delete today's completion
             const completions = await todoCompletionsApi.getCompletionsForTaskAndDate(originalTaskId, today);
-
             if (completions && completions.length > 0) {
               await todoCompletionsApi.deleteCompletion(completions[0].id);
-            } else {
-              console.log('⚠️ No completion record found for today');
+
+              // Immediately refetch completed tasks to remove the completion
+              queryClient.refetchQueries({
+                predicate: (query) => query.queryKey[0] === 'completed-tasks'
+              });
             }
           } catch (completionError) {
             console.error('❌ Failed to delete completion record:', completionError);
-            // Continue anyway - the task update is more important
           }
 
           // 2. Update the task directly via API (avoiding circular dependency)
@@ -218,6 +228,13 @@ export const useTodoMutations = () => {
       } finally {
         // Always invalidate queries regardless of success or failure
         invalidateAllQueries();
+
+        // Add an additional forced refetch with a small delay to ensure all async operations complete
+        setTimeout(() => {
+          queryClient.refetchQueries({
+            predicate: (query) => query.queryKey[0] === 'completed-tasks'
+          });
+        }, 200);
       }
     };
   };
