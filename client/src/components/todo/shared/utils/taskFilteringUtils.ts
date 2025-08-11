@@ -1,6 +1,7 @@
 import { parseToLocalDate } from "@/lib/utils/dateUtils";
 import { shouldTaskAppearOnDate } from "@/lib/utils/recurringDatesUtils";
 import { TaskData } from "@/types/todoTypes";
+import { DateRangeFilter } from "../types";
 
 export const filterDailyTasksByDate = (
   tasks: TaskData[], 
@@ -53,6 +54,27 @@ export const filterUpcomingTasksByDateRange = (
     const startDateObj = parseToLocalDate(upcomingFilter.startDate);
     const endDateObj = parseToLocalDate(upcomingFilter.endDate);
 
+    return taskDateObj >= startDateObj && taskDateObj <= endDateObj;
+  });
+};
+
+// Filter tasks by date range if the filter is enabled
+export const filterTasksByDateRange = (tasks: TaskData[], filter: DateRangeFilter): TaskData[] => {
+  if (!filter.enabled) {
+    return tasks;
+  }
+
+  return tasks.filter(task => {
+    const taskDate = task.start_date || task.created_at?.split('T')[0];
+    if (!taskDate) return false;
+
+    const taskDateStr = taskDate.includes('T') ? taskDate.split('T')[0] : taskDate;
+
+    const taskDateObj = parseToLocalDate(taskDateStr);
+    const startDateObj = parseToLocalDate(filter.startDate);
+    const endDateObj = parseToLocalDate(filter.endDate);
+
+    // Compare using Date objects instead of strings to avoid timezone issues
     return taskDateObj >= startDateObj && taskDateObj <= endDateObj;
   });
 };

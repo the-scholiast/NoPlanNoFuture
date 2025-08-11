@@ -5,7 +5,7 @@ import { useTodoMutations } from '../../shared/hooks';
 import { getTodayString, parseToLocalDate } from '@/lib/utils/dateUtils';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { TodoSection } from '../../shared/types';
-import { applyDefaultTaskSort, filterDailyTasksByDate, sortTasksByDateTimeAndCompletion } from '../../shared';
+import { applyDefaultTaskSort, filterDailyTasksByDate, sortTasksByDateTimeAndCompletion, filterTasksByDateRange } from '../../shared';
 import {
   formatDate,
   formatTime,
@@ -66,46 +66,16 @@ export const useTodoBoard = () => {
   }, [dailyTasks, currentDate, currentDayOfWeek, showAllDailyTasks]);
 
   const filteredUpcomingTasks = useMemo(() => {
-  let tasks = upcomingTasks;
-  if (upcomingFilter.enabled) {
-    tasks = upcomingTasks.filter(task => {
-      const taskDate = task.start_date || task.created_at?.split('T')[0];
-      if (!taskDate) return false;
-      const taskDateStr = taskDate.includes('T') ? taskDate.split('T')[0] : taskDate;
-
-      const taskDateObj = parseToLocalDate(taskDateStr);
-      const startDateObj = parseToLocalDate(upcomingFilter.startDate);
-      const endDateObj = parseToLocalDate(upcomingFilter.endDate);
-
-      return taskDateObj >= startDateObj && taskDateObj <= endDateObj;
-    });
-  }
-
-  return sortTasksByDateTimeAndCompletion(tasks);
+  const filtered = filterTasksByDateRange(upcomingTasks, upcomingFilter);
+  return sortTasksByDateTimeAndCompletion(filtered);
 }, [upcomingTasks, upcomingFilter]);
 
   // Filtered upcoming tasks with date filtering
   const filteredUpcomingRecurringTasks = useMemo(() => {
-    let tasks = upcomingTasksWithRecurring.filter(task => task.section !== 'daily');
-
-    if (upcomingFilter.enabled) {
-      tasks = tasks.filter(task => {
-        const taskDate = task.start_date || task.created_at?.split('T')[0];
-        if (!taskDate) return false;
-
-        const taskDateStr = taskDate.includes('T') ? taskDate.split('T')[0] : taskDate;
-
-        const taskDateObj = parseToLocalDate(taskDateStr);
-        const startDateObj = parseToLocalDate(upcomingFilter.startDate);
-        const endDateObj = parseToLocalDate(upcomingFilter.endDate);
-
-        // Compare using Date objects instead of strings to avoid timezone issues
-        return taskDateObj >= startDateObj && taskDateObj <= endDateObj;
-      });
-    }
-
-    return sortTasksByDateTimeAndCompletion(tasks);
-  }, [upcomingTasksWithRecurring, upcomingFilter]);
+  const tasks = upcomingTasksWithRecurring.filter(task => task.section !== 'daily');
+  const filtered = filterTasksByDateRange(tasks, upcomingFilter);
+  return sortTasksByDateTimeAndCompletion(filtered);
+}, [upcomingTasksWithRecurring, upcomingFilter]);
 
   // Sync sorted tasks with default sorting applied
   useEffect(() => {
@@ -203,8 +173,6 @@ export const useTodoBoard = () => {
     setTaskToEdit,
     upcomingFilter,
     setUpcomingFilter,
-    sortedTasks,
-    setSortedTasks,
     showAllDailyTasks,
 
     // Actions

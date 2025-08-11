@@ -75,3 +75,9 @@ export interface BulkDeleteOptions {
   taskIds?: string[];
   confirmAction?: boolean;
 }
+
+export interface DateRangeFilter {
+  startDate: string;
+  endDate: string;
+  enabled: boolean;
+}
