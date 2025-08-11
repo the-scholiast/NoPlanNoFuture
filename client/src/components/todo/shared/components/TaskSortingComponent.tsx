@@ -49,8 +49,26 @@ export const CompactTaskSorting: React.FC<CompactTaskSortingProps> = ({
 
   const getTimeInMinutes = (timeString?: string): number => {
     if (!timeString) return 0;
-    const [hours, minutes] = timeString.split(':').map(Number);
-    return (hours || 0) * 60 + (minutes || 0);
+
+    // Handle both "HH:MM" and "H:MM AM/PM" formats
+    if (timeString.includes('AM') || timeString.includes('PM')) {
+      // Parse 12-hour format like "8:00 AM"
+      const [time, period] = timeString.split(' ');
+      const [hours, minutes] = time.split(':').map(Number);
+      let hour24 = hours;
+
+      if (period === 'PM' && hours !== 12) {
+        hour24 += 12;
+      } else if (period === 'AM' && hours === 12) {
+        hour24 = 0;
+      }
+
+      return hour24 * 60 + (minutes || 0);
+    } else {
+      // Parse 24-hour format like "08:00"
+      const [hours, minutes] = timeString.split(':').map(Number);
+      return (hours || 0) * 60 + (minutes || 0);
+    }
   };
 
   const getDateObject = (dateString?: string): Date => {
@@ -164,20 +182,12 @@ export const CompactTaskSorting: React.FC<CompactTaskSortingProps> = ({
     onTasksChange(finalSortedTasks);
   };
 
-  // Use a ref to track if we need to apply initial sorting
-  const needsInitialSort = React.useRef(true);
-
   // Apply sorting when needed
   React.useEffect(() => {
-    if (needsInitialSort.current && tasks.length > 0) {
-      needsInitialSort.current = false;
+    if (tasks.length > 0) {
       applySorting(sortConfig);
     }
-  }, [tasks.length]); // Only re-run when task count changes
-
-  const performSort = (config: SortConfig) => {
-    applySorting(config);
-  };
+  }, [tasks.map(t => t.id).join(',')]); // Only re-run when task IDs change
 
   const handleSortChange = (field: SortField, order?: SortOrder) => {
     const newSortConfig = {
@@ -187,7 +197,7 @@ export const CompactTaskSorting: React.FC<CompactTaskSortingProps> = ({
 
     // Update local state
     setSortConfig(newSortConfig);
-    
+
     // Apply the sorting with new config
     applySorting(newSortConfig);
   };

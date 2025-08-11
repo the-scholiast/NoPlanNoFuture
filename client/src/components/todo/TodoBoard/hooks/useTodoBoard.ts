@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { TaskData } from '@/types/todoTypes';
 import { useTodo } from '@/contexts/TodoContext';
 import { useTodoMutations } from '../../shared/hooks';
-import { getTodayString, parseToLocalDate } from '@/lib/utils/dateUtils';
+import { getTodayString } from '@/lib/utils/dateUtils';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { TodoSection } from '../../shared/types';
 import { applyDefaultTaskSort, filterDailyTasksByDate, sortTasksByDateTimeAndCompletion, filterTasksByDateRange } from '../../shared';
@@ -28,7 +28,6 @@ export const useTodoBoard = () => {
   } = useTodo();
 
   const { deleteTaskMutation, } = useTodoMutations();
-
   // UI interaction states
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -62,33 +61,33 @@ export const useTodoBoard = () => {
 
   // Filtered daily tasks logic
   const filteredDailyTasks = useMemo(() => {
-    return filterDailyTasksByDate(dailyTasks, currentDate, showAllDailyTasks)
+    return filterDailyTasksByDate(dailyTasks, currentDate, showAllDailyTasks);
   }, [dailyTasks, currentDate, currentDayOfWeek, showAllDailyTasks]);
 
   const filteredUpcomingTasks = useMemo(() => {
-  const filtered = filterTasksByDateRange(upcomingTasks, upcomingFilter);
-  return sortTasksByDateTimeAndCompletion(filtered);
-}, [upcomingTasks, upcomingFilter]);
+    const filtered = filterTasksByDateRange(upcomingTasks, upcomingFilter);
+    return sortTasksByDateTimeAndCompletion(filtered);
+  }, [upcomingTasks, upcomingFilter]);
 
   // Filtered upcoming tasks with date filtering
   const filteredUpcomingRecurringTasks = useMemo(() => {
-  const tasks = upcomingTasksWithRecurring.filter(task => task.section !== 'daily');
-  const filtered = filterTasksByDateRange(tasks, upcomingFilter);
-  return sortTasksByDateTimeAndCompletion(filtered);
-}, [upcomingTasksWithRecurring, upcomingFilter]);
+    const tasks = upcomingTasksWithRecurring.filter(task => task.section !== 'daily');
+    const filtered = filterTasksByDateRange(tasks, upcomingFilter);
+    return sortTasksByDateTimeAndCompletion(filtered);
+  }, [upcomingTasksWithRecurring, upcomingFilter]);
 
   // Sync sorted tasks with default sorting applied
   useEffect(() => {
     setSortedTasks(prev => ({
       ...prev,
       daily: applyDefaultTaskSort(filteredDailyTasks),
-      today: applyDefaultTaskSort(todayTasksWithRecurring.filter(task => task.section !== 'daily')),
-      upcoming: applyDefaultTaskSort([
+      today: prev.today.length === 0 ? applyDefaultTaskSort(todayTasksWithRecurring.filter(task => task.section !== 'daily')) : prev.today,
+      upcoming: prev.upcoming.length === 0 ? applyDefaultTaskSort([
         ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
         ...filteredUpcomingRecurringTasks
-      ])
+      ]) : prev.upcoming
     }));
-  }, [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks]);
+  }, [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks, showAllDailyTasks]);
 
 
   // Sections configuration
