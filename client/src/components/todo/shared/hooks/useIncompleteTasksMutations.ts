@@ -8,6 +8,13 @@ export const useIncompleteTasksMutations = () => {
   const queryClient = useQueryClient();
   const { refetch, refetchTodayRecurring, refetchUpcomingRecurring } = useTodo();
 
+  // Helper function to invalidate completed-tasks queries with all variations
+  const invalidateCompletedTasksQueries = () => {
+    queryClient.invalidateQueries({ 
+      predicate: (query) => query.queryKey[0] === 'completed-tasks'
+    });
+  };
+
   // Complete task mutation - marks an incomplete task as complete
   const completeTaskMutation = useMutation({
     mutationFn: async (taskId: string) => {
@@ -38,8 +45,9 @@ export const useIncompleteTasksMutations = () => {
       refetch();
       refetchTodayRecurring();
       refetchUpcomingRecurring();
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['completed-tasks'] });
+      invalidateCompletedTasksQueries();
     },
   });
 
@@ -54,6 +62,7 @@ export const useIncompleteTasksMutations = () => {
       refetch();
       refetchTodayRecurring();
       refetchUpcomingRecurring();
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
@@ -90,8 +99,9 @@ export const useIncompleteTasksMutations = () => {
       refetch();
       refetchTodayRecurring();
       refetchUpcomingRecurring();
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['completed-tasks'] });
+      invalidateCompletedTasksQueries();
     },
   });
 
@@ -110,6 +120,7 @@ export const useIncompleteTasksMutations = () => {
       refetch();
       refetchTodayRecurring();
       refetchUpcomingRecurring();
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
@@ -136,6 +147,7 @@ export const useIncompleteTasksMutations = () => {
       refetch();
       refetchTodayRecurring();
       refetchUpcomingRecurring();
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
