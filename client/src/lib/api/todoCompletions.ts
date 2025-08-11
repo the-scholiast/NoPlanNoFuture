@@ -1,12 +1,20 @@
 import { supabase } from '../supabaseClient';
 import { TodoCompletion } from '@/components/todo';
 import { TaskData } from '@/types/todoTypes';
+import { formatDateString, getTodayString } from '../utils/dateUtils';
 
 export interface CompletedTaskWithDetails extends TaskData {
   task_id: string;
   instance_date: string;
   completion: TodoCompletion;
   completion_count: number;
+}
+
+// Add helper function at the top of the file
+function getNextDay(dateStr: string): string {
+  const date = new Date(dateStr);
+  date.setDate(date.getDate() + 1);
+  return formatDateString(date);
 }
 
 export const todoCompletionsApi = {
@@ -23,7 +31,7 @@ export const todoCompletionsApi = {
     if (dateRange) {
       query = query
         .gte('completed_at', `${dateRange.start}T00:00:00.000Z`)
-        .lte('completed_at', `${dateRange.end}T23:59:59.999Z`);
+        .lt('completed_at', `${getNextDay(dateRange.end)}T00:00:00.000Z`);
     }
 
     const { data: completions, error } = await query;

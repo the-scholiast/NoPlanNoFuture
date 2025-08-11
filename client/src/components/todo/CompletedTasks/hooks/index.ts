@@ -41,7 +41,7 @@ export const useCompletedTasks = () => {
         startDate: state.dateFilter.startDate,
         endDate: state.dateFilter.endDate
       });
-      
+
       if (state.dateFilter.enabled) {
         return todoCompletionsApi.getCompletionsInRange(
           state.dateFilter.startDate,
@@ -92,7 +92,7 @@ export const useCompletedTasks = () => {
     if (state.dateFilter.enabled && filtered.length > 0) {
       const initialCount = filtered.length;
       filtered = filtered.filter(task => {
-        const completionDate = task.completion.instance_date || task.completion.completed_at;
+        const completionDate = task.completion.completed_at;
         if (!completionDate) {
           console.log('⚠️ Task without completion date:', task.id);
           return false;
@@ -116,7 +116,7 @@ export const useCompletedTasks = () => {
 
         return isInRange;
       });
-      
+
       if (initialCount !== filtered.length) {
         console.log(`🧹 Client-side date filter: ${initialCount} → ${filtered.length}`);
       }
@@ -131,7 +131,7 @@ export const useCompletedTasks = () => {
 
     // Use sorted tasks if manually sorted, otherwise use filtered
     const result = state.sortedCompletedTasks.length > 0 ? state.sortedCompletedTasks : filtered;
-    
+
     console.log('✅ Final filtered tasks:', result.length);
     return result;
   }, [processedCompletedTasks, state.searchQuery, state.dateFilter, state.sortedCompletedTasks]);

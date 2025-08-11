@@ -1,3 +1,5 @@
+import { formatDateString } from "@/lib/utils/dateUtils";
+
 export const isRecurringInstance = (task: { id: string; parent_task_id?: string }): boolean => {
   return task.id.includes('_') && !!task.parent_task_id;
 };
@@ -20,12 +22,12 @@ export const calculateInstanceDate = (task: any, instanceIndex: number): string 
     const daysBack = instanceIndex;
     const instanceDate = new Date(lastCompleted);
     instanceDate.setDate(lastCompleted.getDate() - daysBack);
-    return instanceDate.toISOString().split('T')[0];
+    return formatDateString(instanceDate);
   }
 
   const created = new Date(task.created_at);
   created.setDate(created.getDate() + instanceIndex);
-  return created.toISOString().split('T')[0];
+  return formatDateString(created);
 };
 
 // Create recurring task instances for completed tasks
