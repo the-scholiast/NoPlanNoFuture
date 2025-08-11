@@ -4,11 +4,11 @@ export { default as CompletedTasks } from './CompletedTasks/index';
 export { default as IncompleteTasks } from './IncompleteTasks';
 
 // Existing components
-export { default as AddTaskModal } from './AddTaskModal';
+export { default as AddTaskModal } from './global/AddTaskModal'
 export { default as EditTaskModal } from './EditTaskModal';
-export { default as TodoModalButton } from './TodoModalButton';
-export { default as UpcomingDateFilter } from './UpcomingDateFilter';
-export { CompactTaskSorting } from './TaskSortingComponent';
+export { default as TodoModalButton } from './global/TodoModalButton';
+export { default as UpcomingDateFilter } from './TodoBoard/components/UpcomingDateFilter';
+export { CompactTaskSorting } from './shared/components/';
 
 // Shared hooks
 export * from './shared/hooks';

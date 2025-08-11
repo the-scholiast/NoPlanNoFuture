@@ -9,11 +9,11 @@ import { ThemeProvider } from "next-themes";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import AddTaskModal from "@/components/todo/AddTaskModal";
+import { AddTaskModal } from "@/components/todo/";
 import UniversalDateNavigation from "@/components/calendar/UniversalDateNavigation";
 import UniversalBreadcrumb from "@/components/calendar/UniversalBreadcrumb";
 import { usePathname } from "next/navigation";
-import TodoModalButton from "@/components/todo/TodoModalButton";
+import TodoModalButton from "@/components/todo/global/TodoModalButton";
 import { useAuth } from '@/hooks/useAuth';
 
 // Create a client
@@ -75,7 +75,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                 </div>
               ) : (
                 <div className="mb-2 flex justify-end">
-                    {!['/memo', '/'].includes(pathname) && <TodoModalButton />}
+                  {!['/memo', '/'].includes(pathname) && <TodoModalButton />}
                 </div>
               )}
             </div>
@@ -90,14 +90,14 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
               {/* Right: Add Button - always show for logged in users */}
               {!['/memo', '/'].includes(pathname) && (
-              <Button
-                className="h-12 w-12 rounded-full shadow-lg"
-                size="icon"
-                onClick={() => setIsAddModalOpen(true)}
-                type="button"
-              >
-                <Plus className="h-6 w-6" />
-              </Button>
+                <Button
+                  className="h-12 w-12 rounded-full shadow-lg"
+                  size="icon"
+                  onClick={() => setIsAddModalOpen(true)}
+                  type="button"
+                >
+                  <Plus className="h-6 w-6" />
+                </Button>
               )}
             </div>
 

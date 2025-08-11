@@ -4,12 +4,12 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTodoBoard } from './hooks/useTodoBoard';
 import EditTaskModal from '../EditTaskModal';
-import UpcomingDateFilter from '../UpcomingDateFilter';
-import { CompactTaskSorting } from '../TaskSortingComponent';
+import UpcomingDateFilter from './components/UpcomingDateFilter';
+import { CompactTaskSorting } from '../shared/components/TaskSortingComponent';
 import { TodoBoardProps } from '../shared/types';
 import { useTodoMutations } from '../shared/hooks/useTodoMutations';
-import { DailyTaskToggle } from '@/components/todo/DailyTaskToggle';
-import TaskCard from '../TaskCard';
+import { DailyTaskToggle } from '@/components/todo/TodoBoard/components/DailyTaskToggle';
+import TaskCard from '../shared/components/TaskCard';
 import { combineAllTasks, } from '../shared';
 
 export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
@@ -90,7 +90,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                     {/* Add Task Sorting Component */}
                     <CompactTaskSorting
                       key={section.sectionKey}
-                      tasks={section.tasks} 
+                      tasks={section.tasks}
                       onTasksChange={(tasks) => handleTasksSort(section.sectionKey, tasks)}
                       className="mr-2"
                     />

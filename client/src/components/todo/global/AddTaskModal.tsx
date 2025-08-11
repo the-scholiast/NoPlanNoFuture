@@ -14,9 +14,9 @@ import {
   RecurringSection,
   DateTimeFields,
   ScheduleField,
-} from './shared/';
-import { useMultiTaskFormLogic } from './shared/';
-import { validateMultipleTasks } from './shared/';
+} from '../shared/';
+import { useMultiTaskFormLogic } from '../shared/';
+import { validateMultipleTasks } from '../shared/';
 
 export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTaskModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);

@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { CompactTaskSorting } from '@/components/todo/TaskSortingComponent';
+import { CompactTaskSorting } from '@/components/todo/shared/components/TaskSortingComponent';
 import { CompletedTaskItem } from './CompletedTaskItem';
 import { useCompletedTasks } from './hooks';
 import { CompletedTasksProps, CompletedTaskWithCompletion } from './types';

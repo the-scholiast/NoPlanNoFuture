@@ -14,7 +14,7 @@ import { TaskData } from '@/types/todoTypes';
 import EditTaskModal from '../EditTaskModal';
 import { getTodayString } from '@/lib/utils/dateUtils';
 import UpcomingDateFilter from '../UpcomingDateFilter';
-import { CompactTaskSorting } from '@/components/todo/TaskSortingComponent';
+import { CompactTaskSorting } from '@/components/todo/shared/components/TaskSortingComponent';
 
 interface TodoSection {
   title: string;

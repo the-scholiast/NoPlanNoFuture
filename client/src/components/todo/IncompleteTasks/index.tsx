@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { CompactTaskSorting } from '@/components/todo/TaskSortingComponent';
+import { CompactTaskSorting } from '@/components/todo/shared/components/TaskSortingComponent';
 import { useIncompleteTasks } from './hooks';
 import { IncompleteTasksProps, IncompleteTaskWithOverdue } from './types';
 import { getSectionLabel } from '../shared/utils';
@@ -131,7 +131,7 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
         <Card>
           <CardContent className="p-6">
             <div className="text-center text-destructive">
-              Error loading incomplete tasks: {error instanceof Error ? 
+              Error loading incomplete tasks: {error instanceof Error ?
                 error.message : 'Unknown error'}
             </div>
           </CardContent>
@@ -217,8 +217,8 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => {
                           const today = new Date().toISOString().split('T')[0];
@@ -227,46 +227,46 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
                       >
                         Today
                       </Button>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => {
                           const now = new Date();
                           const dayOfWeek = now.getDay();
                           const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                          
+
                           const monday = new Date(now);
                           monday.setDate(now.getDate() - daysFromMonday);
-                          
+
                           const sunday = new Date(monday);
                           sunday.setDate(monday.getDate() + 6);
-                          
+
                           const formatDate = (date: Date) => date.toISOString().split('T')[0];
-                          
-                          updateDateFilter({ 
-                            startDate: formatDate(monday), 
-                            endDate: formatDate(sunday) 
+
+                          updateDateFilter({
+                            startDate: formatDate(monday),
+                            endDate: formatDate(sunday)
                           });
                         }}
                       >
                         This Week
                       </Button>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => {
                           const now = new Date();
                           const year = now.getFullYear();
                           const month = now.getMonth();
-                          
+
                           const firstDay = new Date(year, month, 1);
                           const lastDay = new Date(year, month + 1, 0);
-                          
+
                           const formatDate = (date: Date) => date.toISOString().split('T')[0];
-                          
-                          updateDateFilter({ 
-                            startDate: formatDate(firstDay), 
-                            endDate: formatDate(lastDay) 
+
+                          updateDateFilter({
+                            startDate: formatDate(firstDay),
+                            endDate: formatDate(lastDay)
                           });
                         }}
                       >
@@ -274,9 +274,9 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
                       </Button>
                     </div>
 
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => updateDateFilter({ enabled: false })}
                       className="w-full"
                     >

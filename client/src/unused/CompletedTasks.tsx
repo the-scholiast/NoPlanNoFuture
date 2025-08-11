@@ -11,7 +11,7 @@ import { TaskData } from '@/types/todoTypes';
 import { todoApi } from '@/lib/api/todos';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTodo } from '@/contexts/TodoContext';
-import { CompactTaskSorting } from '@/components/todo/TaskSortingComponent';
+import { CompactTaskSorting } from '@/components/todo/shared/components/TaskSortingComponent';
 
 interface CompletedTasksProps {
   className?: string;
