@@ -126,35 +126,57 @@ export const CompactTaskSorting: React.FC<CompactTaskSortingProps> = ({
     });
   };
 
+  // Centralized sorting logic - handles both priority and other field sorting
+  const applySorting = (config: SortConfig) => {
+    let finalSortedTasks: TaskData[];
+
+    if (config.field === 'priority') {
+      // For priority sorting, only separate completed from incomplete tasks
+      const completedTasks = tasks.filter(task => task.completed);
+      const incompleteTasks = tasks.filter(task => !task.completed);
+
+      // Sort both groups by priority, then by date/time as fallback
+      const sortedIncompleteTasks = sortTaskGroup(incompleteTasks, config);
+      const sortedCompletedTasks = sortTaskGroup(completedTasks, config);
+
+      finalSortedTasks = [
+        ...sortedIncompleteTasks,
+        ...sortedCompletedTasks
+      ];
+    } else {
+      // For other sorting fields, maintain the existing three-group separation
+      const completedTasks = tasks.filter(task => task.completed);
+      const incompleteTasksWithDateTime = tasks.filter(task => !task.completed && hasDateTime(task));
+      const incompleteTasksWithoutDateTime = tasks.filter(task => !task.completed && !hasDateTime(task));
+
+      // Sort all three groups and combine in the desired order
+      const sortedIncompleteWithDateTime = sortTaskGroup(incompleteTasksWithDateTime, config);
+      const sortedIncompleteWithoutDateTime = sortTaskGroup(incompleteTasksWithoutDateTime, config);
+      const sortedCompletedTasks = sortTaskGroup(completedTasks, config);
+
+      finalSortedTasks = [
+        ...sortedIncompleteWithDateTime,
+        ...sortedIncompleteWithoutDateTime,
+        ...sortedCompletedTasks
+      ];
+    }
+
+    onTasksChange(finalSortedTasks);
+  };
+
   // Use a ref to track if we need to apply initial sorting
   const needsInitialSort = React.useRef(true);
-  
+
   // Apply sorting when needed
   React.useEffect(() => {
     if (needsInitialSort.current && tasks.length > 0) {
       needsInitialSort.current = false;
-      performSort(sortConfig);
+      applySorting(sortConfig);
     }
   }, [tasks.length]); // Only re-run when task count changes
 
   const performSort = (config: SortConfig) => {
-    // Separate tasks into three groups based on completion and date/time presence
-    const completedTasks = tasks.filter(task => task.completed);
-    const incompleteTasksWithDateTime = tasks.filter(task => !task.completed && hasDateTime(task));
-    const incompleteTasksWithoutDateTime = tasks.filter(task => !task.completed && !hasDateTime(task));
-
-    // Sort all three groups and combine in the desired order
-    const sortedIncompleteWithDateTime = sortTaskGroup(incompleteTasksWithDateTime, config);
-    const sortedIncompleteWithoutDateTime = sortTaskGroup(incompleteTasksWithoutDateTime, config);
-    const sortedCompletedTasks = sortTaskGroup(completedTasks, config);
-    
-    const finalSortedTasks = [
-      ...sortedIncompleteWithDateTime,
-      ...sortedIncompleteWithoutDateTime,
-      ...sortedCompletedTasks
-    ];
-
-    onTasksChange(finalSortedTasks);
+    applySorting(config);
   };
 
   const handleSortChange = (field: SortField, order?: SortOrder) => {
@@ -166,23 +188,8 @@ export const CompactTaskSorting: React.FC<CompactTaskSortingProps> = ({
     // Update local state
     setSortConfig(newSortConfig);
     
-    // Separate tasks into three groups based on completion and date/time presence
-    const completedTasks = tasks.filter(task => task.completed);
-    const incompleteTasksWithDateTime = tasks.filter(task => !task.completed && hasDateTime(task));
-    const incompleteTasksWithoutDateTime = tasks.filter(task => !task.completed && !hasDateTime(task));
-
-    // Sort all three groups and combine in the desired order
-    const sortedIncompleteWithDateTime = sortTaskGroup(incompleteTasksWithDateTime, newSortConfig);
-    const sortedIncompleteWithoutDateTime = sortTaskGroup(incompleteTasksWithoutDateTime, newSortConfig);
-    const sortedCompletedTasks = sortTaskGroup(completedTasks, newSortConfig);
-    
-    const finalSortedTasks = [
-      ...sortedIncompleteWithDateTime,
-      ...sortedIncompleteWithoutDateTime,
-      ...sortedCompletedTasks
-    ];
-
-    onTasksChange(finalSortedTasks);
+    // Apply the sorting with new config
+    applySorting(newSortConfig);
   };
 
   const formatSortFieldName = (field: SortField): string => {
