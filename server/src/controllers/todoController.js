@@ -140,9 +140,7 @@ export const updateTodo = async (userId, todoId, updates) => {
     if (updates.completed) {
       // Only set completed_at if it's not already provided from frontend
       if (!updates.completed_at) {
-        // Create timezone-aware date to match frontend behavior
-        const now = new Date();
-        updates.completed_at = formatDateString(now);
+        updates.completed_at = updates.completed_at || formatDateString(new Date());
       }
 
       // If it's a daily task, increment completion count (if column exists)

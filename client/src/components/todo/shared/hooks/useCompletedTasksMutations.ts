@@ -3,6 +3,7 @@ import { todoApi } from '@/lib/api/todos';
 import { todoCompletionsApi } from '@/lib/api/todoCompletions';
 import { useTodo } from '@/contexts/TodoContext';
 import { TaskData } from '@/types/todoTypes';
+import { getTodayString } from '@/lib/utils/dateUtils';
 
 // Mutations specifically for CompletedTasks component operations
 // These handle the logic for the new todo_completions table
@@ -31,7 +32,7 @@ export const useCompletedTasksMutations = () => {
       await todoCompletionsApi.deleteCompletion(completionId);
 
       // Now check if this task has any remaining completions for today
-      const today = new Date().toISOString().split('T')[0];
+      const today = getTodayString()
       const todayCompletions = await todoCompletionsApi.getCompletionsForTaskAndDate(
         completion.task_id,
         today
@@ -102,7 +103,7 @@ export const useCompletedTasksMutations = () => {
       // Update the task status
       const updates: Partial<TaskData> = {
         completed: true,
-        completed_at: new Date().toISOString(),
+        completed_at: getTodayString(),
       };
 
       // For daily tasks, increment completion count
@@ -132,7 +133,7 @@ export const useCompletedTasksMutations = () => {
       );
 
       // For each affected task, check if it needs to be marked as incomplete
-      const today = new Date().toISOString().split('T')[0];
+      const today = getTodayString();
       const affectedTasks = new Set<string>();
 
       // Get all completion details to know which tasks were affected

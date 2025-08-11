@@ -171,7 +171,7 @@ export const useTodoMutations = () => {
           // 2. Update the task directly via API (avoiding circular dependency)
           const updates: Partial<TaskData> = {
             completed: true,
-            completed_at: new Date().toISOString(),
+            completed_at: getTodayString(),
           };
 
           // Special handling for daily tasks

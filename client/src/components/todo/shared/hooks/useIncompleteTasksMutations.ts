@@ -2,6 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { todoApi } from '@/lib/api/todos';
 import { useTodo } from '@/contexts/TodoContext';
 import { TaskData } from '@/types/todoTypes';
+import { getTodayString, formatDateString } from '@/lib/utils/dateUtils';
+import { todoCompletionsApi } from '@/lib/api/todoCompletions';
 
 // Mutations specifically for IncompleteTasks component operations
 export const useIncompleteTasksMutations = () => {
@@ -10,10 +12,11 @@ export const useIncompleteTasksMutations = () => {
 
   // Helper function to invalidate completed-tasks queries with all variations
   const invalidateCompletedTasksQueries = () => {
-    queryClient.invalidateQueries({ 
+    queryClient.invalidateQueries({
       predicate: (query) => query.queryKey[0] === 'completed-tasks'
     });
   };
+
 
   // Complete task mutation - marks an incomplete task as complete
   const completeTaskMutation = useMutation({
@@ -23,8 +26,17 @@ export const useIncompleteTasksMutations = () => {
         throw new Error('Task not found');
       }
 
-      const today = new Date().toISOString().split('T')[0];
-      const now = new Date().toISOString();
+      const today = getTodayString();
+      const now = formatDateString(new Date());
+
+      // Create completion record for CompletedTasks component
+      const originalTaskId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
+      try {
+        await todoCompletionsApi.createCompletion(originalTaskId, today);
+      } catch (completionError) {
+        console.error('Failed to create completion record:', completionError);
+        // Continue with task update even if completion record fails
+      }
 
       // Update the task status directly - no need for completion records here
       // The completion system is for tracking daily recurring task completions
@@ -55,7 +67,7 @@ export const useIncompleteTasksMutations = () => {
   const deleteTaskMutation = useMutation({
     mutationFn: async (taskId: string) => {
       // Soft delete by setting deleted_at timestamp
-      const now = new Date().toISOString();
+      const now = getTodayString();
       await todoApi.update(taskId, { deleted_at: now });
     },
     onSuccess: () => {
@@ -70,8 +82,8 @@ export const useIncompleteTasksMutations = () => {
   // Bulk complete tasks mutation
   const bulkCompleteTasksMutation = useMutation({
     mutationFn: async (taskIds: string[]) => {
-      const today = new Date().toISOString().split('T')[0];
-      const now = new Date().toISOString();
+      const today = getTodayString();
+      const now = getTodayString();
 
       const results = await Promise.all(
         taskIds.map(async (taskId) => {
@@ -108,8 +120,8 @@ export const useIncompleteTasksMutations = () => {
   // Bulk delete tasks mutation
   const bulkDeleteTasksMutation = useMutation({
     mutationFn: async (taskIds: string[]) => {
-      const now = new Date().toISOString();
-      
+      const now = getTodayString();
+
       const results = await Promise.all(
         taskIds.map(taskId => todoApi.update(taskId, { deleted_at: now }))
       );
@@ -127,17 +139,17 @@ export const useIncompleteTasksMutations = () => {
 
   // Update task dates mutation - useful for fixing overdue tasks
   const updateTaskDatesMutation = useMutation({
-    mutationFn: async ({ 
-      taskId, 
-      startDate, 
-      endDate 
-    }: { 
-      taskId: string; 
-      startDate?: string; 
-      endDate?: string; 
+    mutationFn: async ({
+      taskId,
+      startDate,
+      endDate
+    }: {
+      taskId: string;
+      startDate?: string;
+      endDate?: string;
     }) => {
       const updates: Partial<TaskData> = {};
-      
+
       if (startDate !== undefined) updates.start_date = startDate;
       if (endDate !== undefined) updates.end_date = endDate;
 
