@@ -1,11 +1,11 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { TaskData } from '@/types/todoTypes';
 import { useTodo } from '@/contexts/TodoContext';
 import { useTodoMutations } from '../../shared/hooks';
 import { getTodayString } from '@/lib/utils/dateUtils';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { TodoSection } from '../../shared/types';
-import { applyDefaultTaskSort, filterDailyTasksByDate, sortTasksByDateTimeAndCompletion, filterTasksByDateRange } from '../../shared';
+import { applyDefaultTaskSort, filterDailyTasksByDate, sortTasksByDateTimeAndCompletion, filterTasksByDateRange, sortDailyTasksTimeFirst } from '../../shared';
 import {
   formatDate,
   formatTime,
@@ -61,7 +61,8 @@ export const useTodoBoard = () => {
 
   // Filtered daily tasks logic
   const filteredDailyTasks = useMemo(() => {
-    return filterDailyTasksByDate(dailyTasks, currentDate, showAllDailyTasks);
+    const filtered = filterDailyTasksByDate(dailyTasks, currentDate, showAllDailyTasks);
+    return sortDailyTasksTimeFirst(filtered); // Apply consistent start_time asc sorting
   }, [dailyTasks, currentDate, currentDayOfWeek, showAllDailyTasks]);
 
   const filteredUpcomingTasks = useMemo(() => {
@@ -76,18 +77,51 @@ export const useTodoBoard = () => {
     return sortTasksByDateTimeAndCompletion(filtered);
   }, [upcomingTasksWithRecurring, upcomingFilter]);
 
-  // Sync sorted tasks with default sorting applied
+  const dailyTasksRef = useRef<TaskData[]>([]);
+  const todayTasksRef = useRef<TaskData[]>([]);
+  const upcomingTasksRef = useRef<TaskData[]>([]);
+
   useEffect(() => {
-    setSortedTasks(prev => ({
-      ...prev,
-      daily: applyDefaultTaskSort(filteredDailyTasks),
-      today: applyDefaultTaskSort(todayTasksWithRecurring.filter(task => task.section !== 'daily')),
-      upcoming: applyDefaultTaskSort([
-        ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
-        ...filteredUpcomingRecurringTasks
-      ])
-    }));
-  }, [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks, showAllDailyTasks]);
+    // Only update if daily tasks actually changed (not just refetched)
+    const tasksChanged = JSON.stringify(dailyTasksRef.current) !== JSON.stringify(filteredDailyTasks);
+
+    if (tasksChanged) {
+      dailyTasksRef.current = filteredDailyTasks;
+      setSortedTasks(prev => ({
+        ...prev,
+        daily: filteredDailyTasks
+      }));
+    }
+  }, [filteredDailyTasks, showAllDailyTasks]);
+
+  useEffect(() => {
+    const todayFiltered = todayTasksWithRecurring.filter(task => task.section !== 'daily');
+    const tasksChanged = JSON.stringify(todayTasksRef.current) !== JSON.stringify(todayFiltered);
+
+    if (tasksChanged) {
+      todayTasksRef.current = todayFiltered;
+      setSortedTasks(prev => ({
+        ...prev,
+        today: applyDefaultTaskSort(todayFiltered)
+      }));
+    }
+  }, [todayTasksWithRecurring]);
+
+  useEffect(() => {
+    const upcomingCombined = [
+      ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
+      ...filteredUpcomingRecurringTasks
+    ];
+    const tasksChanged = JSON.stringify(upcomingTasksRef.current) !== JSON.stringify(upcomingCombined);
+
+    if (tasksChanged) {
+      upcomingTasksRef.current = upcomingCombined;
+      setSortedTasks(prev => ({
+        ...prev,
+        upcoming: applyDefaultTaskSort(upcomingCombined)
+      }));
+    }
+  }, [filteredUpcomingTasks, filteredUpcomingRecurringTasks]);
 
 
   // Sections configuration
