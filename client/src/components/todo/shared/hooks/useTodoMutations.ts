@@ -18,7 +18,6 @@ export const useTodoMutations = () => {
       refetchUpcomingRecurring();
       // Invalidate all relevant query keys
       queryClient.invalidateQueries({ queryKey: ['todos'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
       // Use predicate for completed-tasks to catch all variations
       queryClient.invalidateQueries({
@@ -39,7 +38,6 @@ export const useTodoMutations = () => {
       refetchUpcomingRecurring();
       // Invalidate all relevant query keys
       queryClient.invalidateQueries({ queryKey: ['todos'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
       // Use predicate for completed-tasks to catch all variations
       queryClient.invalidateQueries({
@@ -60,7 +58,6 @@ export const useTodoMutations = () => {
       refetchUpcomingRecurring();
       // Invalidate all relevant query keys
       queryClient.invalidateQueries({ queryKey: ['todos'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
       // Use predicate for completed-tasks to catch all variations
       queryClient.invalidateQueries({
@@ -79,7 +76,6 @@ export const useTodoMutations = () => {
       if (sectionKey === 'upcoming') refetchUpcomingRecurring();
       // Invalidate all relevant query keys
       queryClient.invalidateQueries({ queryKey: ['todos'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
       // Use predicate for completed-tasks to catch all variations
       queryClient.invalidateQueries({
@@ -98,7 +94,6 @@ export const useTodoMutations = () => {
       if (sectionKey === 'upcoming') refetchUpcomingRecurring();
       // Invalidate all relevant query keys
       queryClient.invalidateQueries({ queryKey: ['todos'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
       // Use predicate for completed-tasks to catch all variations
       queryClient.invalidateQueries({
@@ -116,7 +111,6 @@ export const useTodoMutations = () => {
 
     // Invalidate React Query caches
     queryClient.invalidateQueries({ queryKey: ['todos'] });
-    queryClient.invalidateQueries({ queryKey: ['tasks'] });
     queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
 
     // CRITICAL FIX: Invalidate completed-tasks with exact matching

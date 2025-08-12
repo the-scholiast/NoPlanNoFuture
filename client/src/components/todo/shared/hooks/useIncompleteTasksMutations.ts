@@ -56,7 +56,6 @@ export const useIncompleteTasksMutations = () => {
       refetchTodayRecurring();
       refetchUpcomingRecurring();
       queryClient.invalidateQueries({ queryKey: ['todos'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       invalidateCompletedTasksQueries();
     },
   });
@@ -72,7 +71,6 @@ export const useIncompleteTasksMutations = () => {
       refetchTodayRecurring();
       refetchUpcomingRecurring();
       queryClient.invalidateQueries({ queryKey: ['todos'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
 
@@ -109,7 +107,6 @@ export const useIncompleteTasksMutations = () => {
       refetchTodayRecurring();
       refetchUpcomingRecurring();
       queryClient.invalidateQueries({ queryKey: ['todos'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       invalidateCompletedTasksQueries();
     },
   });
@@ -130,7 +127,6 @@ export const useIncompleteTasksMutations = () => {
       refetchTodayRecurring();
       refetchUpcomingRecurring();
       queryClient.invalidateQueries({ queryKey: ['todos'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
 
@@ -157,7 +153,6 @@ export const useIncompleteTasksMutations = () => {
       refetchTodayRecurring();
       refetchUpcomingRecurring();
       queryClient.invalidateQueries({ queryKey: ['todos'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
 
