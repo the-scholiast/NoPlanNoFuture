@@ -26,8 +26,6 @@ const shouldTaskAppearOnDate = (task, date) => {
   return task.recurring_days.includes(dayName);
 };
 
-// ===== EXISTING FUNCTIONS (UPDATED FOR SOFT DELETE SUPPORT) =====
-
 // Fetches all active (non-deleted) todos for a specific user
 export const getAllTodos = async (userId) => {
   const { data, error } = await supabase
@@ -55,7 +53,7 @@ export const createTodo = async (userId, todoData) => {
     is_recurring,
     recurring_days,
     is_schedule,
-  } = todoData;
+  } = todoData; // New task to add as frontend format
 
   if (!title || !section) {
     throw new ValidationError('Title and section are required');
@@ -69,6 +67,7 @@ export const createTodo = async (userId, todoData) => {
     }
   }
 
+  // Transform data as backend format
   const todoToInsert = {
     user_id: userId,
     title,
@@ -122,6 +121,7 @@ export const getCompletedTodos = async (userId, dateRange) => {
     .eq('completed', true)
     .is('deleted_at', null); // Exclude deleted tasks
 
+  // Apply date filter if provided
   if (dateRange) {
     query = query.gte('completed_at', dateRange.start)
       .lte('completed_at', dateRange.end);
@@ -133,7 +133,7 @@ export const getCompletedTodos = async (userId, dateRange) => {
   return data || [];
 };
 
-// Enhanced update function to handle completion tracking
+// Update function to handle completion tracking
 export const updateTodo = async (userId, todoId, updates) => {
   // Handle completion logic
   if ('completed' in updates) {
@@ -173,6 +173,7 @@ export const updateTodo = async (userId, todoId, updates) => {
     }
   }
 
+  // Check to make sure recurring_days only stores days of week
   if (updates.recurring_days && Array.isArray(updates.recurring_days)) {
     const invalidDays = updates.recurring_days.filter(day => !DAYS_OF_WEEK.includes(day.toLowerCase()));
     if (invalidDays.length > 0) {
@@ -198,7 +199,7 @@ export const updateTodo = async (userId, todoId, updates) => {
   return data;
 };
 
-// Original delete function (now does hard delete for backward compatibility)
+// Hard delete (completely remove from database)
 export const deleteTodo = async (userId, todoId) => {
   const { data, error } = await supabase
     .from('todos')
@@ -212,16 +213,14 @@ export const deleteTodo = async (userId, todoId) => {
   return { success: true, deletedTodo: data };
 };
 
-// Original bulk delete function (maintains existing signature)
+// Bulk hard delete (only deletes based on section and completed keys) -> EXPAND FOR MORE COMPREHENSIVE BULK DELETION
 export const bulkDeleteTodos = async (userId, { section, completed, filter }) => {
   let query = supabase
     .from('todos')
     .delete()
     .eq('user_id', userId);
 
-  // Handle both old format and new format
   if (filter) {
-    // New format with filter object
     if (filter.section) {
       query = query.eq('section', filter.section);
     }
@@ -229,7 +228,6 @@ export const bulkDeleteTodos = async (userId, { section, completed, filter }) =>
       query = query.eq('completed', filter.completed);
     }
   } else {
-    // Old format with direct properties
     if (section) {
       query = query.eq('section', section);
     }
@@ -243,8 +241,6 @@ export const bulkDeleteTodos = async (userId, { section, completed, filter }) =>
   if (error) throw error;
   return { success: true, deleted: data?.length || 0, deletedCount: data?.length || 0 };
 };
-
-// ===== NEW SOFT DELETE FUNCTIONS =====
 
 // Soft delete a todo (mark as deleted instead of removing)
 export const softDeleteTodo = async (userId, todoId) => {
@@ -292,7 +288,7 @@ export const getDeletedTodos = async (userId, limit = 50) => {
   return data || [];
 };
 
-// Permanently delete old soft-deleted todos (cleanup function)
+// Permanently delete old soft-deleted todos at 30 days (cleanup function) -> Not sure if it will be implemented
 export const permanentlyDeleteOldTodos = async (userId, daysOld = 30) => {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - daysOld);
@@ -337,8 +333,6 @@ export const deleteAllTodos = async (userId, section) => {
   if (error) throw error;
   return data || [];
 };
-
-// ===== DAILY TASK FUNCTIONS =====
 
 // Get completed daily tasks (active only)
 export const getCompletedDailyTasks = async (userId) => {
@@ -451,8 +445,6 @@ export const getDailyTaskStats = async (userId, startDate, endDate) => {
 
   return stats;
 };
-
-// RECURRING TASKS
 
 // Get tasks for a specific date (including recurring tasks)
 export const getTodosForDate = async (userId, date) => {
