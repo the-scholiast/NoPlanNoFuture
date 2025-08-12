@@ -102,7 +102,7 @@ export const useTodoBoard = () => {
       todayTasksRef.current = todayFiltered;
       setSortedTasks(prev => ({
         ...prev,
-        today: applyDefaultTaskSort(todayFiltered)
+        today: todayFiltered
       }));
     }
   }, [todayTasksWithRecurring]);
@@ -118,7 +118,7 @@ export const useTodoBoard = () => {
       upcomingTasksRef.current = upcomingCombined;
       setSortedTasks(prev => ({
         ...prev,
-        upcoming: applyDefaultTaskSort(upcomingCombined)
+        upcoming: upcomingCombined
       }));
     }
   }, [filteredUpcomingTasks, filteredUpcomingRecurringTasks]);
