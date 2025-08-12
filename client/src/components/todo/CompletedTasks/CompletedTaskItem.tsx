@@ -2,19 +2,7 @@ import React from 'react';
 import { Check, Trash2, RotateCcw, Calendar, Clock, Repeat, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CompletedTaskWithCompletion } from './types';
-
-interface CompletedTaskItemProps {
-  task: CompletedTaskWithCompletion;
-  isExpanded: boolean;
-  onToggleExpansion: (completionId: string) => void;
-  onUncompleteTask: (completionId: string) => void;
-  onDeleteTask: (taskId: string) => void;
-  formatDate: (dateString?: string) => string | null;
-  formatTime: (timeString?: string) => string | null;
-  getSectionLabel: (section: string) => string;
-  getPriorityColor: (priority: string) => string;
-}
+import { CompletedTaskItemProps } from './types';
 
 export function CompletedTaskItem({
   task,

@@ -3,19 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { TaskData } from '@/types/todoTypes';
-import { EditTaskModalProps } from '@/types/todoTypes';
-import { updateTaskData } from '@/lib/api/transformers';
-import { transformTaskFormDataBackend } from '@/lib/api/transformers';
-import { useTodoMutations } from './shared/';
-// Import shared components and hooks
-import {
-  TaskBasicFields,
-  RecurringSection,
-  DateTimeFields,
-} from './shared/';
-import { useTaskFormLogic } from './shared/';
-import { validateEditTask } from './shared/';
+import { TaskData, EditTaskModalProps } from '@/types/todoTypes';
+import { updateTaskData, transformTaskFormDataBackend } from '@/lib/api/transformers';
+import { useTodoMutations, useTaskFormLogic, validateEditTask } from './shared/';
+import { TaskBasicFields, RecurringSection, DateTimeFields, } from './shared/';
 
 export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated }: EditTaskModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);

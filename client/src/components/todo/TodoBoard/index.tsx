@@ -52,19 +52,15 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
 
   // Use shared toggle function
   const toggleTask = async (taskId: string) => {
-    console.log('🖱️ TodoBoard: toggleTask called with taskId:', taskId);
     try {
       const allTasks = combineAllTasks(filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks);
-      console.log('🖱️ TodoBoard: Combined tasks count:', allTasks.length);
       await toggleTaskFunction(taskId, allTasks, isRecurringInstance);
-      console.log('🖱️ TodoBoard: toggleTaskFunction completed');
-
       // Force immediate refetch of completed tasks
       queryClient.refetchQueries({
         predicate: (query) => query.queryKey[0] === 'completed-tasks'
       });
     } catch (error) {
-      console.error('🖱️ TodoBoard: Error in toggleTask:', error);
+      console.error('TodoBoard: Error in toggleTask:', error);
     }
   };
 
@@ -90,7 +86,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     <>
       <div className="w-full h-full p-6 bg-background">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full">
-          {sections.map((section, sectionIndex) => (
+          {sections.map((section) => (
             <Card key={section.title} className="flex flex-col h-fit min-h-[400px]">
               <CardHeader className="pb-4 border-b">
                 <div className="flex items-center justify-between">

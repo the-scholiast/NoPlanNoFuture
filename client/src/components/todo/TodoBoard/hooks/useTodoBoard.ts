@@ -5,7 +5,7 @@ import { useTodoMutations } from '../../shared/hooks';
 import { getTodayString } from '@/lib/utils/dateUtils';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { TodoSection } from '../../shared/types';
-import { applyDefaultTaskSort, filterDailyTasksByDate, sortTasksByDateTimeAndCompletion, filterTasksByDateRange, sortDailyTasksTimeFirst } from '../../shared';
+import { filterDailyTasksByDate, sortTasksByDateTimeAndCompletion, filterTasksByDateRange, sortDailyTasksTimeFirst } from '../../shared';
 import {
   formatDate,
   formatTime,
@@ -155,7 +155,7 @@ export const useTodoBoard = () => {
     setExpandedTask(expandedTask === taskId ? null : taskId);
   };
 
-  // Ensures editing a recurring instance modifies the original task > Remove? Instance tasks should appear in completed component?
+  // Ensures editing a recurring instance modifies the original task
   const openEditModal = (task: TaskData) => {
     // Handle recurring task instances
     if (task.id.includes('_') && task.parent_task_id) {

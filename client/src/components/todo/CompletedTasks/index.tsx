@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react';
-import { Check, ChevronDown, ChevronUp, Filter, X, Trash2 } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, X, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,8 +10,7 @@ import { CompactTaskSorting } from '@/components/todo/shared/components/TaskSort
 import { CompletedTaskItem } from './CompletedTaskItem';
 import { useCompletedTasks } from './hooks';
 import { CompletedTasksProps, CompletedTaskWithCompletion } from './types';
-import { getSectionLabel } from '../shared/utils';
-import { formatDate, formatTime, getPriorityColor, } from '../shared/utils';
+import { formatDate, formatTime, getPriorityColor, getSectionLabel} from '../shared/utils';
 import { DateFilter } from '../shared/components/DateFilter';
 
 export default function CompletedTasks({ className }: CompletedTasksProps) {

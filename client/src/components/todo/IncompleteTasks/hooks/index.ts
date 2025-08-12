@@ -23,7 +23,7 @@ export const useIncompleteTasks = () => {
   });
 
   const queryKey = useMemo(() => [
-    'tasks',
+    'todos',
     state.dateFilter.enabled,
     state.dateFilter.startDate,
     state.dateFilter.endDate,
@@ -36,7 +36,7 @@ export const useIncompleteTasks = () => {
     error,
     refetch
   } = useQuery({
-    queryKey, // Use the dynamic queryKey instead of static ['tasks']
+    queryKey,
     queryFn: () => todoApi.getAll(),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });

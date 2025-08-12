@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { formatDateString } from '@/lib/utils/dateUtils';
+import { formatLocalDate } from '../../shared';
 
 interface UpcomingDateFilterProps {
   onFilterChange: (filter: {
@@ -117,13 +118,6 @@ export default function UpcomingDateFilter({ onFilterChange, className = '' }: U
 
   const getFilterDisplayText = () => {
     if (!dateFilter.enabled) return 'All upcoming';
-
-    // Fix timezone issue: avoid using new Date() constructor with date strings for display
-    const formatLocalDate = (dateStr: string) => {
-      const [year, month, day] = dateStr.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
-      return date.toLocaleDateString();
-    };
 
     // Check if it's upcoming week
     if (dateFilter.startDate === upcomingWeek.start &&

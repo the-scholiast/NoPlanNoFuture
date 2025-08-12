@@ -4,7 +4,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { DAYS_OF_WEEK, DAY_ABBREVIATIONS } from '@/lib/utils/constants';
 
-// Types for shared components
 export interface TaskFormData {
   title: string;
   section: 'daily' | 'today' | 'upcoming' | 'none';

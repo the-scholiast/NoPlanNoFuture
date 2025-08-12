@@ -153,4 +153,3 @@ export const sortTasksByField = (tasks: TaskData[], field: string, order: 'asc' 
 // Legacy functions for backward compatibility
 export const sortDailyTasksTimeFirst = (tasks: TaskData[]) => sortTasksTimeFirst(tasks, 'asc');
 export const sortTasksByDateTimeAndCompletion = (tasks: TaskData[]) => sortTasksTimeFirst(tasks, 'asc');
-export const applyDefaultTaskSort = (tasks: TaskData[]) => sortTasksTimeFirst(tasks, 'asc');

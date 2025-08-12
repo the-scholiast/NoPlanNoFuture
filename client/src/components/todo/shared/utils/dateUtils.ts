@@ -118,3 +118,10 @@ export const getTimeRangeDisplay = (task: TaskData): string | null => {
 
   return startTime || endTime;
 };
+
+// Fix timezone issue: avoid using new Date() constructor with date strings for display
+export const formatLocalDate = (dateStr: string) : string => {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString();
+};

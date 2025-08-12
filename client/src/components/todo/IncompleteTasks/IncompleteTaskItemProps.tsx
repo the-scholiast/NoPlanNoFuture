@@ -1,8 +1,8 @@
 import React from 'react';
-import { ChevronDown, ChevronUp, Calendar, Clock, RotateCcw, Trash2, AlertCircle, Repeat } from 'lucide-react';
+import { Calendar, Clock, RotateCcw, Trash2, AlertCircle, Repeat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { IncompleteTaskWithOverdue, IncompleteTaskItemProps } from './types';
+import { IncompleteTaskItemProps } from './types';
 
 export const IncompleteTaskItem: React.FC<IncompleteTaskItemProps> = ({
   task,

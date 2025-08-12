@@ -1,20 +1,17 @@
 'use client'
 
 import React from 'react';
-import { AlertCircle, ChevronDown, ChevronUp, Filter, X, Trash2, Calendar, Clock, RotateCcw } from 'lucide-react';
+import { AlertCircle, ChevronDown, ChevronUp, X, Trash2, } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { CompactTaskSorting } from '@/components/todo/shared/components/TaskSortingComponent';
 import { useIncompleteTasks } from './hooks';
 import { IncompleteTasksProps, IncompleteTaskWithOverdue } from './types';
-import { getSectionLabel } from '../shared/utils';
 import { IncompleteTaskItem } from './IncompleteTaskItemProps';
 import { DateFilter } from '../shared/components/DateFilter';
+import { formatDate, formatTime, getPriorityColor, getSectionLabel } from '../shared/utils';
 
 export default function IncompleteTasks({ className }: IncompleteTasksProps) {
   const {
@@ -34,83 +31,6 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
     handleCompleteTask,
     handleDeleteTask,
   } = useIncompleteTasks();
-
-  // Helper functions
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return null;
-    try {
-      const [year, month, day] = dateString.split('-').map(Number);
-      if (!year || !month || !day) return dateString;
-
-      const date = new Date(year, month - 1, day);
-      const currentYear = new Date().getFullYear();
-
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: date.getFullYear() !== currentYear ? 'numeric' : undefined
-      });
-    } catch {
-      return dateString;
-    }
-  };
-
-  const formatTime = (timeString?: string) => {
-    if (!timeString) return null;
-    try {
-      const [hours, minutes] = timeString.split(':').map(Number);
-      if (isNaN(hours) || isNaN(minutes)) return timeString;
-
-      const date = new Date();
-      date.setHours(hours, minutes);
-
-      return date.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
-    } catch {
-      return timeString;
-    }
-  };
-
-  const getPriorityColor = (priority?: string) => {
-    switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800 border-red-200';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'low': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getOverdueColor = (overdueDays: number) => {
-    if (overdueDays <= 0) return 'bg-gray-100 text-gray-800 border-gray-200';
-    if (overdueDays <= 3) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    if (overdueDays <= 7) return 'bg-orange-100 text-orange-800 border-orange-200';
-    return 'bg-red-100 text-red-800 border-red-200';
-  };
-
-  const getFilterDisplayText = () => {
-    if (!dateFilter.enabled) return 'All dates';
-
-    const formatLocalDate = (dateStr: string) => {
-      const [year, month, day] = dateStr.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
-      return date.toLocaleDateString();
-    };
-
-    const today = new Date().toISOString().split('T')[0];
-
-    if (dateFilter.startDate === dateFilter.endDate && dateFilter.startDate === today) {
-      return 'Today only';
-    }
-
-    if (dateFilter.startDate === dateFilter.endDate) {
-      return formatLocalDate(dateFilter.startDate);
-    }
-
-    return `${formatLocalDate(dateFilter.startDate)} - ${formatLocalDate(dateFilter.endDate)}`;
-  };
 
   if (isLoading) {
     return (

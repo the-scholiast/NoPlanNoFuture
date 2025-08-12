@@ -17,7 +17,6 @@ export const useIncompleteTasksMutations = () => {
     });
   };
 
-
   // Complete task mutation - marks an incomplete task as complete
   const completeTaskMutation = useMutation({
     mutationFn: async (taskId: string) => {
@@ -38,8 +37,7 @@ export const useIncompleteTasksMutations = () => {
         // Continue with task update even if completion record fails
       }
 
-      // Update the task status directly - no need for completion records here
-      // The completion system is for tracking daily recurring task completions
+      // Update the task status directly
       const updates: Partial<TaskData> = {
         completed: true,
         completed_at: now,
@@ -63,10 +61,9 @@ export const useIncompleteTasksMutations = () => {
     },
   });
 
-  // Delete task mutation - permanently deletes the task
+  // Soft delete by setting deleted_at timestamp
   const deleteTaskMutation = useMutation({
     mutationFn: async (taskId: string) => {
-      // Soft delete by setting deleted_at timestamp
       const now = getTodayString();
       await todoApi.update(taskId, { deleted_at: now });
     },
@@ -137,7 +134,7 @@ export const useIncompleteTasksMutations = () => {
     },
   });
 
-  // Update task dates mutation - useful for fixing overdue tasks
+  // Update task dates mutation
   const updateTaskDatesMutation = useMutation({
     mutationFn: async ({
       taskId,

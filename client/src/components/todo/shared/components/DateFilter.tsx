@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { getTodayString, formatDateString } from '@/lib/utils/dateUtils';
+import { formatLocalDate } from '../utils';
 
 export interface DateFilterState {
   startDate: string;
@@ -24,12 +25,6 @@ interface DateFilterProps {
 export function DateFilter({ dateFilter, onFilterChange, className }: DateFilterProps) {
   const getFilterDisplayText = () => {
     if (!dateFilter.enabled) return 'All dates';
-
-    const formatLocalDate = (dateStr: string) => {
-      const [year, month, day] = dateStr.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
-      return date.toLocaleDateString();
-    };
 
     const today = getTodayString();
 

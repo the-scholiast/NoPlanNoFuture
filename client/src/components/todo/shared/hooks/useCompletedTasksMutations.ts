@@ -6,7 +6,6 @@ import { TaskData } from '@/types/todoTypes';
 import { getTodayString } from '@/lib/utils/dateUtils';
 
 // Mutations specifically for CompletedTasks component operations
-// These handle the logic for the new todo_completions table
 
 export const useCompletedTasksMutations = () => {
   const queryClient = useQueryClient();
@@ -76,8 +75,7 @@ export const useCompletedTasksMutations = () => {
   // Delete entire task mutation - deletes task and all its completions
   const deleteTaskMutation = useMutation({
     mutationFn: async (taskId: string) => {
-      // Delete all completions for this task first (handled by CASCADE in DB)
-      // Then delete the task itself
+      // Delete all completions for this task first then delete the task itself
       return todoApi.delete(taskId);
     },
     onSuccess: () => {

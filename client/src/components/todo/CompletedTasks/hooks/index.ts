@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState, useMemo, } from 'react';
+import { useQuery, } from '@tanstack/react-query';
 import { CompletedTasksState, DateFilterState, CompletedTaskWithCompletion } from '../../shared/types';
 import { useCompletedTasksMutations } from '../../shared/hooks/useCompletedTasksMutations';
 import { getCurrentWeekStart, getCurrentWeekEnd } from '../../shared/utils';
@@ -7,7 +7,6 @@ import { todoCompletionsApi, CompletedTaskWithDetails } from '@/lib/api/todoComp
 
 
 export const useCompletedTasks = () => {
-  const queryClient = useQueryClient();
   // Component state
   const [state, setState] = useState<CompletedTasksState>({
     expandedTask: null,
@@ -68,27 +67,6 @@ export const useCompletedTasks = () => {
         task.title.toLowerCase().includes(query) ||
         task.description?.toLowerCase().includes(query)
       );
-    }
-
-    // Apply date filter if enabled - This should be redundant now since API handles it
-    // But keeping as a safety net for client-side data that might slip through
-    if (state.dateFilter.enabled && filtered.length > 0) {
-      const initialCount = filtered.length;
-      filtered = filtered.filter(task => {
-        const completionDate = task.completion.completed_at;
-        if (!completionDate) {
-          return false;
-        }
-
-        // Extract just the date part if it includes timestamp
-        const taskDateStr = completionDate.includes('T') ?
-          completionDate.split('T')[0] : completionDate;
-
-        const isInRange = taskDateStr >= state.dateFilter.startDate &&
-          taskDateStr <= state.dateFilter.endDate;
-
-        return isInRange;
-      });
     }
 
     // Sort by completion date (most recent first)
