@@ -4,11 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TaskData } from '@/types/todoTypes';
-import { todoApi } from '@/lib/api/todos';
 import { EditTaskModalProps } from '@/types/todoTypes';
 import { updateTaskData } from '@/lib/api/transformers';
 import { transformTaskFormDataBackend } from '@/lib/api/transformers';
-
+import { useTodoMutations } from './shared/';
 // Import shared components and hooks
 import {
   TaskBasicFields,
@@ -21,6 +20,8 @@ import { validateEditTask } from './shared/';
 export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated }: EditTaskModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { updateTaskMutation } = useTodoMutations();
 
   // Use shared hook for task logic
   const {
@@ -63,6 +64,7 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
     try {
       // Validate the task
       const validation = validateEditTask(editableTask);
+
       if (!validation.isValid) {
         setError(validation.errors.join('\n'));
         setIsSubmitting(false);
@@ -86,8 +88,8 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
 
       console.log('Sending updates to backend:', updates);
 
-      // Send to backend
-      await todoApi.update(task.id, updates);
+      // Use the shared mutation instead of direct API call
+      await updateTaskMutation.mutateAsync({ id: task.id, updates });
 
       // Notify parent component
       onTaskUpdated();

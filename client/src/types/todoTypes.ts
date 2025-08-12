@@ -1,4 +1,5 @@
 export interface TaskData {
+  updated_at: string;
   id: string;
   title: string;
   completed: boolean;

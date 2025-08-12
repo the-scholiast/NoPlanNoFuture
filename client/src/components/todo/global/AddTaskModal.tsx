@@ -5,9 +5,8 @@ import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AddTaskModalProps, TaskData, CreateTaskData } from '@/types/todoTypes';
-import { todoApi } from '@/lib/api/todos';
 import { transformCreateTaskData } from '@/lib/api/transformers';
-
+import { useTodoMutations } from '../shared/';
 // Import shared components and hooks
 import {
   TaskBasicFields,
@@ -32,6 +31,8 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
     resetTasks
   } = useMultiTaskFormLogic();
 
+  const { createTaskMutation } = useTodoMutations();
+
   // Handle applying tasks
   const handleApply = async () => {
     setError(null);
@@ -51,9 +52,9 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
       const validTasks = tasks.filter(task => task.title.trim() !== '');
       const tasksToCreate: CreateTaskData[] = validTasks.map(transformCreateTaskData);
 
-      // Send to backend
+      // Use the shared mutation instead of direct API calls
       const createdTasks: TaskData[] = await Promise.all(
-        tasksToCreate.map(taskData => todoApi.create(taskData))
+        tasksToCreate.map(taskData => createTaskMutation.mutateAsync(taskData))
       );
 
       // Pass the created tasks to the parent component
@@ -95,7 +96,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
           {tasks.map((task, index) => {
             // Get task-specific helpers
             const taskHelpers = getTaskHelpers(task.id);
-            
+
             return (
               <div key={task.id} className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800 space-y-4">
                 {/* Header Row with Task Label and Remove Button */}
