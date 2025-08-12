@@ -6,6 +6,7 @@ import { useIncompleteTasksMutations } from '../../shared/hooks/useIncompleteTas
 import { getCurrentWeekStart, getCurrentWeekEnd } from '../../shared/utils';
 import { todoApi } from '@/lib/api/todos';
 import { TaskData } from '@/types/todoTypes';
+import { getTodayString } from '@/lib/utils/dateUtils';
 
 export const useIncompleteTasks = () => {
   // Component state
@@ -21,6 +22,13 @@ export const useIncompleteTasks = () => {
     }
   });
 
+  const queryKey = useMemo(() => [
+    'tasks',
+    state.dateFilter.enabled,
+    state.dateFilter.startDate,
+    state.dateFilter.endDate,
+  ], [state.dateFilter.enabled, state.dateFilter.startDate, state.dateFilter.endDate]);
+
   // Query for all tasks
   const {
     data: allTasksData = [],
@@ -28,14 +36,14 @@ export const useIncompleteTasks = () => {
     error,
     refetch
   } = useQuery({
-    queryKey: ['tasks'],
+    queryKey, // Use the dynamic queryKey instead of static ['tasks']
     queryFn: () => todoApi.getAll(),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   // Calculate current date for overdue calculation
   const currentDate = useMemo(() => {
-    return new Date().toISOString().split('T')[0];
+    return getTodayString()
   }, []);
 
   // Filter and transform tasks to show incomplete/overdue ones
@@ -73,7 +81,7 @@ export const useIncompleteTasks = () => {
         // Calculate overdue days
         let overdueDays = 0;
         const relevantDate = task.end_date || task.start_date;
-        
+
         if (relevantDate) {
           const taskDate = new Date(relevantDate);
           const today = new Date(currentDate);
@@ -109,7 +117,7 @@ export const useIncompleteTasks = () => {
         const relevantDate = task.end_date || task.start_date;
         if (!relevantDate) return false;
 
-        const taskDateStr = relevantDate.includes('T') ? 
+        const taskDateStr = relevantDate.includes('T') ?
           relevantDate.split('T')[0] : relevantDate;
 
         return taskDateStr >= state.dateFilter.startDate &&
@@ -160,10 +168,15 @@ export const useIncompleteTasks = () => {
   };
 
   const updateDateFilter = (filter: Partial<DateFilterState>) => {
-    setState(prev => ({
-      ...prev,
-      dateFilter: { ...prev.dateFilter, ...filter }
-    }));
+    setState(prev => {
+      const newDateFilter = { ...prev.dateFilter, ...filter };
+      return {
+        ...prev,
+        dateFilter: newDateFilter,
+        // Clear sorted tasks when filter changes to ensure fresh data
+        sortedIncompleteTasks: []
+      };
+    });
   };
 
   const updateSortedTasks = (tasks: IncompleteTaskWithOverdue[]) => {
