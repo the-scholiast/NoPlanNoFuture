@@ -130,9 +130,9 @@ export default function TodoModalButton() {
         onClick={() => setIsOpen(true)}
         size="icon"
         variant="outline"
-        className="h-8 w-8"
+        className="h-12 w-12 rounded-full shadow-lg"
       >
-        <CheckSquare className="h-4 w-4" />
+        <CheckSquare className="h-6 w-6" />
       </Button>
 
       {isOpen && (
