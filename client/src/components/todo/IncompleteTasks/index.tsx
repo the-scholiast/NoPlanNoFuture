@@ -14,6 +14,7 @@ import { useIncompleteTasks } from './hooks';
 import { IncompleteTasksProps, IncompleteTaskWithOverdue } from './types';
 import { getSectionLabel } from '../shared/utils';
 import { IncompleteTaskItem } from './IncompleteTaskItemProps';
+import { DateFilter } from '../shared/components/DateFilter';
 
 export default function IncompleteTasks({ className }: IncompleteTasksProps) {
   const {
@@ -176,117 +177,10 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
           )}
 
           {/* Date Filter */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Filter className="w-4 h-4" />
-                {getFilterDisplayText()}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>Enable Date Filter</Label>
-                  <Switch
-                    checked={dateFilter.enabled}
-                    onCheckedChange={(checked) => updateDateFilter({ enabled: checked })}
-                  />
-                </div>
-
-                {dateFilter.enabled && (
-                  <>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <Label htmlFor="start-date">Start Date</Label>
-                        <Input
-                          id="start-date"
-                          type="date"
-                          value={dateFilter.startDate}
-                          onChange={(e) => updateDateFilter({ startDate: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="end-date">End Date</Label>
-                        <Input
-                          id="end-date"
-                          type="date"
-                          value={dateFilter.endDate}
-                          onChange={(e) => updateDateFilter({ endDate: e.target.value })}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const today = new Date().toISOString().split('T')[0];
-                          updateDateFilter({ startDate: today, endDate: today });
-                        }}
-                      >
-                        Today
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const now = new Date();
-                          const dayOfWeek = now.getDay();
-                          const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-
-                          const monday = new Date(now);
-                          monday.setDate(now.getDate() - daysFromMonday);
-
-                          const sunday = new Date(monday);
-                          sunday.setDate(monday.getDate() + 6);
-
-                          const formatDate = (date: Date) => date.toISOString().split('T')[0];
-
-                          updateDateFilter({
-                            startDate: formatDate(monday),
-                            endDate: formatDate(sunday)
-                          });
-                        }}
-                      >
-                        This Week
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const now = new Date();
-                          const year = now.getFullYear();
-                          const month = now.getMonth();
-
-                          const firstDay = new Date(year, month, 1);
-                          const lastDay = new Date(year, month + 1, 0);
-
-                          const formatDate = (date: Date) => date.toISOString().split('T')[0];
-
-                          updateDateFilter({
-                            startDate: formatDate(firstDay),
-                            endDate: formatDate(lastDay)
-                          });
-                        }}
-                      >
-                        This Month
-                      </Button>
-                    </div>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => updateDateFilter({ enabled: false })}
-                      className="w-full"
-                    >
-                      Clear Filter
-                    </Button>
-                  </>
-                )}
-              </div>
-            </PopoverContent>
-          </Popover>
+          <DateFilter
+            dateFilter={dateFilter}
+            onFilterChange={updateDateFilter}
+          />
 
           <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
             ⚠️ {totalIncompleteTasks}
