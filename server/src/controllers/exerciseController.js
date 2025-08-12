@@ -1,4 +1,4 @@
-import { supabase } from '../utils/supabase.js';
+import supabase from '../supabaseAdmin.js';
 import { ValidationError } from '../utils/errors.js';
 
 // Retrieves exercises from the database with optional search filtering

@@ -1,12 +1,4 @@
-import { supabase } from '../utils/supabase.js';
-
-export const verifyToken = async (token) => {
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) {
-    throw new Error('Invalid token');
-  }
-  return user;
-};
+import { verifyToken } from '../supabaseAdmin.js';
 
 export const authenticateUser = async (req, res, next) => {
   try {

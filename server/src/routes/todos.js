@@ -9,7 +9,6 @@ import {
   updateTodo,
   deleteTodo,
   bulkDeleteTodos,
-  // New functions
   softDeleteTodo,
   restoreTodo,
   getDeletedTodos,
@@ -20,7 +19,7 @@ import {
   resetDailyTasks,
   getCompletedDailyTasks
 } from '../controllers/todoController.js';
-import { supabase } from '../utils/supabase.js';
+import supabase from '../supabaseAdmin.js';
 
 const router = express.Router();
 

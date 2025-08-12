@@ -1,4 +1,3 @@
-// server/src/server.js
 // COMBINED EXPRESS.JS SERVER - Main Entry Point
 import express from 'express'
 import cors from 'cors'
@@ -6,13 +5,11 @@ import 'dotenv/config'
 import apiRoutes from './routes/index.js'
 
 const app = express()
-const PORT = process.env.PORT || 3001 // Changed to 3001 to match your client expectations
+const PORT = process.env.PORT || 3001
 
-// =============================================
 // MIDDLEWARE SETUP
-// =============================================
 
-// Enable CORS with comprehensive configuration
+// Enable CORS configuration - allows frontend to talk to backend
 app.use(cors({
   origin: [
     process.env.CLIENT_URL || 'http://localhost:3000',
@@ -25,9 +22,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }))
 
-// Parse JSON bodies
+// Parse JSON bodies - converts request bodies to JavaScript objects
 app.use(express.json())
-
 // Parse URL-encoded bodies
 app.use(express.urlencoded({ extended: true }))
 
@@ -43,7 +39,7 @@ if (process.env.NODE_ENV !== 'production') {
 // ROUTES
 // =============================================
 
-// Health check endpoint - useful for debugging connection issues
+// Health check endpoint
 app.get('/', (req, res) => {
   res.json({
     message: 'NoPlanNoFuture API Server is running!',
@@ -70,7 +66,7 @@ app.get('/health', (req, res) => {
   })
 })
 
-// API routes
+// Main app mounts API routes
 app.use('/api', apiRoutes)
 
 // =============================================
@@ -91,7 +87,7 @@ app.use((req, res) => {
   })
 })
 
-// Global error handler
+// Global error handler when a route calls next(error)
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err)
 
@@ -140,30 +136,6 @@ app.listen(PORT, () => {
   } else {
     console.log(' Environment variables loaded')
   }
-
-  // Log available endpoints
-  console.log('\n Available API endpoints:')
-  console.log('   GET    /           - Server info & health check')
-  console.log('   GET    /health     - Simple health check')
-  console.log('   GET    /api/todos  - Get all todos')
-  console.log('   POST   /api/todos  - Create new todo')
-  console.log('   PATCH  /api/todos/:id - Update todo')
-  console.log('   DELETE /api/todos/:id - Delete todo')
-  console.log('   POST   /api/todos/bulk-delete - Delete multiple todos')
-  console.log('   GET    /api/profile - Get user profile')
-  console.log('   PATCH  /api/profile - Update profile')
-  console.log('   GET    /api/workout-templates - Get workout templates')
-  console.log('   POST   /api/workout-templates - Create workout template')
-  console.log('   PATCH  /api/workout-templates/:id - Update template')
-  console.log('   DELETE /api/workout-templates/:id - Delete template')
-  console.log('   GET    /api/workouts - Get workouts')
-  console.log('   POST   /api/workouts - Create workout')
-  console.log('   PATCH  /api/workouts/:id - Update workout')
-  console.log('   DELETE /api/workouts/:id - Delete workout')
-  console.log('   GET    /api/exercises - Get exercises')
-  console.log('   POST   /api/exercises - Create custom exercise')
-  console.log('   GET    /api/stats - Get workout statistics')
-  console.log('')
 })
 
 // Graceful shutdown handlers

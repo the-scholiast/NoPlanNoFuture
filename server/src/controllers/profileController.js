@@ -1,6 +1,6 @@
 // Currently not implemented
 
-import { supabase } from '../utils/supabase.js';
+import supabase from '../supabaseAdmin.js';
 
 export const getProfile = async (userId) => {
   const { data, error } = await supabase

@@ -1,4 +1,4 @@
-import { supabase } from '../utils/supabase.js';
+import supabase from '../supabaseAdmin.js';
 import { ValidationError } from '../utils/errors.js';
 import { ensureLocalDate, formatDateString, } from '../utils/dateUtils.js';
 

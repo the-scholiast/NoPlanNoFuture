@@ -1,4 +1,4 @@
-import { supabase } from '../utils/supabase.js';
+import supabase from '../supabaseAdmin.js';
 
 // Retrieves workout statistics for a user
 export const getStats = async (userId) => {

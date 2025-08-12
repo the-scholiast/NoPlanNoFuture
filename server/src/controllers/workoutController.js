@@ -1,5 +1,5 @@
-import { supabase } from "../utils/supabase.js";
 import { ValidationError } from '../utils/errors.js';
+import supabase from "../supabaseAdmin.js";
 
 // Query the workout_templates table in Supabase
 export const getWorkoutTemplates = async (userId) => {

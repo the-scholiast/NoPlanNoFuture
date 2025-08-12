@@ -41,12 +41,11 @@ const supabase = createClient(
  * })
  */
 export const verifyToken = async (token) => {
-  // getUser validates the token and returns user data
-  const { data, error } = await supabase.auth.getUser(token)
-
-  if (error) throw error
-
-  return data.user
-}
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    throw new Error('Invalid token');
+  }
+  return user;
+};
 
 export default supabase
