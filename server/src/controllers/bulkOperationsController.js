@@ -1,5 +1,5 @@
 import supabase from '../supabaseAdmin.js';
-import { formatDateString } from "../utils/dateUtils";
+import { formatDateString } from "../utils/dateUtils.js";
 
 // Bulk hard delete (only deletes based on section and completed keys) -> EXPAND FOR MORE COMPREHENSIVE BULK DELETION
 export const bulkDeleteTodos = async (userId, { section, completed, filter }) => {

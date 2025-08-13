@@ -1,13 +1,3 @@
-// - getAllTodos
-// - createTodo
-// - getIncompletedTodos
-// - getCompletedTodos
-// - updateTodo
-// - deleteTodo (hard delete)
-// - softDeleteTodo
-// - restoreTodo
-// - getDeletedTodos
-
 import supabase from '../supabaseAdmin.js';
 import { ValidationError } from '../utils/errors.js';
 import { ensureLocalDate, formatDateString, } from '../utils/dateUtils.js';

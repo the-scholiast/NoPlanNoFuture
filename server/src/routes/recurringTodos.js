@@ -1,5 +1,5 @@
 import express from 'express';
-import { getTodosForDate, getRecurringTaskInstances, updateRecurringDays, getUpcomingWeekTasks } from '../controllers/todoController.js';
+import { getTodosForDate, getRecurringTaskInstances, updateRecurringDays, getUpcomingWeekTasks } from '../controllers/index.js';
 import { authenticateUser } from '../middleware/auth.js';
 import { ensureLocalDate, formatDateString, getTodayString } from '../utils/dateUtils.js';
 import supabase from '../supabaseAdmin.js';

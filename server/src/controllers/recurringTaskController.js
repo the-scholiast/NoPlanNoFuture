@@ -40,7 +40,12 @@ export const getTodosForDate = async (userId, date) => {
     .select('*')
     .eq('user_id', userId)
     .is('deleted_at', null)
-    .or(`and(is_recurring.eq.false,start_date.eq.${date}),and(is_recurring.eq.true,recurring_days.cs.{${dayName}},or(start_date.is.null,start_date.lte.${date}),or(end_date.is.null,end_date.gte.${date}))`)
+    .or(`
+      and(is_recurring.eq.false,start_date.eq.${date}),
+      and(is_recurring.eq.true,recurring_days.cs.{${dayName}},
+      or(start_date.is.null,start_date.lte.${date}),
+      or(end_date.is.null,end_date.gte.${date}))
+      `)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
