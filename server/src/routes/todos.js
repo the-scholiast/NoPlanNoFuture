@@ -23,8 +23,6 @@ import supabase from '../supabaseAdmin.js';
 
 const router = express.Router();
 
-// ===== IMPORTANT: SPECIFIC ROUTES MUST COME BEFORE PARAMETERIZED ROUTES =====
-
 // Base route - for backward compatibility with /api/todos
 router.get('/', authenticateUser, async (req, res, next) => {
   try {

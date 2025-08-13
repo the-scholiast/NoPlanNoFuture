@@ -5,7 +5,7 @@ import { formatDateString, ensureLocalDate } from '../utils/dateUtils.js';
 const DAYS_OF_WEEK = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
 // Get the day name from a date
-const getDayName = (date) => {
+export const getDayName = (date) => {
   const dayIndex = new Date(ensureLocalDate(date)).getDay();
   return DAYS_OF_WEEK[dayIndex];
 };
@@ -17,7 +17,7 @@ export const getTodayTasks = async (userId) => {
 };
 
 // Check if a task should appear on a specific date
-const shouldTaskAppearOnDate = (task, date) => {
+export const shouldTaskAppearOnDate = (task, date) => {
   if (!task.is_recurring || !task.recurring_days || task.recurring_days.length === 0) {
     return false;
   }
@@ -35,17 +35,18 @@ const shouldTaskAppearOnDate = (task, date) => {
 export const getTodosForDate = async (userId, date) => {
   const dayName = getDayName(date);
 
+  const orCondition = 
+    `and(is_recurring.eq.false,start_date.eq.${date}),` +
+    `and(is_recurring.eq.true,recurring_days.cs.{${dayName}},` +
+    `or(start_date.is.null,start_date.lte.${date}),` +
+    `or(end_date.is.null,end_date.gte.${date}))`;
+
   const { data, error } = await supabase
     .from('todos')
     .select('*')
     .eq('user_id', userId)
     .is('deleted_at', null)
-    .or(`
-      and(is_recurring.eq.false,start_date.eq.${date}),
-      and(is_recurring.eq.true,recurring_days.cs.{${dayName}},
-      or(start_date.is.null,start_date.lte.${date}),
-      or(end_date.is.null,end_date.gte.${date}))
-      `)
+    .or(orCondition)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
