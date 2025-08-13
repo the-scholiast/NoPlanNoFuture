@@ -76,6 +76,43 @@ router.get('/deleted', authenticateUser, async (req, res, next) => {
   }
 });
 
+// Create completion record
+router.post('/completions', authenticateUser, async (req, res, next) => {
+  try {
+    const { task_id, instance_date } = req.body;
+
+    if (!task_id || !instance_date) {
+      return res.status(400).json({ error: 'Task ID and instance date are required' });
+    }
+
+    // Create timestamp in local timezone instead of UTC
+    const now = new Date();
+
+    const localISOString = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString();
+
+    // Create the completion record
+    const { data, error } = await supabase
+      .from('todo_completions')
+      .insert({
+        user_id: req.user.id,
+        task_id: task_id,
+        instance_date: instance_date,
+        completed_at: localISOString, // Use local time instead of UTC
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating completion:', error);
+      return res.status(500).json({ error: 'Failed to create completion' });
+    }
+
+    res.status(201).json(data);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Get completion records with associated task data (for CompletedTasks component)
 router.get('/completions', authenticateUser, async (req, res, next) => {
   try {
@@ -120,7 +157,7 @@ router.get('/completions', authenticateUser, async (req, res, next) => {
         completed_at: completion.completed_at,
         created_at: completion.created_at,
       },
-      completion_count: 1 // You might want to calculate this properly later
+      completion_count: completion.completion_count
     })) || [];
 
     res.json(result);
@@ -218,43 +255,6 @@ router.delete('/cleanup/old', authenticateUser, async (req, res, next) => {
       deletedCount: deletedTodos.length,
       deletedTodos
     });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Create completion record
-router.post('/completions', authenticateUser, async (req, res, next) => {
-  try {
-    const { task_id, instance_date } = req.body;
-
-    if (!task_id || !instance_date) {
-      return res.status(400).json({ error: 'Task ID and instance date are required' });
-    }
-
-    // Create timestamp in local timezone instead of UTC
-    const now = new Date();
-
-    const localISOString = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString();
-
-    // Create the completion record
-    const { data, error } = await supabase
-      .from('todo_completions')
-      .insert({
-        user_id: req.user.id,
-        task_id: task_id,
-        instance_date: instance_date,
-        completed_at: localISOString, // Use local time instead of UTC
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating completion:', error);
-      return res.status(500).json({ error: 'Failed to create completion' });
-    }
-
-    res.status(201).json(data);
   } catch (error) {
     next(error);
   }
