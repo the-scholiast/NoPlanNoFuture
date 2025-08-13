@@ -52,17 +52,29 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
 
   // Use shared toggle function
   const toggleTask = async (taskId: string) => {
-    try {
-      const allTasks = combineAllTasks(filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks);
-      await toggleTaskFunction(taskId, allTasks, isRecurringInstance);
-      // Force immediate refetch of completed tasks
+  try {
+    console.log('📋 TodoBoard: Toggling task', taskId);
+    const allTasks = combineAllTasks(filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks);
+    await toggleTaskFunction(taskId, allTasks, isRecurringInstance);
+    
+    console.log('📋 TodoBoard: Task toggled, forcing CompletedTasks refresh...');
+    
+    // Force immediate refetch of completed tasks with multiple attempts
+    queryClient.refetchQueries({
+      predicate: (query) => query.queryKey[0] === 'completed-tasks'
+    });
+    
+    // Additional force refetch after a short delay to ensure completion records are saved
+    setTimeout(() => {
       queryClient.refetchQueries({
         predicate: (query) => query.queryKey[0] === 'completed-tasks'
       });
-    } catch (error) {
-      console.error('TodoBoard: Error in toggleTask:', error);
-    }
-  };
+    }, 200);
+    
+  } catch (error) {
+    console.error('TodoBoard: Error in toggleTask:', error);
+  }
+};
 
   if (isLoading) {
     return (

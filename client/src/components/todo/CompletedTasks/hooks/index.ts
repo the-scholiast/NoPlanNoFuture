@@ -22,11 +22,10 @@ export const useCompletedTasks = () => {
 
   // Create a stable query key that changes when date filter changes
   const queryKey = useMemo(() => {
-    const baseKey = ['completed-tasks'];
     if (state.dateFilter.enabled) {
-      return [...baseKey, 'filtered', state.dateFilter.startDate, state.dateFilter.endDate];
+      return ['completed-tasks', 'filtered', state.dateFilter.startDate, state.dateFilter.endDate];
     }
-    return [...baseKey, 'all'];
+    return ['completed-tasks', 'all'];
   }, [state.dateFilter.enabled, state.dateFilter.startDate, state.dateFilter.endDate]);
 
   // Query for completed tasks with completions
@@ -46,6 +45,9 @@ export const useCompletedTasks = () => {
       }
       return todoCompletionsApi.getCompletedTasks();
     },
+    staleTime: 0, // Always consider data stale for immediate updates
+    refetchOnWindowFocus: true,
+    refetchInterval: false, // Don't auto-refetch, rely on invalidations
   });
 
   // Transform API data to component format
