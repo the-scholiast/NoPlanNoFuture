@@ -29,8 +29,8 @@ export default function Page() {
         </div>
       </div>
 
-      <TodoBoard key={todoBoardKey} />
-      <CompletedTasks key={completedTasksKey} />
+      <TodoBoard />
+      <CompletedTasks />
       <IncompleteTasks />
     </div>
   );

@@ -52,11 +52,19 @@ export const useIncompleteTasksMutations = () => {
       await todoApi.update(taskId, updates);
     },
     onSuccess: () => {
+      // Immediate refreshes
       refetch();
       refetchTodayRecurring();
       refetchUpcomingRecurring();
+
+      // Strategic invalidations
       queryClient.invalidateQueries({ queryKey: ['todos'] });
       invalidateCompletedTasksQueries();
+
+      // Force immediate completed tasks refresh
+      queryClient.refetchQueries({
+        predicate: (query) => query.queryKey[0] === 'completed-tasks'
+      });
     },
   });
 

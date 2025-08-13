@@ -102,136 +102,101 @@ export const useTodoMutations = () => {
     },
   });
 
-  // Helper function to invalidate all queries - FIXED: No circular dependencies
+  // Helper function to invalidate all queries
   const invalidateAllQueries = () => {
-    // Force refetch of the main tasks query that TodoContext uses
-    refetch();
-    refetchTodayRecurring();
-    refetchUpcomingRecurring();
-
-    // Invalidate React Query caches
-    queryClient.invalidateQueries({ queryKey: ['todos'] });
-    queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
-
-    // CRITICAL FIX: Invalidate completed-tasks with exact matching
-    // This matches the queryKey structure in CompletedTasks hook
-    queryClient.invalidateQueries({
-      queryKey: ['completed-tasks'],
-      exact: false // This ensures it matches all variations with different parameters
-    });
-
-    // Also force refetch to be sure
-    queryClient.refetchQueries({
-      queryKey: ['completed-tasks'],
-      exact: false
-    });
-  };
+  // Use consistent query key patterns
+  queryClient.invalidateQueries({ 
+    queryKey: ['todos'],
+    exact: false 
+  });
+  
+  queryClient.invalidateQueries({ 
+    queryKey: ['recurring-todos'],
+    exact: false 
+  });
+  
+  // Fix: Use predicate with more specific matching
+  queryClient.invalidateQueries({
+    predicate: (query) => {
+      const [firstKey] = query.queryKey;
+      return firstKey === 'completed-tasks';
+    }
+  });
+  
+  // Force immediate refetch for critical queries
+  queryClient.refetchQueries({
+    queryKey: ['todos'],
+    exact: false
+  });
+};
 
   const createToggleTaskFunction = () => {
-    return async (taskId: string, allTasks: TaskData[], isRecurringInstanceFn: (task: TaskData) => boolean) => {
-      const task = allTasks.find(t => t.id === taskId);
-      if (!task) {
-        return;
-      }
+  return async (taskId: string, allTasks: TaskData[], isRecurringInstanceFn: (task: TaskData) => boolean) => {
+    const task = allTasks.find(t => t.id === taskId);
+    if (!task) {
+      console.warn('Task not found:', taskId);
+      return;
+    }
 
-      const today = getTodayString();
-      const originalTaskId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
-      const isRecurringInstance = taskId.includes('_') && !!task.parent_task_id;
+    const today = getTodayString();
+    const originalTaskId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
+    const isRecurringInstance = taskId.includes('_') && !taskId.endsWith('_recurring');
 
-      try {
-        if (!task.completed) {
+    try {
+      // Optimistic update - immediately update UI
+      queryClient.setQueryData(['todos'], (oldTasks: TaskData[] = []) => {
+        return oldTasks.map(t => 
+          t.id === taskId 
+            ? { ...t, completed: !t.completed, completed_at: !t.completed ? new Date().toISOString() : undefined }
+            : t
+        );
+      });
 
-          // Create completion record for CompletedTasks component
-          try {
-            await todoCompletionsApi.createCompletion(originalTaskId, today);
-
-            // Immediately refetch completed tasks to show the new completion
-            queryClient.refetchQueries({
-              predicate: (query) => query.queryKey[0] === 'completed-tasks'
-            });
-
-          } catch (completionError) {
-            console.error('❌ Failed to create completion record:', completionError);
-          }
-
-          // Update the task directly via API (avoiding circular dependency)
+      if (!task.completed) {
+        // Marking as complete
+        if (isRecurringInstance) {
+          await todoCompletionsApi.createCompletion(originalTaskId, today);
+        } else {
           const updates: Partial<TaskData> = {
             completed: true,
-            completed_at: getTodayString(),
+            completed_at: new Date().toISOString(),
           };
 
-          // Special handling for daily tasks
           if (task.section === 'daily') {
             updates.completion_count = (task.completion_count || 0) + 1;
             updates.last_completed_date = today;
+            await todoCompletionsApi.createCompletion(originalTaskId, today);
           }
 
-          // CRITICAL FIX: Use todoApi directly instead of mutation to avoid circular dependency
           await todoApi.update(originalTaskId, updates);
-
-        } else {
-          // Delete completion record
-          try {
-            const completions = await todoCompletionsApi.getCompletionsForTaskAndDate(originalTaskId, today);
-            if (completions && completions.length > 0) {
-              await todoCompletionsApi.deleteCompletion(completions[0].id);
-
-              // Immediately refetch completed tasks to remove the completion
-              queryClient.refetchQueries({
-                predicate: (query) => query.queryKey[0] === 'completed-tasks'
-              });
-            }
-          } catch (completionError) {
-            console.error('❌ Failed to delete completion record:', completionError);
+        }
+      } else {
+        // Marking as incomplete
+        if (task.section === 'daily' || isRecurringInstance) {
+          const completions = await todoCompletionsApi.getCompletionsForTaskAndDate(originalTaskId, today);
+          if (completions.length > 0) {
+            await todoCompletionsApi.deleteCompletion(completions[0].id);
           }
+        }
 
-          // 2. Update the task directly via API (avoiding circular dependency)
-          const updates: Partial<TaskData> = {
+        if (!isRecurringInstance) {
+          await todoApi.update(originalTaskId, {
             completed: false,
             completed_at: undefined,
-          };
-
-          // Special handling for daily tasks
-          if (task.section === 'daily') {
-            const newCount = Math.max((task.completion_count || 1) - 1, 0);
-            updates.completion_count = newCount;
-            if (newCount === 0) {
-              updates.last_completed_date = undefined;
-            }
-          }
-
-          // Use todoApi directly instead of mutation to avoid circular dependency
-          await todoApi.update(originalTaskId, updates);
-
-        }
-
-        // 3. Refresh all UI components
-        invalidateAllQueries();
-
-      } catch (error) {
-        console.error('❌ ERROR toggling task:', error);
-        // Enhanced error logging
-        if (error instanceof Error) {
-          console.error('Error details:', {
-            name: error.name,
-            message: error.message,
-            stack: error.stack
           });
         }
-        // Don't throw to prevent UI from breaking
-      } finally {
-        // Always invalidate queries regardless of success or failure
-        invalidateAllQueries();
-
-        // Add an additional forced refetch with a small delay to ensure all async operations complete
-        setTimeout(() => {
-          queryClient.refetchQueries({
-            predicate: (query) => query.queryKey[0] === 'completed-tasks'
-          });
-        }, 200);
       }
-    };
+
+      // Selective invalidation instead of invalidating everything
+      invalidateAllQueries();
+
+    } catch (error) {
+      console.error('❌ ERROR toggling task:', error);
+      // Revert optimistic update on error
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
+    }
   };
+};
 
   // Public API for components to use these mutations
   return {

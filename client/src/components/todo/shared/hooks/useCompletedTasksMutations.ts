@@ -13,7 +13,7 @@ export const useCompletedTasksMutations = () => {
 
   // Helper function to invalidate completed-tasks queries with all variations
   const invalidateCompletedTasksQueries = () => {
-    queryClient.invalidateQueries({ 
+    queryClient.invalidateQueries({
       predicate: (query) => query.queryKey[0] === 'completed-tasks'
     });
   };
@@ -62,12 +62,21 @@ export const useCompletedTasksMutations = () => {
       return { completionId, taskId: completion.task_id };
     },
     onSuccess: () => {
-      // Refresh all task-related queries
+      // Immediate context refreshes
       refetch();
       refetchTodayRecurring();
       refetchUpcomingRecurring();
+
+      // Targeted invalidations
       queryClient.invalidateQueries({ queryKey: ['todos'] });
-      invalidateCompletedTasksQueries();
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === 'completed-tasks'
+      });
+
+      // Force immediate UI update
+      queryClient.refetchQueries({
+        predicate: (query) => query.queryKey[0] === 'completed-tasks'
+      });
     },
   });
 

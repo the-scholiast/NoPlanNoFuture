@@ -21,12 +21,13 @@ export const useCompletedTasks = () => {
   });
 
   // Create a stable query key that changes when date filter changes
-  const queryKey = useMemo(() => [
-    'completed-tasks',
-    state.dateFilter.enabled,
-    state.dateFilter.startDate,
-    state.dateFilter.endDate,
-  ], [state.dateFilter.enabled, state.dateFilter.startDate, state.dateFilter.endDate]);
+  const queryKey = useMemo(() => {
+    const baseKey = ['completed-tasks'];
+    if (state.dateFilter.enabled) {
+      return [...baseKey, 'filtered', state.dateFilter.startDate, state.dateFilter.endDate];
+    }
+    return [...baseKey, 'all'];
+  }, [state.dateFilter.enabled, state.dateFilter.startDate, state.dateFilter.endDate]);
 
   // Query for completed tasks with completions
   const {
