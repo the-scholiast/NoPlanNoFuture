@@ -1,8 +1,7 @@
-// client/src/lib/api/todos.ts
 import { TaskData, CreateTaskData } from '@/types/todoTypes';
 import { supabase } from '@/lib/supabaseClient';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 // Helper function to get auth headers
 const getAuthHeaders = async () => {
@@ -20,7 +19,7 @@ const getAuthHeaders = async () => {
 
 // Enhanced API request function with authentication
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE}/api/todos${endpoint}`;
+  const url = `${API_BASE}/todos${endpoint}`;
   
   try {
     const headers = await getAuthHeaders();
