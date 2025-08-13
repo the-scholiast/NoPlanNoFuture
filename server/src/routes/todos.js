@@ -18,7 +18,7 @@ import {
   getDailyTaskStats,
   resetDailyTasks,
   getCompletedDailyTasks
-} from '../controllers/todoController.js';
+} from '../controllers/index.js';
 import supabase from '../supabaseAdmin.js';
 
 const router = express.Router();

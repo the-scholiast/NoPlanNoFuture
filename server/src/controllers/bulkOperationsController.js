@@ -1,3 +1,4 @@
+import supabase from '../supabaseAdmin.js';
 import { formatDateString } from "../utils/dateUtils";
 
 // Bulk hard delete (only deletes based on section and completed keys) -> EXPAND FOR MORE COMPREHENSIVE BULK DELETION
