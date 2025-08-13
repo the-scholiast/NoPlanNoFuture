@@ -1,7 +1,6 @@
-import { supabase } from '../supabaseClient';
+import { apiCall } from './client';
 import { TodoCompletion } from '@/components/todo';
 import { TaskData } from '@/types/todoTypes';
-import { formatDateString, getTodayString } from '../utils/dateUtils';
 
 export interface CompletedTaskWithDetails extends TaskData {
   task_id: string;
@@ -10,171 +9,161 @@ export interface CompletedTaskWithDetails extends TaskData {
   completion_count: number;
 }
 
-// Add helper function at the top of the file
-function getNextDay(dateStr: string): string {
-  const date = new Date(dateStr);
-  date.setDate(date.getDate() + 1);
-  return formatDateString(date);
-}
-
 export const todoCompletionsApi = {
-  // Get all completed tasks with their completion details
+  // Get all completed tasks with their completion details using your backend API
   async getCompletedTasks(dateRange?: { start: string; end: string }): Promise<CompletedTaskWithDetails[]> {
-    let query = supabase
-      .from('todo_completions')
-      .select(`
-        *,
-        todos!inner (*)
-      `)
-      .order('completed_at', { ascending: false });
+    console.log('🔍 todoCompletionsApi: Fetching completed tasks', { dateRange });
 
-    if (dateRange) {
-
-      // Method 2: Use next day approach to catch all completions on end date
-      const startDateTime = `${dateRange.start}T00:00:00`;
-
-      // Manually calculate next day to avoid any issues with getNextDay function
-      const endDate = new Date(dateRange.end);
-      endDate.setDate(endDate.getDate() + 1);
-      const nextDay = endDate.toISOString().split('T')[0];
-      const endDateTime = `${nextDay}T00:00:00`;
-
-      query = query
-        .gte('completed_at', startDateTime)
-        .lt('completed_at', endDateTime); // Use lt (less than) to include all of end date
-    }
-
-    const { data: completions, error } = await query;
-
-    if (error) {
-      console.error('❌ Error fetching completions:', error);
-      throw error;
-    }
-
-    // Group completions by task and add completion count
-    const taskCompletionMap = new Map<string, { task: TaskData; completions: TodoCompletion[] }>();
-
-    completions?.forEach((completion: any) => {
-      const task = completion.todos;
-      const completionRecord = {
-        id: completion.id,
-        user_id: completion.user_id,
-        task_id: completion.task_id,
-        instance_date: completion.instance_date,
-        completed_at: completion.completed_at,
-        created_at: completion.created_at,
-      };
-
-      if (!taskCompletionMap.has(task.id)) {
-        taskCompletionMap.set(task.id, {
-          task,
-          completions: []
-        });
+    try {
+      // Use the NEW /api/todos/completions endpoint instead of /complete
+      let endpoint = '/todos/completions';
+      if (dateRange) {
+        endpoint += `?startDate=${dateRange.start}&endDate=${dateRange.end}`;
       }
 
-      taskCompletionMap.get(task.id)!.completions.push(completionRecord);
-    });
+      const data = await apiCall(endpoint);
+      console.log('✅ todoCompletionsApi: Received completed tasks:', data?.length || 0);
 
-    // Convert to CompletedTaskWithDetails format
-    const result: CompletedTaskWithDetails[] = [];
-
-    taskCompletionMap.forEach(({ task, completions }) => {
-      completions.forEach(completion => {
-        result.push({
-          ...task,
-          completion,
-          completion_count: completions.length,
-          task_id: completion.task_id,
-          instance_date: completion.instance_date
-        });
-      });
-    });
-
-    const sortedResult = result.sort((a, b) =>
-      new Date(b.completion.completed_at).getTime() - new Date(a.completion.completed_at).getTime()
-    );
-
-    return sortedResult;
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('❌ todoCompletionsApi: Error fetching completed tasks:', error);
+      throw error;
+    }
   },
 
-  // Create a new completion record
+  // Create a new completion record using your backend API
   async createCompletion(taskId: string, instanceDate: string): Promise<TodoCompletion> {
-    // Use your backend API instead of direct Supabase
-    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    console.log('🟢 todoCompletionsApi: Creating completion', { taskId, instanceDate });
 
-    // Get auth headers the same way your other APIs do
-    const { data: { session } } = await supabase.auth.getSession();
+    try {
+      const data = await apiCall('/todos/completions', {
+        method: 'POST',
+        body: JSON.stringify({
+          task_id: taskId,
+          instance_date: instanceDate
+        })
+      });
 
-    if (!session?.access_token) {
-      throw new Error('No authentication token available');
+      console.log('✅ todoCompletionsApi: Completion created:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ todoCompletionsApi: Error creating completion:', error);
+      throw error;
     }
+  },
 
-    const response = await fetch(`${API_BASE}/api/todos/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`
-      },
-      body: JSON.stringify({
-        task_id: taskId,
-        instance_date: instanceDate
-      })
-    });
+  // Delete a completion by task and date using your backend API
+  async deleteCompletionByTaskAndDate(taskId: string, instanceDate: string): Promise<void> {
+    console.log('🔴 todoCompletionsApi: Deleting completion by task and date', { taskId, instanceDate });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to create completion: ${response.status} ${errorText}`);
+    try {
+      await apiCall(`/todos/completions/task/${taskId}/date/${instanceDate}`, {
+        method: 'DELETE'
+      });
+
+      console.log('✅ todoCompletionsApi: Completion deleted');
+    } catch (error) {
+      console.error('❌ todoCompletionsApi: Error deleting completion:', error);
+      throw error;
     }
-
-    return response.json();
-  },
-
-  // Delete a specific completion
-  async deleteCompletion(completionId: string): Promise<void> {
-    const { error } = await supabase
-      .from('todo_completions')
-      .delete()
-      .eq('id', completionId);
-
-    if (error) throw error;
-  },
-
-  // Get all completions for a specific task
-  async getTaskCompletions(taskId: string): Promise<TodoCompletion[]> {
-    const { data, error } = await supabase
-      .from('todo_completions')
-      .select('*')
-      .eq('task_id', taskId)
-      .order('completed_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
-  },
-
-  // Get completion count for a task
-  async getCompletionCount(taskId: string): Promise<number> {
-    const { count, error } = await supabase
-      .from('todo_completions')
-      .select('*', { count: 'exact', head: true })
-      .eq('task_id', taskId);
-
-    if (error) throw error;
-    return count || 0;
-  },
-
-  // Delete all completions for a task (when task is deleted)
-  async deleteAllTaskCompletions(taskId: string): Promise<void> {
-    const { error } = await supabase
-      .from('todo_completions')
-      .delete()
-      .eq('task_id', taskId);
-
-    if (error) throw error;
   },
 
   // Get completions within a date range
   async getCompletionsInRange(startDate: string, endDate: string): Promise<CompletedTaskWithDetails[]> {
     return this.getCompletedTasks({ start: startDate, end: endDate });
+  },
+
+  // Helper method to get completions for a specific task and date
+  async getCompletionsForTaskAndDate(taskId: string, instanceDate: string): Promise<TodoCompletion[]> {
+    console.log('🔍 todoCompletionsApi: Getting completions for task and date', { taskId, instanceDate });
+
+    try {
+      // Get completions with proper date filtering
+      const data = await apiCall(`/todos/completions?startDate=${instanceDate}&endDate=${instanceDate}`);
+      const filtered = Array.isArray(data) ? data.filter(item =>
+        item.task_id === taskId && item.instance_date === instanceDate
+      ) : [];
+
+      return filtered.map(item => item.completion);
+    } catch (error) {
+      console.error('❌ todoCompletionsApi: Error getting completions for task and date:', error);
+      return [];
+    }
+  },
+
+  // Delete a specific completion by ID (fallback to task/date method)
+  async deleteCompletion(completionId: string): Promise<void> {
+    console.log('🔴 todoCompletionsApi: Deleting completion by ID (using fallback)', { completionId });
+
+    // Since your backend doesn't have a direct completion ID delete endpoint,
+    // we'll need to get the completion details first and then use the task/date delete
+    try {
+      // Get all completed tasks to find the one with this completion ID
+      const allCompleted = await this.getCompletedTasks();
+      const targetCompletion = allCompleted.find(item => item.completion.id === completionId);
+
+      if (targetCompletion) {
+        await this.deleteCompletionByTaskAndDate(
+          targetCompletion.task_id,
+          targetCompletion.instance_date
+        );
+      } else {
+        console.warn('⚠️ todoCompletionsApi: Completion not found for ID:', completionId);
+      }
+    } catch (error) {
+      console.error('❌ todoCompletionsApi: Error deleting completion by ID:', error);
+      throw error;
+    }
+  },
+
+  // Get a specific completion by ID
+  async getCompletion(completionId: string): Promise<TodoCompletion | null> {
+    try {
+      const allCompleted = await this.getCompletedTasks();
+      const targetCompletion = allCompleted.find(item => item.completion.id === completionId);
+      return targetCompletion ? targetCompletion.completion : null;
+    } catch (error) {
+      console.error('❌ todoCompletionsApi: Error getting completion by ID:', error);
+      return null;
+    }
+  },
+
+  // Get all completions for a specific task
+  async getTaskCompletions(taskId: string): Promise<TodoCompletion[]> {
+    try {
+      const data = await apiCall('/todos/completions');
+      const filtered = Array.isArray(data) ? data.filter(item => item.task_id === taskId) : [];
+      return filtered.map(item => item.completion);
+    } catch (error) {
+      console.error('❌ todoCompletionsApi: Error getting task completions:', error);
+      return [];
+    }
+  },
+
+  // Get completion count for a task
+  async getCompletionCount(taskId: string): Promise<number> {
+    try {
+      const completions = await this.getTaskCompletions(taskId);
+      return completions.length;
+    } catch (error) {
+      console.error('❌ todoCompletionsApi: Error getting completion count:', error);
+      return 0;
+    }
+  },
+
+  // Delete all completions for a task (when task is deleted)
+  async deleteAllTaskCompletions(taskId: string): Promise<void> {
+    try {
+      const completions = await this.getTaskCompletions(taskId);
+
+      // Delete each completion
+      for (const completion of completions) {
+        await this.deleteCompletion(completion.id);
+      }
+    } catch (error) {
+      console.error('❌ todoCompletionsApi: Error deleting all task completions:', error);
+      throw error;
+    }
   },
 
   // Get completion statistics for a task
@@ -184,9 +173,30 @@ export const todoCompletionsApi = {
     lastCompletion: string | null;
     completionDates: string[];
   }> {
-    const completions = await this.getTaskCompletions(taskId);
+    try {
+      const completions = await this.getTaskCompletions(taskId);
 
-    if (completions.length === 0) {
+      if (completions.length === 0) {
+        return {
+          totalCompletions: 0,
+          firstCompletion: null,
+          lastCompletion: null,
+          completionDates: []
+        };
+      }
+
+      const sortedCompletions = completions.sort((a, b) =>
+        new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime()
+      );
+
+      return {
+        totalCompletions: completions.length,
+        firstCompletion: sortedCompletions[0].completed_at,
+        lastCompletion: sortedCompletions[sortedCompletions.length - 1].completed_at,
+        completionDates: completions.map(c => c.instance_date)
+      };
+    } catch (error) {
+      console.error('❌ todoCompletionsApi: Error getting task completion stats:', error);
       return {
         totalCompletions: 0,
         firstCompletion: null,
@@ -194,67 +204,16 @@ export const todoCompletionsApi = {
         completionDates: []
       };
     }
-
-    const sortedCompletions = completions.sort((a, b) =>
-      new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime()
-    );
-
-    return {
-      totalCompletions: completions.length,
-      firstCompletion: sortedCompletions[0].completed_at,
-      lastCompletion: sortedCompletions[sortedCompletions.length - 1].completed_at,
-      completionDates: completions.map(c => c.instance_date)
-    };
   },
 
-  deleteCompletionByTaskAndDate: async (taskId: string, instanceDate: string): Promise<void> => {
-    const { error } = await supabase
-      .from('todo_completions')
-      .delete()
-      .eq('task_id', taskId)
-      .eq('instance_date', instanceDate);
-
-    if (error) {
-      throw new Error(`Failed to delete completion: ${error.message}`);
-    }
-  },
-
+  // Get today's completion for a specific task
   async getTodayCompletionForTask(taskId: string, date: string): Promise<TodoCompletion | null> {
-    const { data, error } = await supabase
-      .from('todo_completions')
-      .select('*')
-      .eq('task_id', taskId)
-      .eq('instance_date', date)
-      .maybeSingle(); // Use maybeSingle() instead of single() to handle no results
-
-    if (error) {
-      throw error;
+    try {
+      const completions = await this.getCompletionsForTaskAndDate(taskId, date);
+      return completions.length > 0 ? completions[0] : null;
+    } catch (error) {
+      console.error('❌ todoCompletionsApi: Error getting today completion for task:', error);
+      return null;
     }
-    return data;
-  },
-
-  // Get a specific completion by ID
-  async getCompletion(completionId: string): Promise<TodoCompletion | null> {
-    const { data, error } = await supabase
-      .from('todo_completions')
-      .select('*')
-      .eq('id', completionId)
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Get completions for a specific task on a specific date
-  async getCompletionsForTaskAndDate(taskId: string, instanceDate: string): Promise<TodoCompletion[]> {
-    const { data, error } = await supabase
-      .from('todo_completions')
-      .select('*')
-      .eq('task_id', taskId)
-      .eq('instance_date', instanceDate)
-      .order('completed_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
-  },
-}
+  }
+};

@@ -76,6 +76,59 @@ router.get('/deleted', authenticateUser, async (req, res, next) => {
   }
 });
 
+// Get completion records with associated task data (for CompletedTasks component)
+router.get('/completions', authenticateUser, async (req, res, next) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    let query = supabase
+      .from('todo_completions')
+      .select(`*,todos!inner (*)`)
+      .eq('user_id', req.user.id)
+      .order('completed_at', { ascending: false });
+
+    // Apply date filter if provided
+    if (startDate && endDate) {
+      const startDateTime = `${startDate}T00:00:00`;
+      const endDate_obj = new Date(endDate);
+      endDate_obj.setDate(endDate_obj.getDate() + 1);
+      const nextDay = endDate_obj.toISOString().split('T')[0];
+      const endDateTime = `${nextDay}T00:00:00`;
+
+      query = query
+        .gte('completed_at', startDateTime)
+        .lt('completed_at', endDateTime);
+    }
+
+    const { data: completions, error } = await query;
+
+    if (error) {
+      console.error('Error fetching completions:', error);
+      throw error;
+    }
+
+    // Transform to the format expected by CompletedTasks component
+    const result = completions?.map(completion => ({
+      ...completion.todos,
+      task_id: completion.task_id,
+      instance_date: completion.instance_date,
+      completion: {
+        id: completion.id,
+        user_id: completion.user_id,
+        task_id: completion.task_id,
+        instance_date: completion.instance_date,
+        completed_at: completion.completed_at,
+        created_at: completion.created_at,
+      },
+      completion_count: 1 // You might want to calculate this properly later
+    })) || [];
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // ===== DAILY TASK SPECIFIC ROUTES =====
 
 // Endpoint fetches completed daily tasks

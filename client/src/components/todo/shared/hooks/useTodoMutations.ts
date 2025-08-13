@@ -104,6 +104,8 @@ export const useTodoMutations = () => {
 
   // Helper function to invalidate all queries
   const invalidateAllQueries = () => {
+    console.log('🔄 Invalidating all queries...');
+
     // Use consistent query key patterns
     queryClient.invalidateQueries({
       queryKey: ['todos'],
@@ -115,19 +117,29 @@ export const useTodoMutations = () => {
       exact: false
     });
 
-    // Fix: Use predicate with more specific matching
+    // Invalidate completed-tasks queries
     queryClient.invalidateQueries({
       predicate: (query) => {
-        return query.queryKey[0] === 'completed-tasks';
+        const isCompletedTasks = query.queryKey[0] === 'completed-tasks';
+        if (isCompletedTasks) {
+          console.log('🎯 Invalidating completed-tasks query:', query.queryKey);
+        }
+        return isCompletedTasks;
       }
     });
 
-    // IMPORTANT: Force immediate refetch instead of just invalidation
+    // Force immediate refetch
     queryClient.refetchQueries({
       predicate: (query) => {
-        return query.queryKey[0] === 'completed-tasks';
+        const isCompletedTasks = query.queryKey[0] === 'completed-tasks';
+        if (isCompletedTasks) {
+          console.log('🔄 Force refetching completed-tasks query:', query.queryKey);
+        }
+        return isCompletedTasks;
       }
     });
+
+    console.log('✅ All queries invalidated');
   };
 
   const createToggleTaskFunction = () => {
@@ -171,14 +183,10 @@ export const useTodoMutations = () => {
           // Marking as incomplete
           console.log('🔴 Uncompleting task:', taskId, 'Original ID:', originalTaskId);
 
-          // Delete completion records for today
-          const completions = await todoCompletionsApi.getCompletionsForTaskAndDate(originalTaskId, today);
-          for (const completion of completions) {
-            await todoCompletionsApi.deleteCompletion(completion.id);
-          }
+          // Use the correct API method for deleting completions
+          await todoCompletionsApi.deleteCompletionByTaskAndDate(originalTaskId, today);
 
           if (!isRecurringInstance) {
-            // Update the actual task status
             await todoApi.update(originalTaskId, {
               completed: false,
               completed_at: undefined,
