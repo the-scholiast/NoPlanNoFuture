@@ -2,6 +2,8 @@ import supabase from '../supabaseAdmin.js';
 import { ValidationError } from '../utils/errors.js';
 import { ensureLocalDate, formatDateString, } from '../utils/dateUtils.js';
 
+const DAYS_OF_WEEK = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
 // Fetches all active (non-deleted) todos for a specific user
 export const getAllTodos = async (userId) => {
   const { data, error } = await supabase
