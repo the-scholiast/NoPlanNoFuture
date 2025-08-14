@@ -53,7 +53,7 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
   } = useQuery({
     queryKey: ['todos'],
     queryFn: todoApi.getAll,
-    staleTime: 0,
+    staleTime: 1000,
     refetchOnWindowFocus: true,
   });
 
