@@ -1,5 +1,6 @@
 import { getTodayString } from '@/lib/utils/dateUtils';
 import { TaskFormData } from '../components';
+import { getTimeInMinutes } from '../utils/taskSortingUtils';
 
 export interface ValidationResult {
   isValid: boolean;
@@ -31,7 +32,11 @@ export function validateSingleTask(task: TaskFormData, taskLabel: string = 'Task
   if (task.start_time && task.end_time) {
     // If same date or no dates set, validate time order
     if (!task.start_date || !task.end_date || task.start_date === task.end_date) {
-      if (task.end_time <= task.start_time) {
+      // Import the getTimeInMinutes function from taskSortingUtils
+      const startMinutes = getTimeInMinutes(task.start_time);
+      const endMinutes = getTimeInMinutes(task.end_time);
+
+      if (endMinutes <= startMinutes) {
         errors.push(`${taskLabel}: End time must be after start time when on the same date.`);
       }
     }
@@ -75,12 +80,24 @@ export function validateSingleTask(task: TaskFormData, taskLabel: string = 'Task
   }
 
   // Validate time formats (basic check)
-  if (task.start_time && !/^\d{2}:\d{2}$/.test(task.start_time)) {
-    errors.push(`${taskLabel}: Invalid start time format.`);
+  if (task.start_time) {
+    console.log('Validating start_time:', JSON.stringify(task.start_time));
+    const is24Hour = /^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/.test(task.start_time);
+    const is12Hour = /^(0?[1-9]|1[0-2]):[0-5][0-9](:[0-5][0-9])? (AM|PM)$/i.test(task.start_time);
+    console.log('24-hour match:', is24Hour, '12-hour match:', is12Hour);
+    if (!is24Hour && !is12Hour) {
+      errors.push(`${taskLabel}: Invalid start time format.`);
+    }
   }
 
-  if (task.end_time && !/^\d{2}:\d{2}$/.test(task.end_time)) {
-    errors.push(`${taskLabel}: Invalid end time format.`);
+  if (task.end_time) {
+    console.log('Validating end_time:', JSON.stringify(task.end_time));
+    const is24Hour = /^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/.test(task.end_time);
+    const is12Hour = /^(0?[1-9]|1[0-2]):[0-5][0-9](:[0-5][0-9])? (AM|PM)$/i.test(task.end_time);
+    console.log('24-hour match:', is24Hour, '12-hour match:', is12Hour);
+    if (!is24Hour && !is12Hour) {
+      errors.push(`${taskLabel}: Invalid end time format.`);
+    }
   }
 
   return {
