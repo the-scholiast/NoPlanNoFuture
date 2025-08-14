@@ -1,22 +1,22 @@
 'use client'
 
 import React from 'react';
-import { AlertCircle, ChevronDown, ChevronUp, X, Trash2, } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, X, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { CompactTaskSorting } from '@/components/todo/shared/components/TaskSortingComponent';
-import { useIncompleteTasks } from './hooks';
-import { IncompleteTasksProps, IncompleteTaskWithOverdue } from './types';
-import { IncompleteTaskItem } from './IncompleteTaskItemProps';
+import { CompletedTaskItem } from './CompletedTaskItem';
+import { useCompletedTasks } from './hooks/useCompletedTasks';
+import { CompletedTasksProps, CompletedTaskWithCompletion } from './types';
+import { formatDate, formatTime, getPriorityColor, getSectionLabel} from '../shared/utils';
 import { DateFilter } from '../shared/components/DateFilter';
-import { formatDate, formatTime, getPriorityColor, getSectionLabel } from '../shared/utils';
 
-export default function IncompleteTasks({ className }: IncompleteTasksProps) {
+export default function CompletedTasks({ className }: CompletedTasksProps) {
   const {
-    incompleteTasks,
-    totalIncompleteTasks,
+    completedTasks,
+    totalCompletedTasks,
     expandedTask,
     isTasksExpanded,
     searchQuery,
@@ -28,9 +28,13 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
     updateSearchQuery,
     updateDateFilter,
     updateSortedTasks,
-    handleCompleteTask,
+    handleUncompleteTask,
     handleDeleteTask,
-  } = useIncompleteTasks();
+  } = useCompletedTasks();
+
+  const handleDateFilterChange = (filter: any) => {
+    updateDateFilter(filter);
+  };
 
   if (isLoading) {
     return (
@@ -38,7 +42,7 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
         <Card>
           <CardContent className="p-6">
             <div className="text-center text-muted-foreground">
-              Loading incomplete tasks...
+              Loading completed tasks...
             </div>
           </CardContent>
         </Card>
@@ -52,7 +56,7 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
         <Card>
           <CardContent className="p-6">
             <div className="text-center text-destructive">
-              Error loading incomplete tasks: {error instanceof Error ?
+              Error loading completed tasks: {error instanceof Error ?
                 error.message : 'Unknown error'}
             </div>
           </CardContent>
@@ -63,13 +67,14 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
 
   return (
     <div className={`w-full mt-6 ${className}`}>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
           {/* Search */}
           <div className="relative">
             <Input
-              placeholder="Search incomplete tasks..."
+              placeholder="Search completed tasks..."
               value={searchQuery}
               onChange={(e) => updateSearchQuery(e.target.value)}
               className="w-64"
@@ -86,12 +91,12 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
             )}
           </div>
 
-          {/* Compact Task Sorting */}
-          {totalIncompleteTasks > 0 && (
+          {/* Compact Task Sorting - between search and date filter */}
+          {totalCompletedTasks > 0 && (
             <CompactTaskSorting
-              tasks={incompleteTasks}
-              onTasksChange={(sortedTasks) => updateSortedTasks(sortedTasks as IncompleteTaskWithOverdue[])}
-              defaultSort={{ field: 'start_date', order: 'asc' }}
+              tasks={completedTasks}
+              onTasksChange={(sortedTasks) => updateSortedTasks(sortedTasks as CompletedTaskWithCompletion[])}
+              defaultSort={{ field: 'created_at', order: 'desc' }}
               className="flex-shrink-0"
             />
           )}
@@ -99,21 +104,21 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
           {/* Date Filter */}
           <DateFilter
             dateFilter={dateFilter}
-            onFilterChange={updateDateFilter}
+            onFilterChange={handleDateFilterChange}
           />
 
-          <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
-            ⚠️ {totalIncompleteTasks}
+          <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+            ✅ {totalCompletedTasks}
           </Badge>
 
           {/* Clear All Button */}
-          {totalIncompleteTasks > 0 && (
+          {totalCompletedTasks > 0 && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
-                if (window.confirm('Are you sure you want to delete all incomplete tasks? This action cannot be undone.')) {
-                  console.log('Clear all incomplete tasks');
+                if (window.confirm('Are you sure you want to delete all completed tasks? This action cannot be undone.')) {
+                  console.log('Clear all completed tasks');
                 }
               }}
               className="text-muted-foreground hover:text-destructive"
@@ -125,13 +130,13 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
         </div>
       </div>
 
-      {/* All Incomplete Tasks in Collapsible Container */}
-      {totalIncompleteTasks === 0 ? (
+      {/* All Completed Tasks in Collapsible Container */}
+      {totalCompletedTasks === 0 ? (
         <Card>
           <CardContent className="py-12">
             <div className="text-center text-muted-foreground">
-              <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No incomplete tasks found</p>
+              <Check className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No completed tasks found</p>
               {dateFilter.enabled && (
                 <p className="text-sm mt-2">Try adjusting your date filter</p>
               )}
@@ -155,10 +160,10 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
                 )}
               </Button>
               <CardTitle className="flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-orange-600" />
-                Incomplete Tasks
+                <Check className="w-5 h-5 text-green-600" />
+                Completed Tasks
                 <span className="text-sm font-normal text-muted-foreground">
-                  ({totalIncompleteTasks})
+                  ({totalCompletedTasks})
                 </span>
               </CardTitle>
             </div>
@@ -168,13 +173,13 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
             <CardContent>
               {/* Tasks List */}
               <div className="space-y-3">
-                {incompleteTasks.map((task) => (
-                  <IncompleteTaskItem
-                    key={task.id}
+                {completedTasks.map((task) => (
+                  <CompletedTaskItem
+                    key={`${task.id}-${task.completion.id}`}
                     task={task}
-                    isExpanded={expandedTask === task.id}
+                    isExpanded={expandedTask === task.completion.id}
                     onToggleExpansion={toggleTaskExpansion}
-                    onCompleteTask={handleCompleteTask}
+                    onUncompleteTask={handleUncompleteTask}
                     onDeleteTask={handleDeleteTask}
                     formatDate={formatDate}
                     formatTime={formatTime}
