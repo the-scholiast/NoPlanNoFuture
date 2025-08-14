@@ -7,100 +7,7 @@ import { getTodayString } from '@/lib/utils/dateUtils';
 
 export const useTodoMutations = () => {
   const queryClient = useQueryClient();
-  const { refetch, refetchTodayRecurring, refetchUpcomingRecurring } = useTodo();
-
-  // Create task mutation
-  const createTaskMutation = useMutation({
-    mutationFn: (taskData: any) => todoApi.create(taskData),
-    onSuccess: () => {
-      refetch();
-      refetchTodayRecurring();
-      refetchUpcomingRecurring();
-      // Invalidate all relevant query keys
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
-      queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
-      // Use predicate for completed-tasks to catch all variations
-      queryClient.invalidateQueries({
-        predicate: (query) => query.queryKey[0] === 'completed-tasks'
-      });
-    },
-  });
-
-  // Update task mutation
-  const updateTaskMutation = useMutation({
-    mutationFn: ({ id, updates }: { id: string; updates: Partial<TaskData> }) => {
-      const originalTaskId = id.includes('_') ? id.split('_')[0] : id;
-      return todoApi.update(originalTaskId, updates);
-    },
-    onSuccess: () => {
-      refetch();
-      refetchTodayRecurring();
-      refetchUpcomingRecurring();
-      // Invalidate all relevant query keys
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
-      queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
-      // Use predicate for completed-tasks to catch all variations
-      queryClient.invalidateQueries({
-        predicate: (query) => query.queryKey[0] === 'completed-tasks'
-      });
-    },
-  });
-
-  // Delete task mutation
-  const deleteTaskMutation = useMutation({
-    mutationFn: (taskId: string) => {
-      const originalTaskId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
-      return todoApi.delete(originalTaskId);
-    },
-    onSuccess: () => {
-      refetch();
-      refetchTodayRecurring();
-      refetchUpcomingRecurring();
-      // Invalidate all relevant query keys
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
-      queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
-      // Use predicate for completed-tasks to catch all variations
-      queryClient.invalidateQueries({
-        predicate: (query) => query.queryKey[0] === 'completed-tasks'
-      });
-    },
-  });
-
-  // Clear completed tasks mutation
-  const clearCompletedMutation = useMutation({
-    mutationFn: (sectionKey: 'daily' | 'today' | 'upcoming') =>
-      todoApi.deleteCompleted(sectionKey),
-    onSuccess: (data, sectionKey) => {
-      refetch();
-      if (sectionKey === 'today') refetchTodayRecurring();
-      if (sectionKey === 'upcoming') refetchUpcomingRecurring();
-      // Invalidate all relevant query keys
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
-      queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
-      // Use predicate for completed-tasks to catch all variations
-      queryClient.invalidateQueries({
-        predicate: (query) => query.queryKey[0] === 'completed-tasks'
-      });
-    },
-  });
-
-  // Clear all tasks mutation
-  const clearAllMutation = useMutation({
-    mutationFn: (sectionKey: 'daily' | 'today' | 'upcoming') =>
-      todoApi.deleteAll(sectionKey),
-    onSuccess: (data, sectionKey) => {
-      refetch();
-      if (sectionKey === 'today') refetchTodayRecurring();
-      if (sectionKey === 'upcoming') refetchUpcomingRecurring();
-      // Invalidate all relevant query keys
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
-      queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
-      // Use predicate for completed-tasks to catch all variations
-      queryClient.invalidateQueries({
-        predicate: (query) => query.queryKey[0] === 'completed-tasks'
-      });
-    },
-  });
+  const { refetch, refetchTodayRecurring, refetchUpcomingRecurring, refetchCompletedTasks } = useTodo(); // ADD refetchCompletedTasks
 
   // Helper function to invalidate all queries
   const invalidateAllQueries = () => {
@@ -120,20 +27,9 @@ export const useTodoMutations = () => {
     // Invalidate completed-tasks queries
     queryClient.invalidateQueries({
       predicate: (query) => {
-        const isCompletedTasks = query.queryKey[0] === 'completed-tasks';
+        const isCompletedTasks = query.queryKey[0] === 'completed-tasks' || query.queryKey[0] === 'completed-tasks-context';
         if (isCompletedTasks) {
           console.log('🎯 Invalidating completed-tasks query:', query.queryKey);
-        }
-        return isCompletedTasks;
-      }
-    });
-
-    // Force immediate refetch
-    queryClient.refetchQueries({
-      predicate: (query) => {
-        const isCompletedTasks = query.queryKey[0] === 'completed-tasks';
-        if (isCompletedTasks) {
-          console.log('🔄 Force refetching completed-tasks query:', query.queryKey);
         }
         return isCompletedTasks;
       }
@@ -200,17 +96,10 @@ export const useTodoMutations = () => {
         refetch();
         refetchTodayRecurring();
         refetchUpcomingRecurring();
+        refetchCompletedTasks(); // ADD THIS
 
         // Force all query invalidations
         invalidateAllQueries();
-
-        // Additional immediate refetch with slight delay to ensure completion records are updated
-        setTimeout(() => {
-          console.log('🔄 Force refetching completed tasks...');
-          queryClient.refetchQueries({
-            predicate: (query) => query.queryKey[0] === 'completed-tasks'
-          });
-        }, 100);
 
       } catch (error) {
         console.error('❌ ERROR toggling task:', error);
@@ -220,6 +109,102 @@ export const useTodoMutations = () => {
       }
     };
   };
+
+  // Create task mutation
+  const createTaskMutation = useMutation({
+    mutationFn: (taskData: any) => todoApi.create(taskData),
+    onSuccess: () => {
+      refetch();
+      refetchTodayRecurring();
+      refetchUpcomingRecurring();
+      refetchCompletedTasks()
+      // Invalidate all relevant query keys
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
+      queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
+      // Use predicate for completed-tasks to catch all variations
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === 'completed-tasks'
+      });
+    },
+  });
+
+  // Update task mutation
+  const updateTaskMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<TaskData> }) => {
+      const originalTaskId = id.includes('_') ? id.split('_')[0] : id;
+      return todoApi.update(originalTaskId, updates);
+    },
+    onSuccess: () => {
+      refetch();
+      refetchTodayRecurring();
+      refetchUpcomingRecurring();
+      refetchCompletedTasks()
+      // Invalidate all relevant query keys
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
+      queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
+      // Use predicate for completed-tasks to catch all variations
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === 'completed-tasks'
+      });
+    },
+  });
+
+  // Delete task mutation
+  const deleteTaskMutation = useMutation({
+    mutationFn: (taskId: string) => {
+      const originalTaskId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
+      return todoApi.delete(originalTaskId);
+    },
+    onSuccess: () => {
+      refetch();
+      refetchTodayRecurring();
+      refetchUpcomingRecurring();
+      refetchCompletedTasks()
+      // Invalidate all relevant query keys
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
+      queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
+      // Use predicate for completed-tasks to catch all variations
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === 'completed-tasks'
+      });
+    },
+  });
+
+  // Clear completed tasks mutation
+  const clearCompletedMutation = useMutation({
+    mutationFn: (sectionKey: 'daily' | 'today' | 'upcoming') =>
+      todoApi.deleteCompleted(sectionKey),
+    onSuccess: (data, sectionKey) => {
+      refetch();
+      if (sectionKey === 'today') refetchTodayRecurring();
+      if (sectionKey === 'upcoming') refetchUpcomingRecurring();
+      // Invalidate all relevant query keys
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
+      queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
+      // Use predicate for completed-tasks to catch all variations
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === 'completed-tasks'
+      });
+    },
+  });
+
+  // Clear all tasks mutation
+  const clearAllMutation = useMutation({
+    mutationFn: (sectionKey: 'daily' | 'today' | 'upcoming') =>
+      todoApi.deleteAll(sectionKey),
+    onSuccess: (data, sectionKey) => {
+      refetch();
+      if (sectionKey === 'today') refetchTodayRecurring();
+      if (sectionKey === 'upcoming') refetchUpcomingRecurring();
+      // Invalidate all relevant query keys
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
+      queryClient.invalidateQueries({ queryKey: ['recurring-todos'] });
+      // Use predicate for completed-tasks to catch all variations
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === 'completed-tasks'
+      });
+    },
+  });
 
   // Public API for components to use these mutations
   return {

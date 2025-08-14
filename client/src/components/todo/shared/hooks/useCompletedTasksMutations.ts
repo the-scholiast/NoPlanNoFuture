@@ -9,7 +9,7 @@ import { getTodayString } from '@/lib/utils/dateUtils';
 
 export const useCompletedTasksMutations = () => {
   const queryClient = useQueryClient();
-  const { refetch, refetchTodayRecurring, refetchUpcomingRecurring } = useTodo();
+  const { refetch, refetchTodayRecurring, refetchUpcomingRecurring, refetchCompletedTasks } = useTodo();
 
   // Helper function to invalidate completed-tasks queries with all variations
   const invalidateCompletedTasksQueries = () => {
@@ -62,10 +62,11 @@ export const useCompletedTasksMutations = () => {
       return { completionId, taskId: completion.task_id };
     },
     onSuccess: () => {
-      // Immediate context refreshes
+      // Immediate context refreshes - ADD refetchCompletedTasks
       refetch();
       refetchTodayRecurring();
       refetchUpcomingRecurring();
+      refetchCompletedTasks(); // ADD THIS!
 
       // Targeted invalidations
       queryClient.invalidateQueries({ queryKey: ['todos'] });
@@ -91,6 +92,7 @@ export const useCompletedTasksMutations = () => {
       refetch();
       refetchTodayRecurring();
       refetchUpcomingRecurring();
+      refetchCompletedTasks();
       queryClient.invalidateQueries({ queryKey: ['todos'] });
       invalidateCompletedTasksQueries();
     },
@@ -123,6 +125,7 @@ export const useCompletedTasksMutations = () => {
       refetch();
       refetchTodayRecurring();
       refetchUpcomingRecurring();
+      refetchCompletedTasks();
       queryClient.invalidateQueries({ queryKey: ['todos'] });
       invalidateCompletedTasksQueries();
     },
@@ -180,6 +183,7 @@ export const useCompletedTasksMutations = () => {
       refetch();
       refetchTodayRecurring();
       refetchUpcomingRecurring();
+      refetchCompletedTasks();
       queryClient.invalidateQueries({ queryKey: ['todos'] });
       invalidateCompletedTasksQueries();
     },
@@ -209,6 +213,7 @@ export const useCompletedTasksMutations = () => {
       refetch();
       refetchTodayRecurring();
       refetchUpcomingRecurring();
+      refetchCompletedTasks();
       queryClient.invalidateQueries({ queryKey: ['todos'] });
       invalidateCompletedTasksQueries();
     },

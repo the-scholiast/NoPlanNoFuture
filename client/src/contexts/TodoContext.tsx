@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { todoApi } from '@/lib/api/todos';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
+import { todoCompletionsApi } from '@/lib/api/todoCompletions'; // ADD THIS
 import { TaskData } from '@/types/todoTypes';
 import { getTodayString } from '@/lib/utils/dateUtils';
 
@@ -18,16 +19,21 @@ interface TodoContextType {
   todayTasksWithRecurring: TaskData[];
   upcomingTasksWithRecurring: TaskData[];
   
+  // ADD: Completed tasks data
+  completedTasks: any[];
+  
   // Loading states
   isLoading: boolean;
   isLoadingTodayRecurring: boolean;
   isLoadingUpcomingRecurring: boolean;
+  isLoadingCompletedTasks: boolean; // ADD THIS
   error: Error | null;
   
   // Actions
   refetch: () => void;
   refetchTodayRecurring: () => void;
   refetchUpcomingRecurring: () => void;
+  refetchCompletedTasks: () => void; // ADD THIS
 }
 
 const TodoContext = createContext<TodoContextType | undefined>(undefined);
@@ -86,6 +92,19 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
     enabled: !isLoading && allTasks.length >= 0,
   });
 
+  // ADD: Query for completed tasks
+  const {
+    data: completedTasks = [],
+    isLoading: isLoadingCompletedTasks,
+    refetch: refetchCompletedTasks
+  } = useQuery({
+    queryKey: ['completed-tasks-context'],
+    queryFn: () => todoCompletionsApi.getCompletedTasks(),
+    staleTime: 0, // Always consider stale for immediate updates
+    refetchOnWindowFocus: true,
+    refetchInterval: false,
+  });
+
   // Separate tasks by section (original logic for non-recurring tasks)
   const dailyTasks = allTasks.filter(task => task.section === 'daily');
   
@@ -119,6 +138,7 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
           refetch();
           refetchTodayRecurring();
           refetchUpcomingRecurring();
+          refetchCompletedTasks(); // ADD THIS
           localStorage.setItem('lastDailyTaskCheck', today);
         }).catch(console.error);
       }
@@ -131,7 +151,7 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
     const interval = setInterval(checkForNewDay, 60000);
     
     return () => clearInterval(interval);
-  }, [refetch, refetchTodayRecurring, refetchUpcomingRecurring]);
+  }, [refetch, refetchTodayRecurring, refetchUpcomingRecurring, refetchCompletedTasks]); // ADD refetchCompletedTasks
 
   const value: TodoContextType = {
     // Original data
@@ -144,16 +164,21 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
     todayTasksWithRecurring,
     upcomingTasksWithRecurring,
     
+    // ADD: Completed tasks
+    completedTasks,
+    
     // Loading states
     isLoading,
     isLoadingTodayRecurring,
     isLoadingUpcomingRecurring,
+    isLoadingCompletedTasks, // ADD THIS
     error: error as Error | null,
     
     // Actions
     refetch,
     refetchTodayRecurring,
     refetchUpcomingRecurring,
+    refetchCompletedTasks, // ADD THIS
   };
 
   return <TodoContext.Provider value={value}>{children}</TodoContext.Provider>;
