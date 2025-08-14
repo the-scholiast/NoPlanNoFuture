@@ -29,7 +29,7 @@ export function CompletedTaskItem({
         <div className="space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
             <div
-              className="text-sm font-medium cursor-pointer line-through text-muted-foreground flex items-center gap-2"
+              className="text-sm font-medium cursor-pointer text-muted-foreground flex items-center gap-2"
               onClick={() => onToggleExpansion(task.completion.id)}
             >
               <span>{task.title}</span>
@@ -47,19 +47,10 @@ export function CompletedTaskItem({
               )}
 
               {/* Completion count for recurring tasks */}
-              {task.completion_count && task.completion_count > 1 && (
-                <Badge variant="outline" className="text-xs">
-                  {task.completion_count} completions
-                </Badge>
-              )}
+              <Badge variant="outline" className="text-xs">
+                {task.completion_count} completions
+              </Badge>
             </div>
-
-            {/* Task Description - Shows inline next to title without strikethrough */}
-            {task.description && (
-              <span className="text-xs font-normal text-muted-foreground/80">
-                - {task.description}
-              </span>
-            )}
           </div>
 
           <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
@@ -100,34 +91,11 @@ export function CompletedTaskItem({
           </div>
 
           {/* Expanded Details */}
-          {isExpanded && (
+          {task.description && isExpanded && (
             <div className="mt-3 p-3 bg-muted/20 rounded border text-xs space-y-2">
-              <div>
-                <strong>Task Details:</strong>
-                <div className="ml-2">
-                  <div>Task ID: {task.id}</div>
-                  <div>Completion ID: {task.completion.id}</div>
-                  <div>Created: {formatDate(task.created_at.split('T')[0])}</div>
-                  {task.is_recurring && task.recurring_days && (
-                    <div>Recurs on: {task.recurring_days.join(', ')}</div>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <strong>Completion Details:</strong>
-                <div className="ml-2">
-                  <div>Instance Date: {task.completion.instance_date}</div>
-                  <div>Completed At: {new Date(task.completion.completed_at).toLocaleString()}</div>
-                  <div>Total Completions for this task: {task.completion_count || 1}</div>
-                </div>
-              </div>
-
-              {task.description && (
                 <div>
                   <strong>Description:</strong> {task.description}
                 </div>
-              )}
             </div>
           )}
         </div>

@@ -54,19 +54,16 @@ export const IncompleteTaskItem: React.FC<IncompleteTaskItemProps> = ({
               )}
 
               {/* Completion count for recurring tasks */}
-              {task.completion_count && task.completion_count > 0 && (
+              {task.completion_count && task.completion_count > 0 ? (
+                <Badge variant="outline" className="text-xs">
+                  {task.completion_count} completions
+                </Badge>
+              ) : (
                 <Badge variant="outline" className="text-xs">
                   {task.completion_count} completions
                 </Badge>
               )}
             </div>
-
-            {/* Task Description - Shows inline next to title */}
-            {task.description && (
-              <span className="text-xs font-normal text-muted-foreground/80">
-                - {task.description}
-              </span>
-            )}
           </div>
 
           <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
@@ -120,41 +117,11 @@ export const IncompleteTaskItem: React.FC<IncompleteTaskItemProps> = ({
           </div>
 
           {/* Expanded Details */}
-          {isExpanded && (
+          {task.description && isExpanded && (
             <div className="mt-3 p-3 bg-muted/20 rounded border text-xs space-y-2">
               <div>
-                <strong>Task Details:</strong>
-                <div className="ml-2">
-                  <div>Task ID: {task.id}</div>
-                  <div>Created: {formatDate(task.created_at?.split('T')[0])}</div>
-                  {task.is_recurring && task.recurring_days && (
-                    <div>Recurs on: {task.recurring_days.join(', ')}</div>
-                  )}
-                  <div>Section: {getSectionLabel(task.section || 'other')}</div>
-                  {task.priority && <div>Priority: {task.priority}</div>}
-                </div>
+                <strong>Description:</strong> {task.description}
               </div>
-
-              <div>
-                <strong>Due Information:</strong>
-                <div className="ml-2">
-                  {task.start_date && <div>Start Date: {task.start_date}</div>}
-                  {task.end_date && <div>End Date: {task.end_date}</div>}
-                  {task.start_time && <div>Start Time: {formatTime(task.start_time)}</div>}
-                  {task.end_time && <div>End Time: {formatTime(task.end_time)}</div>}
-                  {task.overdueDays > 0 && (
-                    <div className="text-orange-600 font-medium">
-                      Overdue by {task.overdueDays} day{task.overdueDays > 1 ? 's' : ''}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {task.description && (
-                <div>
-                  <strong>Description:</strong> {task.description}
-                </div>
-              )}
             </div>
           )}
         </div>
