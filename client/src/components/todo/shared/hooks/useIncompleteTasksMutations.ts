@@ -1,21 +1,13 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { todoApi } from '@/lib/api/todos';
-import { useTodo } from '@/contexts/TodoContext';
 import { TaskData } from '@/types/todoTypes';
 import { getTodayString, formatDateString } from '@/lib/utils/dateUtils';
 import { todoCompletionsApi } from '@/lib/api/todoCompletions';
+import { useDataRefresh } from './useDataRefresh';
 
 // Mutations specifically for IncompleteTasks component operations
 export const useIncompleteTasksMutations = () => {
-  const queryClient = useQueryClient();
-  const { refetch, refetchTodayRecurring, refetchUpcomingRecurring } = useTodo();
-
-  // Helper function to invalidate completed-tasks queries with all variations
-  const invalidateCompletedTasksQueries = () => {
-    queryClient.invalidateQueries({
-      predicate: (query) => query.queryKey[0] === 'completed-tasks'
-    });
-  };
+  const { refreshAllData, refreshTodayData, refreshUpcomingData } = useDataRefresh();
 
   // Complete task mutation - marks an incomplete task as complete
   const completeTaskMutation = useMutation({
@@ -51,21 +43,7 @@ export const useIncompleteTasksMutations = () => {
 
       await todoApi.update(taskId, updates);
     },
-    onSuccess: () => {
-      // Immediate refreshes
-      refetch();
-      refetchTodayRecurring();
-      refetchUpcomingRecurring();
-
-      // Strategic invalidations
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
-      invalidateCompletedTasksQueries();
-
-      // Force immediate completed tasks refresh
-      queryClient.refetchQueries({
-        predicate: (query) => query.queryKey[0] === 'completed-tasks'
-      });
-    },
+    onSuccess: refreshAllData,
   });
 
   // Soft delete by setting deleted_at timestamp
@@ -74,12 +52,7 @@ export const useIncompleteTasksMutations = () => {
       const now = getTodayString();
       await todoApi.update(taskId, { deleted_at: now });
     },
-    onSuccess: () => {
-      refetch();
-      refetchTodayRecurring();
-      refetchUpcomingRecurring();
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
-    },
+    onSuccess: refreshAllData,
   });
 
   // Bulk complete tasks mutation
@@ -110,13 +83,7 @@ export const useIncompleteTasksMutations = () => {
 
       return results.filter(Boolean);
     },
-    onSuccess: () => {
-      refetch();
-      refetchTodayRecurring();
-      refetchUpcomingRecurring();
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
-      invalidateCompletedTasksQueries();
-    },
+    onSuccess: refreshAllData,
   });
 
   // Bulk delete tasks mutation
@@ -130,12 +97,7 @@ export const useIncompleteTasksMutations = () => {
 
       return results;
     },
-    onSuccess: () => {
-      refetch();
-      refetchTodayRecurring();
-      refetchUpcomingRecurring();
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
-    },
+    onSuccess: refreshAllData,
   });
 
   // Update task dates mutation
@@ -156,12 +118,7 @@ export const useIncompleteTasksMutations = () => {
 
       return todoApi.update(taskId, updates);
     },
-    onSuccess: () => {
-      refetch();
-      refetchTodayRecurring();
-      refetchUpcomingRecurring();
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
-    },
+    onSuccess: refreshAllData,
   });
 
   return {

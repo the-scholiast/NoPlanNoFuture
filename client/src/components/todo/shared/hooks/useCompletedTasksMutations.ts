@@ -1,22 +1,13 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { todoApi } from '@/lib/api/todos';
 import { todoCompletionsApi } from '@/lib/api/todoCompletions';
-import { useTodo } from '@/contexts/TodoContext';
 import { TaskData } from '@/types/todoTypes';
 import { getTodayString } from '@/lib/utils/dateUtils';
+import { useDataRefresh } from './useDataRefresh';
 
 // Mutations specifically for CompletedTasks component operations
-
 export const useCompletedTasksMutations = () => {
-  const queryClient = useQueryClient();
-  const { refetch, refetchTodayRecurring, refetchUpcomingRecurring, refetchCompletedTasks } = useTodo();
-
-  // Helper function to invalidate completed-tasks queries with all variations
-  const invalidateCompletedTasksQueries = () => {
-    queryClient.invalidateQueries({
-      predicate: (query) => query.queryKey[0] === 'completed-tasks'
-    });
-  };
+  const { refreshAllData, refreshTodayData, refreshUpcomingData } = useDataRefresh();
 
   // Uncomplete task mutation - deletes the specific completion record
   const uncompleteTaskMutation = useMutation({
@@ -61,24 +52,7 @@ export const useCompletedTasksMutations = () => {
 
       return { completionId, taskId: completion.task_id };
     },
-    onSuccess: () => {
-      // Immediate context refreshes - ADD refetchCompletedTasks
-      refetch();
-      refetchTodayRecurring();
-      refetchUpcomingRecurring();
-      refetchCompletedTasks(); // ADD THIS!
-
-      // Targeted invalidations
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
-      queryClient.invalidateQueries({
-        predicate: (query) => query.queryKey[0] === 'completed-tasks'
-      });
-
-      // Force immediate UI update
-      queryClient.refetchQueries({
-        predicate: (query) => query.queryKey[0] === 'completed-tasks'
-      });
-    },
+    onSuccess: refreshAllData,
   });
 
   // Delete entire task mutation - deletes task and all its completions
@@ -87,15 +61,7 @@ export const useCompletedTasksMutations = () => {
       // Delete all completions for this task first then delete the task itself
       return todoApi.delete(taskId);
     },
-    onSuccess: () => {
-      // Refresh all task-related queries
-      refetch();
-      refetchTodayRecurring();
-      refetchUpcomingRecurring();
-      refetchCompletedTasks();
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
-      invalidateCompletedTasksQueries();
-    },
+    onSuccess: refreshAllData,
   });
 
   // Complete task mutation - creates a new completion record
@@ -121,14 +87,7 @@ export const useCompletedTasksMutations = () => {
 
       await todoApi.update(taskId, updates);
     },
-    onSuccess: () => {
-      refetch();
-      refetchTodayRecurring();
-      refetchUpcomingRecurring();
-      refetchCompletedTasks();
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
-      invalidateCompletedTasksQueries();
-    },
+    onSuccess: refreshAllData,
   });
 
   // Bulk operations for completed tasks
@@ -179,14 +138,7 @@ export const useCompletedTasksMutations = () => {
 
       return results;
     },
-    onSuccess: () => {
-      refetch();
-      refetchTodayRecurring();
-      refetchUpcomingRecurring();
-      refetchCompletedTasks();
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
-      invalidateCompletedTasksQueries();
-    },
+    onSuccess: refreshAllData,
   });
 
   // Delete all completions for a task
@@ -209,14 +161,7 @@ export const useCompletedTasksMutations = () => {
 
       await todoApi.update(taskId, updates);
     },
-    onSuccess: () => {
-      refetch();
-      refetchTodayRecurring();
-      refetchUpcomingRecurring();
-      refetchCompletedTasks();
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
-      invalidateCompletedTasksQueries();
-    },
+    onSuccess: refreshAllData,
   });
 
   return {
