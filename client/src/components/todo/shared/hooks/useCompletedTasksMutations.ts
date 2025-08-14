@@ -7,7 +7,7 @@ import { useDataRefresh } from './useDataRefresh';
 
 // Mutations specifically for CompletedTasks component operations
 export const useCompletedTasksMutations = () => {
-  const { refreshAllData, refreshTodayData, refreshUpcomingData } = useDataRefresh();
+  const { refreshAllData } = useDataRefresh();
 
   // Uncomplete task mutation - deletes the specific completion record
   const uncompleteTaskMutation = useMutation({
@@ -79,9 +79,8 @@ export const useCompletedTasksMutations = () => {
         completed_at: getTodayString(),
       };
 
-      // For daily tasks, increment completion count
+      updates.completion_count = (task.completion_count || 0) + 1;
       if (task.section === 'daily') {
-        updates.completion_count = (task.completion_count || 0) + 1;
         updates.last_completed_date = instanceDate;
       }
 

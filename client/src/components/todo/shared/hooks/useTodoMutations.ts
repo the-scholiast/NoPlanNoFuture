@@ -35,8 +35,8 @@ export const useTodoMutations = () => {
               completed_at: new Date().toISOString(),
             };
 
+            updates.completion_count = (task.completion_count || 0) + 1;
             if (task.section === 'daily') {
-              updates.completion_count = (task.completion_count || 0) + 1;
               updates.last_completed_date = today;
             }
 

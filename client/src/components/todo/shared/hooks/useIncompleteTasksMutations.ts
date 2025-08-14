@@ -7,7 +7,7 @@ import { useDataRefresh } from './useDataRefresh';
 
 // Mutations specifically for IncompleteTasks component operations
 export const useIncompleteTasksMutations = () => {
-  const { refreshAllData, refreshTodayData, refreshUpcomingData } = useDataRefresh();
+  const { refreshAllData } = useDataRefresh();
 
   // Complete task mutation - marks an incomplete task as complete
   const completeTaskMutation = useMutation({
@@ -35,9 +35,8 @@ export const useIncompleteTasksMutations = () => {
         completed_at: now,
       };
 
-      // For daily tasks, increment completion count
+      updates.completion_count = (task.completion_count || 0) + 1;
       if (task.section === 'daily') {
-        updates.completion_count = (task.completion_count || 0) + 1;
         updates.last_completed_date = today;
       }
 
