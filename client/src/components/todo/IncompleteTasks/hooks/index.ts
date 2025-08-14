@@ -1,15 +1,13 @@
-import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useMemo, } from 'react';
 import { IncompleteTasksState, IncompleteTaskWithOverdue } from '../types';
 import { DateFilterState } from '../../shared/types';
 import { useIncompleteTasksMutations } from '../../shared/hooks/useIncompleteTasksMutations';
 import { getCurrentWeekStart, getCurrentWeekEnd } from '../../shared/utils';
-import { todoApi } from '@/lib/api/todos';
 import { TaskData } from '@/types/todoTypes';
 import { getTodayString } from '@/lib/utils/dateUtils';
+import { useTodo } from '@/contexts/TodoContext';
 
 export const useIncompleteTasks = () => {
-  // Component state
   const [state, setState] = useState<IncompleteTasksState>({
     expandedTask: null,
     isTasksExpanded: false,
@@ -21,25 +19,8 @@ export const useIncompleteTasks = () => {
       enabled: true
     }
   });
-
-  const queryKey = useMemo(() => [
-    'todos',
-    state.dateFilter.enabled,
-    state.dateFilter.startDate,
-    state.dateFilter.endDate,
-  ], [state.dateFilter.enabled, state.dateFilter.startDate, state.dateFilter.endDate]);
-
-  // Query for all tasks
-  const {
-    data: allTasksData = [],
-    isLoading,
-    error,
-    refetch
-  } = useQuery({
-    queryKey,
-    queryFn: () => todoApi.getAll(),
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
+  const { completeTaskMutation, deleteTaskMutation } = useIncompleteTasksMutations();
+  const { allTasks: allTasksData, isLoading, error } = useTodo();
 
   // Calculate current date for overdue calculation
   const currentDate = useMemo(() => {
@@ -95,7 +76,7 @@ export const useIncompleteTasks = () => {
           is_incomplete: true
         };
       });
-  }, [allTasksData, currentDate]);
+  }, [allTasksData, currentDate, ]);
 
   // Apply search filter and date filter
   const filteredTasks = useMemo(() => {
@@ -139,11 +120,8 @@ export const useIncompleteTasks = () => {
     });
 
     // Use sorted tasks if manually sorted, otherwise use filtered
-    return state.sortedIncompleteTasks.length > 0 ? state.sortedIncompleteTasks : filtered;
-  }, [processedIncompleteTasks, state.searchQuery, state.dateFilter, state.sortedIncompleteTasks]);
-
-  // Get mutations
-  const { completeTaskMutation, deleteTaskMutation } = useIncompleteTasksMutations();
+    return filtered;
+  }, [processedIncompleteTasks, state.searchQuery, state.dateFilter, state.sortedIncompleteTasks, ]);
 
   // Action handlers
   const toggleTaskExpansion = (taskId: string) => {
@@ -187,19 +165,11 @@ export const useIncompleteTasks = () => {
   };
 
   const handleCompleteTask = (taskId: string) => {
-    completeTaskMutation.mutate(taskId, {
-      onSuccess: () => {
-        refetch();
-      }
-    });
+    completeTaskMutation.mutate(taskId);
   };
 
   const handleDeleteTask = (taskId: string) => {
-    deleteTaskMutation.mutate(taskId, {
-      onSuccess: () => {
-        refetch();
-      }
-    });
+    deleteTaskMutation.mutate(taskId);
   };
 
   return {
@@ -225,8 +195,5 @@ export const useIncompleteTasks = () => {
     updateSortedTasks,
     handleCompleteTask,
     handleDeleteTask,
-
-    // Utilities
-    refetch
   };
 };

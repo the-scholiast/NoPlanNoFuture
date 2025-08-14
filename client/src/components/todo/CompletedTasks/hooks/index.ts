@@ -1,13 +1,11 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, } from 'react';
 import { CompletedTasksState, DateFilterState, CompletedTaskWithCompletion } from '../../shared/types';
 import { useCompletedTasksMutations } from '../../shared/hooks/useCompletedTasksMutations';
 import { getCurrentWeekStart, getCurrentWeekEnd } from '../../shared/utils';
 import { useTodo } from '@/contexts/TodoContext';
 
 export const useCompletedTasks = () => {
-  // FIXED: Use the correct property name from context
   const { completedTasks, isLoadingCompletedTasks: isLoading, error } = useTodo();
-
   // Component state
   const [state, setState] = useState<CompletedTasksState>({
     expandedTask: null,
@@ -21,33 +19,20 @@ export const useCompletedTasks = () => {
     }
   });
 
-  // ADD: Force component update when context data changes
-  const [updateTrigger, setUpdateTrigger] = useState(0);
-  
-  useEffect(() => {
-    console.log('🔄 CompletedTasks: Context data changed, forcing update...', completedTasks?.length);
-    setUpdateTrigger(prev => prev + 1);
-  }, [completedTasks]);
-
-  // Transform context data to component format - ADD updateTrigger dependency
+  // Transform context data to component format 
   const processedCompletedTasks = useMemo(() => {
-    console.log('🔄 CompletedTasks: Processing context data...', completedTasks?.length || 0, 'trigger:', updateTrigger);
     if (!completedTasks || completedTasks.length === 0) return [];
-    
+
     return completedTasks.map((item: any): CompletedTaskWithCompletion => ({
       ...item,
       is_recurring_instance: item.is_recurring || false,
       completion_count: item.completion_count
     }));
-  }, [completedTasks, updateTrigger]); // ADD updateTrigger
+  }, [completedTasks,]);
 
-  // Apply search filter and sorting - ADD updateTrigger dependency
+  // Apply search filter and sorting
   const filteredTasks = useMemo(() => {
     let filtered = processedCompletedTasks;
-
-    console.log('🔄 CompletedTasks: Starting filter with', filtered.length, 'tasks, trigger:', updateTrigger);
-    console.log('🔄 CompletedTasks: Date filter enabled:', state.dateFilter.enabled);
-    console.log('🔄 CompletedTasks: Date range:', state.dateFilter.startDate, 'to', state.dateFilter.endDate);
 
     // Apply date filter if enabled
     if (state.dateFilter.enabled && filtered.length > 0) {
@@ -58,13 +43,12 @@ export const useCompletedTasks = () => {
           console.log('⚠️ Task has no completion date:', task);
           return false;
         }
-        
+
         const dateStr = completionDate.split('T')[0];
         const inRange = dateStr >= state.dateFilter.startDate && dateStr <= state.dateFilter.endDate;
-        
+
         return inRange;
       });
-      console.log('🔄 CompletedTasks: After date filter:', beforeFilter, '→', filtered.length);
     }
 
     // Search filter
@@ -75,7 +59,6 @@ export const useCompletedTasks = () => {
         task.title.toLowerCase().includes(query) ||
         task.description?.toLowerCase().includes(query)
       );
-      console.log('🔄 CompletedTasks: After search filter:', beforeSearch, '→', filtered.length);
     }
 
     // Sort by completion date (most recent first)
@@ -88,9 +71,8 @@ export const useCompletedTasks = () => {
     // Use sorted tasks if manually sorted, otherwise use filtered
     const result = filtered;
 
-    console.log('🔄 CompletedTasks: Final filtered result:', result.length);
     return result;
-  }, [processedCompletedTasks, state.searchQuery, state.dateFilter, state.sortedCompletedTasks, updateTrigger]);
+  }, [processedCompletedTasks, state.searchQuery, state.dateFilter, state.sortedCompletedTasks,]);
 
   // Get mutations
   const { uncompleteTaskMutation, deleteTaskMutation } = useCompletedTasksMutations();
@@ -169,6 +151,6 @@ export const useCompletedTasks = () => {
     handleDeleteTask,
 
     // Utilities
-    refetch: () => {} // Context handles this
+    refetch: () => { } // Context handles this
   };
 };
