@@ -157,7 +157,7 @@ router.get('/completions', authenticateUser, async (req, res, next) => {
         completed_at: completion.completed_at,
         created_at: completion.created_at,
       },
-      completion_count: completion.completion_count
+      completion_count: completion.todos.completion_count
     })) || [];
 
     res.json(result);
