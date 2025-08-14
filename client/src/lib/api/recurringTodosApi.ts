@@ -1,64 +1,20 @@
 import { TaskData } from '@/types/todoTypes';
-import { supabase } from '../supabaseClient';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-
-// Helper function to get auth headers
-const getAuthHeaders = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (!session?.access_token) {
-    throw new Error('No authentication token available');
-  }
-
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${session.access_token}`
-  };
-};
-
-// Enhanced API request function with authentication
-async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE}/recurring-todos${endpoint}`;
-  
-  try {
-    const headers = await getAuthHeaders();
-    
-    const config: RequestInit = {
-      headers,
-      ...options,
-    };
-
-    console.log(`Making API request to: ${url}`);
-    const response = await fetch(url, config);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`API Error: ${response.status} ${response.statusText}`, errorText);
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error('API request failed:', error);
-    throw error;
-  }
-}
+import { apiCall } from './client';
 
 export const recurringTodoApi = {
   // Get today's tasks including recurring instances
   getTodayTasks: async (): Promise<TaskData[]> => {
-    return apiRequest<TaskData[]>('/today');
+    return apiCall('/recurring-todos/today');
   },
 
   // Get upcoming week tasks including recurring instances
   getUpcomingTasks: async (): Promise<TaskData[]> => {
-    return apiRequest<TaskData[]>('/upcoming-week');
+    return apiCall('/recurring-todos/upcoming-week');
   },
 
   // Update recurring pattern for a task
   updateRecurringPattern: async (taskId: string, recurringDays: string[]): Promise<TaskData> => {
-    return apiRequest<TaskData>(`/${taskId}/pattern`, {
+    return apiCall(`/recurring-todos/${taskId}/pattern`, {
       method: 'PATCH',
       body: JSON.stringify({ recurringDays }),
     });
@@ -70,7 +26,7 @@ export const recurringTodoApi = {
     startDate: string, 
     endDate: string
   ): Promise<TaskData[]> => {
-    return apiRequest<TaskData[]>('/generate-instances', {
+    return apiCall('/recurring-todos/generate-instances', {
       method: 'POST',
       body: JSON.stringify({ taskId, startDate, endDate }),
     });
@@ -98,7 +54,7 @@ export const recurringTodoApi = {
     if (endDate) params.append('endDate', endDate);
     
     const query = params.toString() ? `?${params.toString()}` : '';
-    return apiRequest(`/stats/${taskId}${query}`);
+    return apiCall(`/recurring-todos/stats/${taskId}${query}`);
   },
 
   // Validate recurring days (client-side helper)

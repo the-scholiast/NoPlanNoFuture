@@ -1,74 +1,30 @@
 import { TaskData, CreateTaskData } from '@/types/todoTypes';
-import { supabase } from '@/lib/supabaseClient';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-
-// Helper function to get auth headers
-const getAuthHeaders = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (!session?.access_token) {
-    throw new Error('No authentication token available');
-  }
-
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${session.access_token}`
-  };
-};
-
-// Enhanced API request function with authentication
-async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE}/todos${endpoint}`;
-  
-  try {
-    const headers = await getAuthHeaders();
-    
-    const config: RequestInit = {
-      headers,
-      ...options,
-    };
-
-    console.log(`Making API request to: ${url}`);
-    const response = await fetch(url, config);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`API Error: ${response.status} ${response.statusText}`, errorText);
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error('API request failed:', error);
-    throw error;
-  }
-}
+import { apiCall } from './client';
 
 export const todoApi = {
   // Fetch all todos from the API
   getAll: async (): Promise<TaskData[]> => {
-    return apiRequest<TaskData[]>('/all');
+    return apiCall('/todos/all');
   },
 
   // Fetch incomplete todos
   getIncomplete: async (): Promise<TaskData[]> => {
-    return apiRequest<TaskData[]>('/incomplete');
+    return apiCall('/todos/incomplete');
   },
 
   // Fetch completed todos
   getCompleted: async (): Promise<TaskData[]> => {
-    return apiRequest<TaskData[]>('/complete');
+    return apiCall('/todos/complete');
   },
 
   // Get a single todo by ID
   get: async (id: string): Promise<TaskData> => {
-    return apiRequest<TaskData>(`/${id}`);
+    return apiCall(`/todos/${id}`);
   },
 
   // Create a new todo
   create: async (todoData: CreateTaskData): Promise<TaskData> => {
-    return apiRequest<TaskData>('/', {
+    return apiCall('/todos', {
       method: 'POST',
       body: JSON.stringify(todoData),
     });
@@ -76,7 +32,7 @@ export const todoApi = {
 
   // Update a todo
   update: async (id: string, updates: Partial<TaskData>): Promise<TaskData> => {
-    return apiRequest<TaskData>(`/${id}`, {
+    return apiCall(`/todos/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(updates),
     });
@@ -84,14 +40,14 @@ export const todoApi = {
 
   // Delete a todo (hard delete for backward compatibility)
   delete: async (id: string): Promise<{ success: boolean }> => {
-    return apiRequest<{ success: boolean }>(`/${id}`, {
+    return apiCall(`/todos/${id}`, {
       method: 'DELETE',
     });
   },
 
   // Bulk delete todos
   bulkDelete: async (criteria: any): Promise<{ success: boolean; deletedCount: number }> => {
-    return apiRequest<{ success: boolean; deletedCount: number }>('/bulk-delete', {
+    return apiCall('/todos/bulk-delete', {
       method: 'POST',
       body: JSON.stringify(criteria),
     });
@@ -99,7 +55,7 @@ export const todoApi = {
 
   // Helper methods for specific bulk operations
   deleteCompleted: async (section: 'daily' | 'today' | 'upcoming'): Promise<{ success: boolean; deletedCount: number }> => {
-    return apiRequest<{ success: boolean; deletedCount: number }>('/bulk-delete', {
+    return apiCall('/todos/bulk-delete', {
       method: 'POST',
       body: JSON.stringify({ 
         filter: { 
@@ -111,7 +67,7 @@ export const todoApi = {
   },
 
   deleteAll: async (section: 'daily' | 'today' | 'upcoming'): Promise<{ success: boolean; deletedCount: number }> => {
-    return apiRequest<{ success: boolean; deletedCount: number }>('/bulk-delete', {
+    return apiCall('/todos/bulk-delete', {
       method: 'POST',
       body: JSON.stringify({ 
         filter: { 
@@ -121,51 +77,47 @@ export const todoApi = {
     });
   },
 
-  // ===== NEW SOFT DELETE METHODS =====
-
   // Soft delete a todo
   softDelete: async (id: string): Promise<TaskData> => {
-    return apiRequest<TaskData>(`/${id}/soft-delete`, {
+    return apiCall(`/todos/${id}/soft-delete`, {
       method: 'DELETE',
     });
   },
 
   // Restore a soft deleted todo
   restore: async (id: string): Promise<TaskData> => {
-    return apiRequest<TaskData>(`/${id}/restore`, {
+    return apiCall(`/todos/${id}/restore`, {
       method: 'PATCH',
     });
   },
 
   // Get deleted todos (trash)
   getDeleted: async (limit = 50): Promise<TaskData[]> => {
-    return apiRequest<TaskData[]>(`/deleted?limit=${limit}`);
+    return apiCall(`/todos/deleted?limit=${limit}`);
   },
 
   // Permanently delete a todo
   permanentDelete: async (id: string): Promise<void> => {
-    return apiRequest<void>(`/${id}/permanent`, {
+    return apiCall(`/todos/${id}/permanent`, {
       method: 'DELETE',
     });
   },
 
   // Cleanup old deleted todos
   cleanupOldDeleted: async (daysOld = 30): Promise<TaskData[]> => {
-    return apiRequest<TaskData[]>(`/cleanup/old?days=${daysOld}`, {
+    return apiCall(`/todos/cleanup/old?days=${daysOld}`, {
       method: 'DELETE',
     });
   },
 
-  // ===== DAILY TASK METHODS =====
-
   // Get completed daily tasks
   getCompletedDailyTasks: async (): Promise<TaskData[]> => {
-    return apiRequest<TaskData[]>('/daily/completed');
+    return apiCall('/todos/daily/completed');
   },
 
   // Reset daily tasks
   resetDailyTasks: async (): Promise<TaskData[]> => {
-    return apiRequest<TaskData[]>('/daily/reset', {
+    return apiCall('/todos/daily/reset', {
       method: 'POST',
     });
   },
@@ -177,6 +129,6 @@ export const todoApi = {
     if (endDate) params.append('endDate', endDate);
     
     const query = params.toString() ? `?${params.toString()}` : '';
-    return apiRequest<any[]>(`/daily/stats${query}`);
+    return apiCall(`/todos/daily/stats${query}`);
   },
 };

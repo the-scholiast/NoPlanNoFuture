@@ -15,7 +15,6 @@ export const todoCompletionsApi = {
     console.log('🔍 todoCompletionsApi: Fetching completed tasks', { dateRange });
 
     try {
-      // Use the NEW /api/todos/completions endpoint instead of /complete
       let endpoint = '/todos/completions';
       if (dateRange) {
         endpoint += `?startDate=${dateRange.start}&endDate=${dateRange.end}`;
@@ -31,7 +30,7 @@ export const todoCompletionsApi = {
     }
   },
 
-  // Create a new completion record using your backend API
+  // Create a new completion record
   async createCompletion(taskId: string, instanceDate: string): Promise<TodoCompletion> {
     console.log('🟢 todoCompletionsApi: Creating completion', { taskId, instanceDate });
 
@@ -52,7 +51,7 @@ export const todoCompletionsApi = {
     }
   },
 
-  // Delete a completion by task and date using your backend API
+  // Delete a completion by task and date 
   async deleteCompletionByTaskAndDate(taskId: string, instanceDate: string): Promise<void> {
     console.log('🔴 todoCompletionsApi: Deleting completion by task and date', { taskId, instanceDate });
 
@@ -95,8 +94,6 @@ export const todoCompletionsApi = {
   async deleteCompletion(completionId: string): Promise<void> {
     console.log('🔴 todoCompletionsApi: Deleting completion by ID (using fallback)', { completionId });
 
-    // Since your backend doesn't have a direct completion ID delete endpoint,
-    // we'll need to get the completion details first and then use the task/date delete
     try {
       // Get all completed tasks to find the one with this completion ID
       const allCompleted = await this.getCompletedTasks();
