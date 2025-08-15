@@ -2,7 +2,7 @@
 
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import TimeTable from '@/components/calendar/timeTable'
+import TimeTable from '@/components/calendar/timetable/TimeTable'
 
 export default function WeekPage() {
   const searchParams = useSearchParams()
