@@ -136,8 +136,9 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
             task={editableTask}
             updateField={updateField}
             isSubmitting={isSubmitting}
-            showRecurringToggle={true}
-            shouldShowSection={true}
+            fieldPrefix="-edit"
+            showRecurringToggle={true} // Always show toggle in edit modal
+            shouldShowSection={editableTask.section === 'daily' || editableTask.section === 'none'}
             toggleDay={toggleDay}
             toggleEveryDay={toggleEveryDay}
             isEveryDaySelected={isEveryDaySelected}

@@ -130,8 +130,8 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
                   updateField={(field, value) => updateTask(task.id, field, value)}
                   isSubmitting={isSubmitting}
                   fieldPrefix={`-${task.id}`}
-                  showRecurringToggle={false} // Hide toggle for add modal
-                  shouldShowSection={task.section === 'daily'}
+                  showRecurringToggle={task.section === 'none'} // Show toggle for none
+                  shouldShowSection={task.section === 'daily' || task.section === 'none'}
                   toggleDay={(day) => taskHelpers.toggleDay(day)}
                   toggleEveryDay={(checked) => taskHelpers.toggleEveryDay(checked)}
                   isEveryDaySelected={() => taskHelpers.isEveryDaySelected()}

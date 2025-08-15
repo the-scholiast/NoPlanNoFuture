@@ -59,8 +59,6 @@ class TaskLogicHelper {
         updatedTask.start_date = '';
       }
     } else if (section === 'none') {
-      updatedTask.is_recurring = false;
-      updatedTask.recurring_days = [];
       updatedTask.start_date = '';
       updatedTask.end_date = '';
       updatedTask.start_time = '';
