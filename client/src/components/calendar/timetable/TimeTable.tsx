@@ -4,6 +4,9 @@ import { useSearchParams } from 'next/navigation'
 import { Card } from "../../ui/card"
 import { Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "../../ui/table"
 import { useEffect, useRef, useState } from "react"
+import { useQuery } from '@tanstack/react-query'
+import { formatDateString } from '@/lib/utils/dateUtils'
+import { timetableApi } from '@/lib/api/timetableApi'
 
 interface TimeTableProps {
   selectedDate?: Date
@@ -14,7 +17,6 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
   const tableRef = useRef<HTMLTableElement>(null);
   const searchParams = useSearchParams();
   const [currentDate, setCurrentDate] = useState(selectedDate || new Date());
-
   // State to track scroll position and initialization status
   const [savedScrollPosition, setSavedScrollPosition] = useState<number | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
@@ -78,7 +80,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
   const getWeekDates = (date: Date) => {
     const d = new Date(date);
     const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
     const monday = new Date(d.setDate(diff));
 
     const weekDates = [];
@@ -89,6 +91,26 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
     }
     return weekDates;
   };
+
+  // Calculate current week start date
+  const weekDates = isMounted && currentDate ? getWeekDates(currentDate) : [];
+  const weekStartDate = weekDates.length > 0 ? formatDateString(weekDates[0]) : '';
+
+  // Use useQuery directly for automatic caching and reactivity
+  const {
+    data: scheduledTasks = [],
+    isLoading: isLoadingTasks,
+    error: tasksError,
+    refetch: refetchTasks
+  } = useQuery({
+    queryKey: ['timetable-week', weekStartDate],
+    queryFn: () => timetableApi.getWeekScheduledTasks(weekStartDate),
+    enabled: isMounted && !!weekStartDate, // Only fetch when mounted and we have a date
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 10, // 10 minutes
+    refetchOnWindowFocus: true,
+    refetchOnMount: 'always', // Always refetch when component mounts
+  });
 
   // Generate header content for each day
   const getDayHeader = (dayName: string, index: number, weekDates?: Date[]) => {
@@ -166,10 +188,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
     return table.parentElement;
   };
 
-  /**
-   * SCROLL POSITIONING FUNCTIONS
-   */
-
+  // SCROLL POSITIONING FUNCTIONS
   const scrollTo7AM = () => {
     const sevenAmRow = document.getElementById('seven-am-row');
     const scrollContainer = getScrollContainer();
@@ -216,9 +235,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
     setStoredScrollPosition(currentPosition);
   };
 
-  /**
-   * INITIALIZATION EFFECT
-   */
+  // INITIALIZATION EFFECT
   useEffect(() => {
     const initializePosition = () => {
       if (hasInitialized) return;
@@ -240,9 +257,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
     return () => clearTimeout(timer);
   }, [hasInitialized]);
 
-  /**
-   * SCROLL LISTENER EFFECT  
-   */
+  // SCROLL LISTENER EFFECT  
   useEffect(() => {
     const scrollContainer = getScrollContainer();
     if (!scrollContainer) return;
@@ -260,16 +275,58 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
     };
   }, [hasInitialized]);
 
-  // Get week dates using currentDate (which now updates when URL params change)
-  let weekDates: Date[] | undefined;
-  if (isMounted && currentDate) {
-    weekDates = getWeekDates(currentDate);
-  } else if (isMounted) {
-    weekDates = getWeekDates(new Date());
-  }
+  // Helper to get tasks for a specific time slot
+  const getTasksForTimeSlot = (dayIndex: number, timeSlot: string, weekDates: Date[]) => {
+    if (!weekDates || !scheduledTasks) return [];
+
+    const dayDate = formatDateString(weekDates[dayIndex]);
+
+    // Convert time slot to 24-hour format for comparison
+    const convertTo24Hour = (timeStr: string): string => {
+      const [time, period] = timeStr.split(' ');
+      let [hours, minutes] = time.split(':').map(Number);
+
+      if (period === 'AM' && hours === 12) hours = 0;
+      if (period === 'PM' && hours !== 12) hours += 12;
+
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    };
+
+    const slotTime = convertTo24Hour(timeSlot);
+
+    return scheduledTasks.filter(task => {
+      const taskDate = task.instance_date || task.start_date;
+      if (taskDate !== dayDate) return false;
+
+      if (!task.start_time || !task.end_time) return false;
+
+      const taskStart = task.start_time;
+      const taskEnd = task.end_time;
+
+      // Convert slot time to minutes for easier comparison
+      const [slotHours, slotMinutes] = slotTime.split(':').map(Number);
+      const slotStartMinutes = slotHours * 60 + slotMinutes;
+      const slotEndMinutes = slotStartMinutes + 30;
+
+      // Convert task times to minutes
+      const [taskStartHours, taskStartMins] = taskStart.split(':').map(Number);
+      const [taskEndHours, taskEndMins] = taskEnd.split(':').map(Number);
+      const taskStartMinutes = taskStartHours * 60 + taskStartMins;
+      const taskEndMinutes = taskEndHours * 60 + taskEndMins;
+
+      // Task should appear in this slot if it starts within this 30-minute window
+      // OR if it was already running when this slot started
+      return taskStartMinutes < slotEndMinutes && taskEndMinutes > slotStartMinutes;
+    });
+  };
 
   return (
     <div className="w-full flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
+      {tasksError && (
+        <div className="text-red-500 text-sm mb-2 px-4 py-2 bg-red-50 rounded">
+          Error loading tasks: {tasksError.message}
+        </div>
+      )}
       <Card className="flex-1 overflow-auto relative">
         <Table ref={tableRef}>
           <TableHeader className="sticky top-0 bg-background z-10">
@@ -291,17 +348,32 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {timeSlots.map((time) => (
+            {generateTimeSlots().map((time) => (
               <TableRow key={time} id={time === "7:00 AM" ? "seven-am-row" : undefined}>
-                <TableCell className="font-medium text-sm border-r sticky left-0 bg-background">{time}</TableCell>
+                <TableCell className="font-medium text-sm border-r sticky left-0 bg-background">
+                  {time}
+                </TableCell>
                 {dayNames.map((dayName, index) => {
                   const isToday = isMounted && weekDates && weekDates[index].toDateString() === new Date().toDateString();
+                  const tasks = weekDates.length > 0 ? getTasksForTimeSlot(index, time, weekDates) : [];
+
                   return (
                     <TableCell
                       key={`${dayName}-${time}`}
-                      className={`h-12 border-r w-32 hover:bg-muted/50 ${isToday ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}
+                      className={`h-12 border-r w-32 hover:bg-muted/50 ${isToday ? 'bg-blue-50 dark:bg-blue-950/30' : ''} relative p-1`}
                     >
-                      {/* Event content will go here */}
+                      {tasks.map((task) => (
+                        <div
+                          key={task.id}
+                          className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded px-1 py-0.5 mb-0.5 truncate"
+                          title={`${task.title}\n${task.start_time} - ${task.end_time}`}
+                        >
+                          {task.title}
+                        </div>
+                      ))}
+                      {isLoadingTasks && index === 0 && time === "7:00 AM" && (
+                        <div className="text-xs text-muted-foreground">Loading...</div>
+                      )}
                     </TableCell>
                   );
                 })}

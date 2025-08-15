@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { todoApi } from '@/lib/api/todos';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { todoCompletionsApi } from '@/lib/api/todoCompletions';
@@ -20,13 +20,15 @@ interface TodoContextType {
   isLoading: boolean;
   isLoadingTodayRecurring: boolean;
   isLoadingUpcomingRecurring: boolean;
-  isLoadingCompletedTasks: boolean; 
+  isLoadingCompletedTasks: boolean;
   error: Error | null;
   // Actions
   refetch: () => void;
   refetchTodayRecurring: () => void;
   refetchUpcomingRecurring: () => void;
-  refetchCompletedTasks: () => void; 
+  refetchCompletedTasks: () => void;
+  invalidateTimetableCache: () => void;
+  refetchTimetable: (weekStartDate?: string) => void;
 }
 
 const TodoContext = createContext<TodoContextType | undefined>(undefined);
@@ -44,12 +46,13 @@ interface TodoProviderProps {
 }
 
 export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
+  const queryClient = useQueryClient();
   // Main query for all tasks
-  const { 
-    data: allTasks = [], 
-    isLoading, 
-    error, 
-    refetch 
+  const {
+    data: allTasks = [],
+    isLoading,
+    error,
+    refetch
   } = useQuery({
     queryKey: ['todos'],
     queryFn: todoApi.getAll,
@@ -100,30 +103,42 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
 
   // Separate tasks by section (original logic for non-recurring tasks)
   const dailyTasks = allTasks.filter(task => task.section === 'daily');
-  
+
   const todayTasks = allTasks.filter(task => {
     if (task.section !== 'today') return false;
     if (task.is_recurring) return false; // Recurring tasks handled by separate query
-    
+
     const today = getTodayString();
     return !task.start_date || task.start_date === today;
   });
-  
+
   const upcomingTasks = allTasks.filter(task => {
     if (task.section !== 'upcoming') return false;
     if (task.is_recurring) return false; // Recurring tasks handled by separate query
-    
+
     const today = getTodayString();
     return !task.start_date || task.start_date > today;
   });
 
+  const invalidateTimetableCache = () => {
+    queryClient.invalidateQueries({ queryKey: ['timetable-tasks'] });
+    queryClient.invalidateQueries({ queryKey: ['timetable-week'] });
+  };
+
+  const refetchTimetable = (weekStartDate?: string) => {
+    if (weekStartDate) {
+      queryClient.invalidateQueries({ queryKey: ['timetable-week', weekStartDate] });
+    } else {
+      invalidateTimetableCache();
+    }
+  };
+
   // Auto-reset daily tasks at midnight
   useEffect(() => {
     const checkForNewDay = () => {
-      const now = new Date();
       const lastCheck = localStorage.getItem('lastDailyTaskCheck');
       const today = getTodayString();
-      
+
       if (lastCheck !== today) {
         // New day detected, reset daily tasks
         todoApi.resetDailyTasks().then(() => {
@@ -131,7 +146,8 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
           refetch();
           refetchTodayRecurring();
           refetchUpcomingRecurring();
-          refetchCompletedTasks(); 
+          refetchCompletedTasks();
+          invalidateTimetableCache();
           localStorage.setItem('lastDailyTaskCheck', today);
         }).catch(console.error);
       }
@@ -139,10 +155,10 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
 
     // Check immediately
     checkForNewDay();
-    
+
     // Set up interval to check every minute
     const interval = setInterval(checkForNewDay, 60000);
-    
+
     return () => clearInterval(interval);
   }, [refetch, refetchTodayRecurring, refetchUpcomingRecurring, refetchCompletedTasks]);
 
@@ -154,19 +170,21 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
     todayTasksWithRecurring,
     upcomingTasksWithRecurring,
     completedTasks,
-    
+
     // Loading states
     isLoading,
     isLoadingTodayRecurring,
     isLoadingUpcomingRecurring,
-    isLoadingCompletedTasks, 
+    isLoadingCompletedTasks,
     error: error as Error | null,
-    
+
     // Actions
     refetch,
     refetchTodayRecurring,
     refetchUpcomingRecurring,
-    refetchCompletedTasks, 
+    refetchCompletedTasks,
+    invalidateTimetableCache,
+    refetchTimetable,
   };
 
   return <TodoContext.Provider value={value}>{children}</TodoContext.Provider>;
