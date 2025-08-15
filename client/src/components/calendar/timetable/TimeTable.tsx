@@ -320,6 +320,73 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
     });
   };
 
+  // Helper to calculate which tasks should be displayed in each slot with merging
+  const getMergedTasksForDay = (dayIndex: number, weekDates: Date[]) => {
+    if (!weekDates || !scheduledTasks) return {};
+
+    const dayDate = formatDateString(weekDates[dayIndex]);
+    const dayTasks = scheduledTasks.filter(task => {
+      const taskDate = task.instance_date || task.start_date;
+      return taskDate === dayDate && task.start_time && task.end_time;
+    });
+
+    const slotTasks: { [timeSlot: string]: any[] } = {};
+
+    // Convert time slot to 24-hour format for comparison
+    const convertTo24Hour = (timeStr: string): string => {
+      const [time, period] = timeStr.split(' ');
+      let [hours, minutes] = time.split(':').map(Number);
+
+      if (period === 'AM' && hours === 12) hours = 0;
+      if (period === 'PM' && hours !== 12) hours += 12;
+
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    };
+
+    // Process each task to determine which slots it spans
+    dayTasks.forEach(task => {
+      if (!task.start_time || !task.end_time) {
+        return; // Skip this task if times are missing
+      }
+      const taskStart = task.start_time;
+      const taskEnd = task.end_time;
+
+      // Convert task times to minutes
+      const [taskStartHours, taskStartMins] = taskStart.split(':').map(Number);
+      const [taskEndHours, taskEndMins] = taskEnd.split(':').map(Number);
+      const taskStartMinutes = taskStartHours * 60 + taskStartMins;
+      const taskEndMinutes = taskEndHours * 60 + taskEndMins;
+
+      // Find all time slots this task spans
+      const taskSlots = timeSlots.filter(timeSlot => {
+        const slotTime = convertTo24Hour(timeSlot);
+        const [slotHours, slotMinutes] = slotTime.split(':').map(Number);
+        const slotStartMinutes = slotHours * 60 + slotMinutes;
+        const slotEndMinutes = slotStartMinutes + 30;
+
+        return taskStartMinutes < slotEndMinutes && taskEndMinutes > slotStartMinutes;
+      });
+
+      // For multi-slot tasks, only show in the first slot
+      if (taskSlots.length > 0) {
+        const firstSlot = taskSlots[0];
+        if (!slotTasks[firstSlot]) {
+          slotTasks[firstSlot] = [];
+        }
+
+        // Calculate the height multiplier based on how many slots the task spans
+        const spanCount = taskSlots.length;
+        slotTasks[firstSlot].push({
+          ...task,
+          spanCount,
+          isSpanning: spanCount > 1
+        });
+      }
+    });
+
+    return slotTasks;
+  };
+
   return (
     <div className="w-full flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
       {tasksError && (
@@ -355,7 +422,8 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                 </TableCell>
                 {dayNames.map((dayName, index) => {
                   const isToday = isMounted && weekDates && weekDates[index].toDateString() === new Date().toDateString();
-                  const tasks = weekDates.length > 0 ? getTasksForTimeSlot(index, time, weekDates) : [];
+                  const mergedTasks = weekDates.length > 0 ? getMergedTasksForDay(index, weekDates) : {};
+                  const tasks = mergedTasks[time] || [];
 
                   return (
                     <TableCell
@@ -365,7 +433,11 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                       {tasks.map((task) => (
                         <div
                           key={task.id}
-                          className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded px-1 py-0.5 mb-0.5 truncate"
+                          className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded px-1 py-0.5 mb-0.5 truncate absolute inset-1"
+                          style={{
+                            height: task.isSpanning ? `${task.spanCount * 48 - 4}px` : 'auto',
+                            zIndex: task.isSpanning ? 10 : 'auto'
+                          }}
                           title={`${task.title}\n${task.start_time} - ${task.end_time}`}
                         >
                           {task.title}
