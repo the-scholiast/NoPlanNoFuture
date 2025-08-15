@@ -1,10 +1,10 @@
 import supabase from '../supabaseAdmin.js';
 import { formatDateString, ensureLocalDate } from '../utils/dateUtils.js';
-import { shouldTaskAppearOnDate, getDayName } from './recurringTaskController.js';
+import { shouldTaskAppearOnDate } from './recurringTaskController.js';
 
-// Get all scheduled tasks for a date range
-export const getScheduledTasksForDateRange = async (useServerInsertedHTML, startDate, endDate) => {
-  // Get regular scheduled tasks (non0recurring)
+// Get all scheduled tasks (is_schedule = true) for a date range
+export const getScheduledTasksForDateRange = async (userId, startDate, endDate) => {
+  // Get regular scheduled tasks (non-recurring)
   const { data: regularTasks, error: regularError } = await supabase
     .from('todos')
     .select('*')
@@ -76,7 +76,7 @@ export const getScheduledTasksForDateRange = async (useServerInsertedHTML, start
   });
 
   return allTasks;
-}
+};
 
 // Get scheduled tasks for a specific week (Monday to Sunday)
 export const getScheduledTasksForWeek = async (userId, weekStartDate) => {
