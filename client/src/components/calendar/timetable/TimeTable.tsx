@@ -21,6 +21,73 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
   const [savedScrollPosition, setSavedScrollPosition] = useState<number | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  // Add this state after the existing hooks
+  // Replace the existing hover state
+  const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
+
+  // Add helper function to check if ANY cell in this row contains the hovered task
+  const shouldHighlightRow = (time: string, weekDates: Date[]) => {
+    if (!hoveredTaskId || !weekDates || !scheduledTasks) return false;
+
+    // Check if any day in this time slot contains the hovered task
+    for (let dayIndex = 0; dayIndex < dayNames.length; dayIndex++) {
+      const tasks = getTasksForTimeSlot(dayIndex, time, weekDates);
+      if (tasks.some(task => task.id === hoveredTaskId)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // Helper to calculate task duration in time slots
+  const getTaskDurationSlots = (task: any, timeSlots: string[]) => {
+    if (!task.start_time || !task.end_time) return 1;
+
+    const convertTo24Hour = (timeStr: string): string => {
+      const [time, period] = timeStr.split(' ');
+      let [hours, minutes] = time.split(':').map(Number);
+      if (period === 'AM' && hours === 12) hours = 0;
+      if (period === 'PM' && hours !== 12) hours += 12;
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    };
+
+    const startTime24 = convertTo24Hour(task.start_time);
+    const endTime24 = convertTo24Hour(task.end_time);
+
+    const [startHours, startMins] = startTime24.split(':').map(Number);
+    const [endHours, endMins] = endTime24.split(':').map(Number);
+
+    const startMinutes = startHours * 60 + startMins;
+    const endMinutes = endHours * 60 + endMins;
+
+    const durationMinutes = endMinutes - startMinutes;
+    return Math.ceil(durationMinutes / 30); // Each slot is 30 minutes
+  };
+
+  // Helper to check if this is the first slot for a task
+  const isFirstSlotForTask = (task: any, currentTime: string, dayIndex: number, weekDates: Date[]) => {
+    if (!task.start_time) return true;
+
+    const convertTo24Hour = (timeStr: string): string => {
+      const [time, period] = timeStr.split(' ');
+      let [hours, minutes] = time.split(':').map(Number);
+      if (period === 'AM' && hours === 12) hours = 0;
+      if (period === 'PM' && hours !== 12) hours += 12;
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    };
+
+    const currentTime24 = convertTo24Hour(currentTime);
+    const taskStartTime24 = convertTo24Hour(task.start_time);
+
+    const [currentHours, currentMins] = currentTime24.split(':').map(Number);
+    const [taskStartHours, taskStartMins] = taskStartTime24.split(':').map(Number);
+
+    const currentMinutes = currentHours * 60 + currentMins;
+    const taskStartMinutes = taskStartHours * 60 + taskStartMins;
+
+    // This is the first slot if the current time slot contains the task start time
+    return currentMinutes <= taskStartMinutes && taskStartMinutes < currentMinutes + 30;
+  };
 
   // Define dayNames at the top to avoid scope issues
   const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -416,33 +483,49 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
           </TableHeader>
           <TableBody>
             {generateTimeSlots().map((time) => (
-              <TableRow key={time} id={time === "7:00 AM" ? "seven-am-row" : undefined}>
+              <TableRow
+                key={time}
+                id={time === "7:00 AM" ? "seven-am-row" : undefined}
+                className={shouldHighlightRow(time, weekDates) ? 'bg-muted/30' : ''}
+              >
                 <TableCell className="font-medium text-sm border-r sticky left-0 bg-background">
                   {time}
                 </TableCell>
                 {dayNames.map((dayName, index) => {
                   const isToday = isMounted && weekDates && weekDates[index].toDateString() === new Date().toDateString();
-                  const mergedTasks = weekDates.length > 0 ? getMergedTasksForDay(index, weekDates) : {};
-                  const tasks = mergedTasks[time] || [];
+                  const tasks = weekDates.length > 0 ? getTasksForTimeSlot(index, time, weekDates) : [];
 
                   return (
                     <TableCell
                       key={`${dayName}-${time}`}
-                      className={`h-12 border-r w-32 hover:bg-muted/50 ${isToday ? 'bg-blue-50 dark:bg-blue-950/30' : ''} relative p-1`}
+                      className={`h-12 border-r w-32 relative p-1 ${shouldHighlightRow(time, weekDates)
+                        ? ''
+                        : 'hover:bg-muted/50'
+                        } ${isToday ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}
                     >
-                      {tasks.map((task) => (
-                        <div
-                          key={task.id}
-                          className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded px-1 py-0.5 mb-0.5 truncate absolute inset-1"
-                          style={{
-                            height: task.isSpanning ? `${task.spanCount * 48 - 4}px` : 'auto',
-                            zIndex: task.isSpanning ? 10 : 'auto'
-                          }}
-                          title={`${task.title}\n${task.start_time} - ${task.end_time}`}
-                        >
-                          {task.title}
-                        </div>
-                      ))}
+                      {tasks.map((task) => {
+                        const isFirstSlot = isFirstSlotForTask(task, time, index, weekDates);
+                        const durationSlots = getTaskDurationSlots(task, generateTimeSlots());
+
+                        // Only render the task in its first slot
+                        if (!isFirstSlot) return null;
+
+                        return (
+                          <div
+                            key={task.id}
+                            className="absolute inset-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded px-1 py-0.5 truncate cursor-pointer z-10"
+                            style={{
+                              height: `${durationSlots * 48 - 8}px`, // 48px per slot minus padding
+                              minHeight: '40px'
+                            }}
+                            title={`${task.title}\n${task.start_time} - ${task.end_time}`}
+                            onMouseEnter={() => setHoveredTaskId(task.id)}
+                            onMouseLeave={() => setHoveredTaskId(null)}
+                          >
+                            {task.title}
+                          </div>
+                        );
+                      })}
                       {isLoadingTasks && index === 0 && time === "7:00 AM" && (
                         <div className="text-xs text-muted-foreground">Loading...</div>
                       )}
