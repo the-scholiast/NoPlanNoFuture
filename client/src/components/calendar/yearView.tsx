@@ -99,8 +99,8 @@ export default function YearView({ selectedDate }: YearViewProps) {
                                     {/* Mini calendar */}
                                     <div className="space-y-1">
                                         <div className="grid grid-cols-7 gap-1">
-                                            {dayNames.map((d) => (
-                                                <div key={d} className="text-center text-xs font-medium text-muted-foreground p-1">{d}</div>
+                                            {dayNames.map((d, i) => (
+                                                <div key={i } className="text-center text-xs font-medium text-muted-foreground p-1">{d}</div>
                                             ))}
                                         </div>
 
