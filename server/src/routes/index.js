@@ -6,6 +6,7 @@ import exerciseRoutes from './exercises.js';
 import statsRoutes from './stats.js';
 import workoutTemplatesRoutes from './workoutTemplates.js'
 import recurringTodoRoutes from './recurringTodos.js';
+import timetableRoutes from './timetable.js'
 
 const router = express.Router();
 
@@ -17,5 +18,6 @@ router.use('/workout-templates', workoutTemplatesRoutes);
 router.use('/exercises', exerciseRoutes);
 router.use('/stats', statsRoutes);
 router.use('/recurring-todos', recurringTodoRoutes);
+router.use('/timetable', timetableRoutes);
 
 export default router;
