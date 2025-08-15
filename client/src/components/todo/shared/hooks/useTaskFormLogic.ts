@@ -58,6 +58,15 @@ class TaskLogicHelper {
       if (updatedTask.start_date === getTodayString()) {
         updatedTask.start_date = '';
       }
+    } else if (section === 'none') {
+      // None tasks: disable recurring, clear dates and times
+      updatedTask.is_recurring = true;
+      updatedTask.recurring_days = [...DAYS_OF_WEEK];
+      updatedTask.start_date = '';
+      updatedTask.end_date = '';
+      updatedTask.start_time = '';
+      updatedTask.end_time = '';
+      updatedTask.is_schedule = true;
     }
   }
 

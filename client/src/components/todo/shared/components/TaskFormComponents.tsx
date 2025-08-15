@@ -70,6 +70,7 @@ export function TaskBasicFields({ task, updateField, isSubmitting }: TaskFormFie
               <SelectItem value="daily">Daily</SelectItem>
               <SelectItem value="today">Today</SelectItem>
               <SelectItem value="upcoming">Upcoming</SelectItem>
+              <SelectItem value="none">None</SelectItem>
             </SelectContent>
           </Select>
         </div>

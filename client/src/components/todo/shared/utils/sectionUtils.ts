@@ -20,6 +20,7 @@ export const getSectionLabel = (section: string): string => {
     case 'daily': return 'Daily';
     case 'today': return 'Today';
     case 'upcoming': return 'Upcoming';
+    case 'none' : return 'None';
     default: return 'Other';
   }
 };
