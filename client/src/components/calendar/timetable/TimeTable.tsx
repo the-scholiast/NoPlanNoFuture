@@ -4,9 +4,13 @@ import { useSearchParams } from 'next/navigation'
 import { Card } from "../../ui/card"
 import { Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "../../ui/table"
 import { useEffect, useRef, useState } from "react"
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatDateString } from '@/lib/utils/dateUtils'
 import { timetableApi } from '@/lib/api/timetableApi'
+import EditTaskModal from '@/components/todo/EditTaskModal'
+import AddTaskModal from '@/components/todo/global/AddTaskModal'
+import { TaskData } from '@/types/todoTypes'
+import { useTodo } from '@/contexts/TodoContext'
 
 interface TimeTableProps {
   selectedDate?: Date
@@ -15,6 +19,7 @@ interface TimeTableProps {
 export default function TimeTable({ selectedDate }: TimeTableProps) {
   // Single reference to the Table element
   const tableRef = useRef<HTMLTableElement>(null);
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const [currentDate, setCurrentDate] = useState(selectedDate || new Date());
   // State to track scroll position and initialization status
@@ -24,6 +29,14 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
   // Add this state after the existing hooks
   // Replace the existing hover state
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
+
+  // Add modal state management
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState<TaskData | null>(null);
+
+  // Get timetable invalidation functions from TodoContext
+  const { invalidateTimetableCache, refetchTimetable } = useTodo();
 
   // Add helper function to check if ANY cell in this row contains the hovered task
   const shouldHighlightRow = (time: string, weekDates: Date[]) => {
@@ -173,11 +186,23 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
     queryKey: ['timetable-week', weekStartDate],
     queryFn: () => timetableApi.getWeekScheduledTasks(weekStartDate),
     enabled: isMounted && !!weekStartDate, // Only fetch when mounted and we have a date
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    gcTime: 1000 * 60 * 10, // 10 minutes
+    staleTime: 0, // Always consider stale for immediate updates
+    gcTime: 1000 * 60 * 5, // 5 minutes garbage collection
     refetchOnWindowFocus: true,
     refetchOnMount: 'always', // Always refetch when component mounts
+    refetchInterval: false, // Don't auto-refetch, we'll handle it manually
   });
+
+  // Enhanced modal close handlers to ensure data refresh
+  useEffect(() => {
+    if (!editModalOpen && !addModalOpen) {
+      // When both modals are closed, ensure we have the latest data
+      const timer = setTimeout(() => {
+        refetchTasks();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [editModalOpen, addModalOpen, refetchTasks]);
 
   // Generate header content for each day
   const getDayHeader = (dayName: string, index: number, weekDates?: Date[]) => {
@@ -454,6 +479,60 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
     return slotTasks;
   };
 
+  // Helper function to format date for task creation
+  const formatDateForTask = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Helper function to convert time slot to 24-hour format
+  const convertTimeSlotTo24Hour = (timeSlot: string): string => {
+    const [time, period] = timeSlot.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+    
+    if (period === 'AM' && hours === 12) hours = 0;
+    if (period === 'PM' && hours !== 12) hours += 12;
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  };
+
+  // Handle clicking on a task
+  const handleTaskClick = (task: any) => {
+    setTaskToEdit(task);
+    setEditModalOpen(true);
+  };
+
+  // Handle clicking on an empty time slot
+  const handleEmptySlotClick = (dayIndex: number, timeSlot: string) => {
+    if (!weekDates || weekDates.length === 0) return;
+    
+    setAddModalOpen(true);
+  };
+
+  // Handle task updated callback
+  const handleTaskUpdated = () => {
+    console.log('🎯 Timetable: handleTaskUpdated called');
+    
+    // Use TodoContext functions to invalidate timetable cache
+    refetchTimetable(weekStartDate);
+    
+    // Also refetch our local data to ensure immediate updates
+    refetchTasks();
+  };
+
+  // Handle add tasks callback
+  const handleAddTasks = async (tasks: TaskData[]) => {
+    console.log('🎯 Timetable: handleAddTasks called with', tasks.length, 'tasks');
+    
+    // Use TodoContext functions to invalidate timetable cache  
+    refetchTimetable(weekStartDate);
+    
+    // Also refetch our local data to ensure immediate updates
+    refetchTasks();
+  };
+
   return (
     <div className="w-full flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
       {tasksError && (
@@ -498,10 +577,16 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                   return (
                     <TableCell
                       key={`${dayName}-${time}`}
-                      className={`h-12 border-r w-32 relative p-1 ${shouldHighlightRow(time, weekDates)
+                      className={`h-12 border-r w-32 relative p-1 cursor-pointer ${shouldHighlightRow(time, weekDates)
                         ? ''
                         : 'hover:bg-muted/50'
                         } ${isToday ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}
+                      onClick={(e) => {
+                        // Only trigger empty slot click if we didn't click on a task
+                        if (e.target === e.currentTarget) {
+                          handleEmptySlotClick(index, time);
+                        }
+                      }}
                     >
                       {tasks.map((task) => {
                         const isFirstSlot = isFirstSlotForTask(task, time, index, weekDates);
@@ -513,7 +598,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                         return (
                           <div
                             key={task.id}
-                            className="absolute inset-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded px-1 py-0.5 truncate cursor-pointer z-10"
+                            className="absolute inset-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded px-1 py-0.5 truncate cursor-pointer z-10 hover:bg-blue-200 dark:hover:bg-blue-800"
                             style={{
                               height: `${durationSlots * 48 - 8}px`, // 48px per slot minus padding
                               minHeight: '40px'
@@ -521,6 +606,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                             title={`${task.title}\n${task.start_time} - ${task.end_time}`}
                             onMouseEnter={() => setHoveredTaskId(task.id)}
                             onMouseLeave={() => setHoveredTaskId(null)}
+                            onClick={() => handleTaskClick(task)}
                           >
                             {task.title}
                           </div>
@@ -537,6 +623,20 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
           </TableBody>
         </Table>
       </Card>
+
+      {/* Modals */}
+      <EditTaskModal
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        task={taskToEdit}
+        onTaskUpdated={handleTaskUpdated}
+      />
+      
+      <AddTaskModal
+        open={addModalOpen}
+        onOpenChange={setAddModalOpen}
+        onAddTasks={handleAddTasks}
+      />
     </div>
   )
 }
