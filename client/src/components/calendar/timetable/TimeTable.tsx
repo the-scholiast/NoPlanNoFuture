@@ -11,6 +11,8 @@ import EditTaskModal from '@/components/todo/EditTaskModal'
 import AddTaskModal from '@/components/todo/global/AddTaskModal'
 import { TaskData } from '@/types/todoTypes'
 import { useTodo } from '@/contexts/TodoContext'
+import { getTaskColors } from '@/components/todo/shared/utils/sectionUtils'
+
 
 interface TimeTableProps {
   selectedDate?: Date
@@ -19,7 +21,6 @@ interface TimeTableProps {
 export default function TimeTable({ selectedDate }: TimeTableProps) {
   // Single reference to the Table element
   const tableRef = useRef<HTMLTableElement>(null);
-  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const [currentDate, setCurrentDate] = useState(selectedDate || new Date());
   // State to track scroll position and initialization status
@@ -27,7 +28,6 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
   const [hasInitialized, setHasInitialized] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   // Add this state after the existing hooks
-  // Replace the existing hover state
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
 
   // Add modal state management
@@ -35,6 +35,48 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<TaskData | null>(null);
 
+  const [conflictResolution, setConflictResolution] = useState<'stack' | 'side-by-side' | 'indicator'>('side-by-side');
+
+  // Add after line 100 (after other helper functions)
+  const detectTimeConflicts = (dayIndex: number, weekDates: Date[]) => {
+    if (!weekDates || !scheduledTasks) return new Set<string>();
+
+    const conflicts = new Set<string>();
+    const dayDate = formatDateString(weekDates[dayIndex]);
+    const dayTasks = scheduledTasks.filter(task => {
+      const taskDate = task.instance_date || task.start_date;
+      return taskDate === dayDate && task.start_time && task.end_time;
+    });
+
+    // Check each task against all others
+    for (let i = 0; i < dayTasks.length; i++) {
+      for (let j = i + 1; j < dayTasks.length; j++) {
+        const task1 = dayTasks[i];
+        const task2 = dayTasks[j];
+
+        if (tasksOverlap(task1, task2)) {
+          conflicts.add(task1.id);
+          conflicts.add(task2.id);
+        }
+      }
+    }
+
+    return conflicts;
+  };
+
+  const tasksOverlap = (task1: any, task2: any): boolean => {
+    const getMinutes = (timeStr: string): number => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+
+    const task1Start = getMinutes(task1.start_time);
+    const task1End = getMinutes(task1.end_time);
+    const task2Start = getMinutes(task2.start_time);
+    const task2End = getMinutes(task2.end_time);
+
+    return task1Start < task2End && task2Start < task1End;
+  };
   // Get timetable invalidation functions from TodoContext
   const { invalidateTimetableCache, refetchTimetable } = useTodo();
 
@@ -47,6 +89,23 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
       const tasks = getTasksForTimeSlot(dayIndex, time, weekDates);
       if (tasks.some(task => task.id === hoveredTaskId)) {
         return true;
+      }
+    }
+    return false;
+  };
+
+  // Add helper function to check if this row has any conflicts
+  const hasRowConflicts = (time: string, weekDates: Date[]) => {
+    if (!weekDates || !scheduledTasks) return false;
+
+    // Check if any day in this time slot has conflicting tasks
+    for (let dayIndex = 0; dayIndex < dayNames.length; dayIndex++) {
+      const tasks = getTasksForTimeSlot(dayIndex, time, weekDates);
+      if (tasks.length > 1) {
+        const conflicts = detectTimeConflicts(dayIndex, weekDates);
+        if (tasks.some(task => conflicts.has(task.id))) {
+          return true;
+        }
       }
     }
     return false;
@@ -491,10 +550,10 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
   const convertTimeSlotTo24Hour = (timeSlot: string): string => {
     const [time, period] = timeSlot.split(' ');
     let [hours, minutes] = time.split(':').map(Number);
-    
+
     if (period === 'AM' && hours === 12) hours = 0;
     if (period === 'PM' && hours !== 12) hours += 12;
-    
+
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
 
@@ -507,17 +566,17 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
   // Handle clicking on an empty time slot
   const handleEmptySlotClick = (dayIndex: number, timeSlot: string) => {
     if (!weekDates || weekDates.length === 0) return;
-    
+
     setAddModalOpen(true);
   };
 
   // Handle task updated callback
   const handleTaskUpdated = () => {
     console.log('🎯 Timetable: handleTaskUpdated called');
-    
+
     // Use TodoContext functions to invalidate timetable cache
     refetchTimetable(weekStartDate);
-    
+
     // Also refetch our local data to ensure immediate updates
     refetchTasks();
   };
@@ -525,10 +584,10 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
   // Handle add tasks callback
   const handleAddTasks = async (tasks: TaskData[]) => {
     console.log('🎯 Timetable: handleAddTasks called with', tasks.length, 'tasks');
-    
+
     // Use TodoContext functions to invalidate timetable cache  
     refetchTimetable(weekStartDate);
-    
+
     // Also refetch our local data to ensure immediate updates
     refetchTasks();
   };
@@ -588,27 +647,48 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                         }
                       }}
                     >
-                      {tasks.map((task) => {
+                      {tasks.map((task, taskIndex) => {
                         const isFirstSlot = isFirstSlotForTask(task, time, index, weekDates);
                         const durationSlots = getTaskDurationSlots(task, generateTimeSlots());
 
                         // Only render the task in its first slot
                         if (!isFirstSlot) return null;
 
+                        // Calculate positioning for overlapping tasks
+                        const taskWidth = tasks.length > 1 ? `${100 / tasks.length}%` : '100%';
+                        const taskLeft = tasks.length > 1 ? `${(taskIndex * 100) / tasks.length}%` : '0%';
+
+                        // Get colors based on section and priority
+                        const taskColors = getTaskColors(task.section, task.priority);
+
                         return (
                           <div
                             key={task.id}
-                            className="absolute inset-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded px-1 py-0.5 truncate cursor-pointer z-10 hover:bg-blue-200 dark:hover:bg-blue-800"
+                            className={`absolute inset-1 text-xs rounded px-1 py-0.5 cursor-pointer z-10 hover:opacity-80 border ${taskColors}`}
                             style={{
-                              height: `${durationSlots * 48 - 8}px`, // 48px per slot minus padding
-                              minHeight: '40px'
+                              height: `${durationSlots * 48 - 8}px`,
+                              minHeight: '40px',
+                              width: taskWidth,
+                              left: taskLeft,
+                              // Add slight overlap for visual separation
+                              marginRight: tasks.length > 1 ? '2px' : '0px'
                             }}
-                            title={`${task.title}\n${task.start_time} - ${task.end_time}`}
+                            title={`${task.title}\n${task.start_time} - ${task.end_time}${tasks.length > 1 ? '\n⚠️ Overlapping with other tasks' : ''}`}
                             onMouseEnter={() => setHoveredTaskId(task.id)}
                             onMouseLeave={() => setHoveredTaskId(null)}
                             onClick={() => handleTaskClick(task)}
                           >
-                            {task.title}
+                            {tasks.length > 1 && (
+                              <div className="absolute top-0 right-0 w-2 h-2 bg-yellow-400 rounded-full text-xs flex items-center justify-center">
+                                <span className="text-[8px] text-yellow-800">!</span>
+                              </div>
+                            )}
+                            <div className="truncate text-center font-medium">{task.title}</div>
+                            {tasks.length > 1 && (
+                              <div className="text-[10px] opacity-75 text-center">
+                                {task.start_time}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -631,7 +711,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
         task={taskToEdit}
         onTaskUpdated={handleTaskUpdated}
       />
-      
+
       <AddTaskModal
         open={addModalOpen}
         onOpenChange={setAddModalOpen}
