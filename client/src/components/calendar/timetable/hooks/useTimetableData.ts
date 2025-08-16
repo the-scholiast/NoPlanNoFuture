@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDateString } from '@/lib/utils/dateUtils';
 import { timetableApi } from '@/lib/api/timetableApi';
-import { useTodo } from '@/contexts/TodoContext';
+import { todoKeys } from '@/lib/queryKeys';
 
 interface UseTimetableDataProps {
   selectedDate?: Date;
@@ -11,9 +11,9 @@ interface UseTimetableDataProps {
 
 export const useTimetableData = ({ selectedDate }: UseTimetableDataProps) => {
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const [currentDate, setCurrentDate] = useState(selectedDate || new Date());
   const [isMounted, setIsMounted] = useState(false);
-  const { refetchTimetable } = useTodo();
 
   // Set mounted state after component mounts to avoid hydration issues
   useEffect(() => {
@@ -64,7 +64,7 @@ export const useTimetableData = ({ selectedDate }: UseTimetableDataProps) => {
     error: tasksError,
     refetch: refetchTasks
   } = useQuery({
-    queryKey: ['timetable-week', weekStartDate],
+    queryKey: todoKeys.timetable.week(weekStartDate),
     queryFn: () => timetableApi.getWeekScheduledTasks(weekStartDate),
     enabled: isMounted && !!weekStartDate,
     staleTime: 0,
@@ -73,6 +73,20 @@ export const useTimetableData = ({ selectedDate }: UseTimetableDataProps) => {
     refetchOnMount: 'always',
     refetchInterval: false,
   });
+
+  // Timetable cache invalidation functions (replacing TodoContext functions)
+  const invalidateTimetableCache = () => {
+    queryClient.invalidateQueries({ queryKey: todoKeys.timetable.tasks });
+    queryClient.invalidateQueries({ queryKey: todoKeys.timetable.allWeeks });
+  };
+
+  const refetchTimetable = (weekStartDate?: string) => {
+    if (weekStartDate) {
+      queryClient.invalidateQueries({ queryKey: todoKeys.timetable.week(weekStartDate) });
+    } else {
+      invalidateTimetableCache();
+    }
+  };
 
   const handleDataRefresh = () => {
     refetchTimetable(weekStartDate);
@@ -88,6 +102,9 @@ export const useTimetableData = ({ selectedDate }: UseTimetableDataProps) => {
     isLoadingTasks,
     tasksError,
     refetchTasks,
-    handleDataRefresh
+    handleDataRefresh,
+    // Export the timetable functions for use in other components
+    invalidateTimetableCache,
+    refetchTimetable,
   };
 }

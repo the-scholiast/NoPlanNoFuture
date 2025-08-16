@@ -1,11 +1,18 @@
-import { useState, useMemo, } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { CompletedTasksState, DateFilterState, CompletedTaskWithCompletion } from '../../shared/types';
 import { getCurrentWeekStart, getCurrentWeekEnd } from '../../shared/utils';
 import { useTodoMutations } from '../../shared/hooks/useTodoMutations';
-import { useTodo } from '@/contexts/TodoContext';
+import { todoCompletionsApi } from '@/lib/api/todoCompletions';
+import { todoKeys } from '@/lib/queryKeys';
 
 export const useCompletedTasks = () => {
-  const { completedTasks, isLoadingCompletedTasks: isLoading, error } = useTodo();
+  // Direct query instead of context
+  const { data: completedTasks = [], isLoading, error } = useQuery({
+    queryKey: todoKeys.completed,
+    queryFn: () => todoCompletionsApi.getCompletedTasks(),
+  });
+
   const { deleteTaskMutation, uncompleteTaskMutation } = useTodoMutations();
 
   const [state, setState] = useState<CompletedTasksState>({
@@ -20,7 +27,28 @@ export const useCompletedTasks = () => {
     }
   });
 
-  // Transform context data to component format 
+  // Date helpers
+  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+  
+  const currentWeek = useMemo(() => ({
+    start: getCurrentWeekStart(),
+    end: getCurrentWeekEnd()
+  }), []);
+
+  const currentMonth = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    
+    return {
+      start: `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-${String(firstDay.getDate()).padStart(2, '0')}`,
+      end: `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`
+    };
+  }, []);
+
+  // Transform query data to component format 
   const processedCompletedTasks = useMemo(() => {
     if (!completedTasks || completedTasks.length === 0) return [];
 
@@ -29,7 +57,7 @@ export const useCompletedTasks = () => {
       is_recurring_instance: item.is_recurring || false,
       completion_count: item.completion_count
     }));
-  }, [completedTasks,]);
+  }, [completedTasks]);
 
   // Apply search filter and sorting
   const filteredTasks = useMemo(() => {
@@ -37,7 +65,6 @@ export const useCompletedTasks = () => {
 
     // Apply date filter if enabled
     if (state.dateFilter.enabled && filtered.length > 0) {
-      const beforeFilter = filtered.length;
       filtered = filtered.filter(task => {
         const completionDate = task.completion?.completed_at;
         if (!completionDate) {
@@ -55,7 +82,6 @@ export const useCompletedTasks = () => {
     // Search filter
     if (state.searchQuery.trim()) {
       const query = state.searchQuery.toLowerCase();
-      const beforeSearch = filtered.length;
       filtered = filtered.filter(task =>
         task.title.toLowerCase().includes(query) ||
         task.description?.toLowerCase().includes(query)
@@ -69,11 +95,8 @@ export const useCompletedTasks = () => {
       return dateB.getTime() - dateA.getTime();
     });
 
-    // Use sorted tasks if manually sorted, otherwise use filtered
-    const result = filtered;
-
-    return result;
-  }, [processedCompletedTasks, state.searchQuery, state.dateFilter, state.sortedCompletedTasks,]);
+    return filtered;
+  }, [processedCompletedTasks, state.searchQuery, state.dateFilter]);
 
   // Action handlers
   const toggleTaskExpansion = (completionId: string) => {
@@ -124,6 +147,74 @@ export const useCompletedTasks = () => {
     deleteTaskMutation.mutate(taskId);
   };
 
+  // Date filter helper functions
+  const handleDateFilterChange = (field: 'startDate' | 'endDate', value: string) => {
+    updateDateFilter({ [field]: value });
+  };
+
+  const toggleDateFilter = () => {
+    updateDateFilter({ enabled: !state.dateFilter.enabled });
+  };
+
+  const resetDateFilter = () => {
+    updateDateFilter({
+      startDate: today,
+      endDate: today,
+      enabled: true
+    });
+  };
+
+  const setWeekFilter = () => {
+    updateDateFilter({
+      startDate: currentWeek.start,
+      endDate: currentWeek.end,
+      enabled: true
+    });
+  };
+
+  const setMonthFilter = () => {
+    updateDateFilter({
+      startDate: currentMonth.start,
+      endDate: currentMonth.end,
+      enabled: true
+    });
+  };
+
+  const clearDateFilter = () => {
+    updateDateFilter({ enabled: false });
+  };
+
+  const getFilterDisplayText = () => {
+    if (!state.dateFilter.enabled) return 'All dates';
+
+    const formatLocalDate = (dateStr: string) => {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      return date.toLocaleDateString();
+    };
+
+    if (state.dateFilter.startDate === state.dateFilter.endDate &&
+      state.dateFilter.startDate === today) {
+      return 'Today only';
+    }
+
+    if (state.dateFilter.startDate === currentWeek.start &&
+      state.dateFilter.endDate === currentWeek.end) {
+      return 'This week';
+    }
+
+    if (state.dateFilter.startDate === currentMonth.start &&
+      state.dateFilter.endDate === currentMonth.end) {
+      return 'This month';
+    }
+
+    if (state.dateFilter.startDate === state.dateFilter.endDate) {
+      return formatLocalDate(state.dateFilter.startDate);
+    }
+
+    return `${formatLocalDate(state.dateFilter.startDate)} - ${formatLocalDate(state.dateFilter.endDate)}`;
+  };
+
   return {
     // Data
     completedTasks: filteredTasks,
@@ -148,7 +239,13 @@ export const useCompletedTasks = () => {
     handleUncompleteTask,
     handleDeleteTask,
 
-    // Utilities
-    refetch: () => { } // Context handles this
+    // Date filter functions
+    handleDateFilterChange,
+    toggleDateFilter,
+    resetDateFilter,
+    setWeekFilter,
+    setMonthFilter,
+    clearDateFilter,
+    getFilterDisplayText,
   };
 };

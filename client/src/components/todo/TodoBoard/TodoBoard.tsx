@@ -10,17 +10,10 @@ import { TodoBoardProps } from '../shared/types';
 import { useTodoMutations } from '../shared/hooks/useTodoMutations';
 import { DailyTaskToggle } from '@/components/todo/TodoBoard/components/DailyTaskToggle';
 import TaskCard from '../shared/components/TaskCard';
-import { combineAllTasks, } from '../shared';
-import { useQueryClient } from '@tanstack/react-query';
-import { TaskData } from '@/types/todoTypes';
 
 export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   const {
     sections,
-    filteredDailyTasks,
-    todayTasksWithRecurring,
-    filteredUpcomingTasks,
-    filteredUpcomingRecurringTasks,
     showAllDailyTasks,
     expandedTask,
     editModalOpen,
@@ -38,6 +31,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
     getDateRangeDisplay,
     getTimeRangeDisplay,
     deleteTask,
+    getAllCurrentTasks,
     isLoading,
     error,
   } = useTodoBoard();
@@ -45,52 +39,27 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   // Use shared mutations for all task operations
   const { toggleTaskFunction } = useTodoMutations();
 
-  const queryClient = useQueryClient();
-
   const handleTaskUpdated = () => {
-    // Handled by mutations in the hook
+    // Mutations will automatically invalidate and refetch
   };
 
-  // Use shared toggle function
+  // Simplified toggle function
   const toggleTask = (taskId: string) => {
     console.log('📋 TodoBoard: Toggling task', taskId);
 
-    // Find the task in current data
-    const allTasks = combineAllTasks(filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks);
-    const task = allTasks.find(t => t.id === taskId);
+    // Get fresh task data directly from the hook
+    const allCurrentTasks = getAllCurrentTasks();
+    const task = allCurrentTasks.find(t => t.id === taskId);
 
     if (!task) {
-      console.error('Task not found:', taskId);
+      console.error('Task not found:', taskId, 'Available tasks:', allCurrentTasks.map(t => t.id));
       return;
     }
 
     console.log('📋 Current task state:', task.completed);
 
-    // Call the mutation (this will handle the API call)
-    toggleTaskFunction(taskId, allTasks, isRecurringInstance);
-
-    // FORCE immediate cache update
-    queryClient.setQueryData(['recurring-todos', 'today'], (old: TaskData[] | undefined) => {
-      if (!old) return old;
-      return old.map(t => {
-        if (t.id === taskId) {
-          console.log('🔄 Manually updating task in cache:', taskId, 'to', !t.completed);
-          return { ...t, completed: !t.completed };
-        }
-        return t;
-      });
-    });
-
-    // Also update main todos cache if needed
-    queryClient.setQueryData(['todos'], (old: TaskData[] | undefined) => {
-      if (!old) return old;
-      return old.map(t => {
-        if (t.id === taskId || (taskId.includes('_') && t.id === taskId.split('_')[0])) {
-          return { ...t, completed: !t.completed };
-        }
-        return t;
-      });
-    });
+    // Call the mutation with fresh data - React Query will handle the rest!
+    toggleTaskFunction(taskId, allCurrentTasks, isRecurringInstance);
   };
 
   if (isLoading) {
@@ -127,7 +96,6 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                   </CardTitle>
 
                   <div className="flex items-center gap-2">
-                    {/* Add Task Sorting Component */}
                     <CompactTaskSorting
                       key={section.sectionKey}
                       tasks={section.tasks}
@@ -143,7 +111,6 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                       />
                     )}
 
-                    {/* Conditional rendering based on section */}
                     {section.sectionKey === 'upcoming' && (
                       <UpcomingDateFilter
                         onFilterChange={setUpcomingFilter}
@@ -155,7 +122,6 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
               </CardHeader>
 
               <CardContent className="flex-1">
-                {/* Task List */}
                 <div className="p-4">
                   {section.tasks.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
@@ -198,7 +164,6 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
         </div>
       </div>
 
-      {/* Edit Task Modal */}
       <EditTaskModal
         open={editModalOpen}
         onOpenChange={setEditModalOpen}

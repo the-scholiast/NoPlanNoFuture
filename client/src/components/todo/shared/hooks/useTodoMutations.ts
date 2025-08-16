@@ -3,28 +3,27 @@ import { todoApi } from '@/lib/api/todos';
 import { todoCompletionsApi } from '@/lib/api/todoCompletions';
 import { TaskData } from '@/types/todoTypes';
 import { getTodayString } from '@/lib/utils/dateUtils';
+import { transformTaskData } from '@/lib/api/transformers';
+import { todoKeys } from '@/lib/queryKeys';
 import { useDataRefresh } from './useDataRefresh';
-import { transformTaskData } from '@/lib/api/transformers'; 
 
 export const useTodoMutations = () => {
-  const { refreshAllData, refreshTodayData, refreshUpcomingData } = useDataRefresh();
   const queryClient = useQueryClient();
+  const { refreshAllData } = useDataRefresh()
 
-  // Convert toggleTask to a proper mutation with optimistic updates
+  // Toggle task mutation with optimistic updates
   const toggleTaskMutation = useMutation({
-    mutationFn: async ({ taskId, allTasks, isRecurringInstanceFn }: {
-      taskId: string;
-      allTasks: TaskData[];
-      isRecurringInstanceFn: (task: TaskData) => boolean;
-    }) => {
-      const task = allTasks.find(t => t.id === taskId);
-      if (!task) {
-        throw new Error(`Task not found: ${taskId}`);
-      }
-
+    mutationFn: async ({ taskId, allTasks }: { taskId: string; allTasks: TaskData[] }) => {
       const today = getTodayString();
       const originalTaskId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
       const isRecurringInstance = taskId.includes('_') && !taskId.endsWith('_recurring');
+
+      // Find task in the current data
+      const task = allTasks.find(t => t.id === taskId || (taskId.includes('_') && t.id === taskId.split('_')[0]));
+
+      if (!task) {
+        throw new Error(`Task not found: ${taskId}`);
+      }
 
       if (!task.completed) {
         // Marking as complete
@@ -34,9 +33,9 @@ export const useTodoMutations = () => {
           const updates: Partial<TaskData> = {
             completed: true,
             completed_at: new Date().toISOString(),
+            completion_count: (task.completion_count || 0) + 1,
           };
 
-          updates.completion_count = (task.completion_count || 0) + 1;
           if (task.section === 'daily') {
             updates.last_completed_date = today;
           }
@@ -62,34 +61,23 @@ export const useTodoMutations = () => {
     onMutate: async ({ taskId, allTasks }) => {
       console.log('⚡ OPTIMISTIC UPDATE START:', taskId);
 
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['todos'] });
-      await queryClient.cancelQueries({ queryKey: ['recurring-todos'] });
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: todoKeys.all });
+      await queryClient.cancelQueries({ queryKey: todoKeys.today });
+      await queryClient.cancelQueries({ queryKey: todoKeys.upcoming });
 
-      // Get current cache data first
-      const currentTodos = queryClient.getQueryData(['todos']) as TaskData[] | undefined;
-      const currentTodayRecurring = queryClient.getQueryData(['recurring-todos', 'today']) as TaskData[] | undefined;
-      const currentUpcomingRecurring = queryClient.getQueryData(['recurring-todos', 'upcoming']) as TaskData[] | undefined;
+      // Get current cache data
+      const currentTodos = queryClient.getQueryData(todoKeys.all) as TaskData[] | undefined;
+      const currentTodayRecurring = queryClient.getQueryData(todoKeys.today) as TaskData[] | undefined;
+      const currentUpcomingRecurring = queryClient.getQueryData(todoKeys.upcoming) as TaskData[] | undefined;
 
-      // Find task in cache (not in stale allTasks parameter)
-      const allCurrentTasks = [
-        ...(currentTodos || []),
-        ...(currentTodayRecurring || []),
-        ...(currentUpcomingRecurring || [])
-      ];
-
-      const task = allCurrentTasks.find(t => t.id === taskId || (taskId.includes('_') && t.id === taskId.split('_')[0]));
+      // Find task in provided data
+      const task = allTasks.find(t => t.id === taskId || (taskId.includes('_') && t.id === taskId.split('_')[0]));
 
       if (!task) {
         console.warn('Task not found for optimistic update:', taskId);
         return;
       }
-
-      console.log('🔍 Task state debug:', {
-        taskId,
-        currentCompleted: task.completed,
-        taskSource: 'CACHE (not parameter)'
-      });
 
       const newCompleted = !task.completed;
       console.log(`Optimistically updating ${taskId} to completed: ${newCompleted}`);
@@ -110,15 +98,15 @@ export const useTodoMutations = () => {
         });
       };
 
-      // Apply optimistic updates to each cache separately
+      // Apply optimistic updates to each cache
       if (currentTodos) {
-        queryClient.setQueryData(['todos'], updateTaskInArray(currentTodos));
+        queryClient.setQueryData(todoKeys.all, updateTaskInArray(currentTodos));
       }
       if (currentTodayRecurring) {
-        queryClient.setQueryData(['recurring-todos', 'today'], updateTaskInArray(currentTodayRecurring));
+        queryClient.setQueryData(todoKeys.today, updateTaskInArray(currentTodayRecurring));
       }
       if (currentUpcomingRecurring) {
-        queryClient.setQueryData(['recurring-todos', 'upcoming'], updateTaskInArray(currentUpcomingRecurring));
+        queryClient.setQueryData(todoKeys.upcoming, updateTaskInArray(currentUpcomingRecurring));
       }
 
       console.log('✅ OPTIMISTIC UPDATE COMPLETE');
@@ -134,17 +122,17 @@ export const useTodoMutations = () => {
     onError: (err, variables, context) => {
       console.log('❌ MUTATION ERROR - Rolling back optimistic update:', err);
       if (context?.previousTodos) {
-        queryClient.setQueryData(['todos'], context.previousTodos);
+        queryClient.setQueryData(todoKeys.all, context.previousTodos);
       }
       if (context?.previousTodayRecurring) {
-        queryClient.setQueryData(['recurring-todos', 'today'], context.previousTodayRecurring);
+        queryClient.setQueryData(todoKeys.today, context.previousTodayRecurring);
       }
       if (context?.previousUpcomingRecurring) {
-        queryClient.setQueryData(['recurring-todos', 'upcoming'], context.previousUpcomingRecurring);
+        queryClient.setQueryData(todoKeys.upcoming, context.previousUpcomingRecurring);
       }
     },
 
-    // Immediately refresh cache after mutation completes
+    // Refresh data after mutation completes
     onSuccess: () => {
       console.log('✅ TOGGLE TASK SUCCESS - Refreshing cache');
       refreshAllData();
@@ -155,7 +143,7 @@ export const useTodoMutations = () => {
   const createToggleTaskFunction = () => {
     return (taskId: string, allTasks: TaskData[], isRecurringInstanceFn: (task: TaskData) => boolean) => {
       console.log('🚀 TOGGLE TASK CALLED:', taskId);
-      toggleTaskMutation.mutate({ taskId, allTasks, isRecurringInstanceFn });
+      toggleTaskMutation.mutate({ taskId, allTasks });
     };
   };
 
@@ -177,26 +165,6 @@ export const useTodoMutations = () => {
       const originalTaskId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
       return todoApi.delete(originalTaskId);
     },
-    onSuccess: refreshAllData,
-  });
-
-  const clearCompletedMutation = useMutation({
-    mutationFn: (sectionKey: 'daily' | 'today' | 'upcoming') =>
-      todoApi.deleteCompleted(sectionKey),
-    onSuccess: (data, sectionKey) => {
-      if (sectionKey === 'today') {
-        refreshTodayData();
-      } else if (sectionKey === 'upcoming') {
-        refreshUpcomingData();
-      } else {
-        refreshAllData();
-      }
-    },
-  });
-
-  const clearAllMutation = useMutation({
-    mutationFn: (sectionKey: 'daily' | 'today' | 'upcoming') =>
-      todoApi.deleteAll(sectionKey),
     onSuccess: refreshAllData,
   });
 
@@ -240,20 +208,14 @@ export const useTodoMutations = () => {
   });
 
   return {
+    // Task operations
+    toggleTaskFunction: createToggleTaskFunction(),
     createTaskMutation,
     updateTaskMutation,
     deleteTaskMutation,
-    clearCompletedMutation,
-    clearAllMutation,
-    toggleTaskFunction: createToggleTaskFunction(),
-    toggleTaskMutation,
     uncompleteTaskMutation,
-    isLoading: createTaskMutation.isPending ||
-      updateTaskMutation.isPending ||
-      deleteTaskMutation.isPending ||
-      clearCompletedMutation.isPending ||
-      clearAllMutation.isPending ||
-      toggleTaskMutation.isPending ||
-      uncompleteTaskMutation.isPending,
+
+    // Utility
+    refreshAllData,
   };
 };

@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react';
-import { AlertCircle, ChevronDown, ChevronUp, X, Trash2, } from 'lucide-react';
+import { AlertCircle, ChevronDown, ChevronUp, X, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import { DateFilter } from '../shared/components/DateFilter';
 import { formatDate, formatTime, getPriorityColor, getSectionLabel } from '../shared/utils';
 
 export default function IncompleteTasks({ className }: IncompleteTasksProps) {
+  // All logic comes from the hook - component is just UI
   const {
     incompleteTasks,
     totalIncompleteTasks,
@@ -30,6 +31,7 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
     updateSortedTasks,
     handleCompleteTask,
     handleDeleteTask,
+    handleClearAllTasks,
   } = useIncompleteTasks();
 
   if (isLoading) {
@@ -52,8 +54,7 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
         <Card>
           <CardContent className="p-6">
             <div className="text-center text-destructive">
-              Error loading incomplete tasks: {error instanceof Error ?
-                error.message : 'Unknown error'}
+              Error loading incomplete tasks: {error}
             </div>
           </CardContent>
         </Card>
@@ -113,7 +114,7 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
               size="sm"
               onClick={() => {
                 if (window.confirm('Are you sure you want to delete all incomplete tasks? This action cannot be undone.')) {
-                  console.log('Clear all incomplete tasks');
+                  handleClearAllTasks();
                 }
               }}
               className="text-muted-foreground hover:text-destructive"

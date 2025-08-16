@@ -1,70 +1,83 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { TaskData } from '@/types/todoTypes';
-import { useTodo } from '@/contexts/TodoContext';
 import { useTodoMutations } from '../../shared/hooks';
 import { getTodayString } from '@/lib/utils/dateUtils';
+import { todoApi } from '@/lib/api/todos';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
+import { todoKeys } from '@/lib/queryKeys';
 import { TodoSection } from '../../shared/types';
 import { filterDailyTasksByDate, sortTasksByDateTimeAndCompletion, filterTasksByDateRange, sortDailyTasksTimeFirst } from '../../shared';
-import {
-  formatDate,
-  formatTime,
-  getDateRangeDisplay,
-  getTimeRangeDisplay,
-  isRecurringInstance,
-} from '../../shared';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { todoApi } from '@/lib/api/todos';
+import { formatDate, formatTime, getDateRangeDisplay, getTimeRangeDisplay, isRecurringInstance, } from '../../shared';
 
 // Business logic for the TodoBoard component
 export const useTodoBoard = () => {
-  const {
-    dailyTasks,                    // Recurring daily tasks from your database
-    upcomingTasks,                 // Regular upcoming tasks
-    error,                         // Any query errors
-  } = useTodo();
   const queryClient = useQueryClient();
-  const { data: allTasks = [], isLoading } = useQuery({
-    queryKey: ['todos'],
+
+  // Direct queries
+  const {
+    data: allTasks = [],
+    isLoading,
+    error,
+    refetch
+  } = useQuery({
+    queryKey: todoKeys.all,
     queryFn: todoApi.getAll,
-    staleTime: 1000,
   });
 
-  const { data: todayTasksWithRecurring = [], isLoading: isLoadingTodayRecurring } = useQuery({
-    queryKey: ['recurring-todos', 'today'],
+  const {
+    data: todayTasksWithRecurring = [],
+    isLoading: isLoadingTodayRecurring,
+    refetch: refetchTodayRecurring
+  } = useQuery({
+    queryKey: todoKeys.today,
     queryFn: recurringTodoApi.getTodayTasks,
-    staleTime: 0,
   });
 
-  const { data: upcomingTasksWithRecurring = [], isLoading: isLoadingUpcomingRecurring } = useQuery({
-    queryKey: ['recurring-todos', 'upcoming'],
+  const {
+    data: upcomingTasksWithRecurring = [],
+    isLoading: isLoadingUpcomingRecurring,
+    refetch: refetchUpcomingRecurring
+  } = useQuery({
+    queryKey: todoKeys.upcoming,
     queryFn: recurringTodoApi.getUpcomingTasks,
-    staleTime: 1000 * 60 * 5,
   });
-  const { deleteTaskMutation, } = useTodoMutations();
+
+  const { deleteTaskMutation } = useTodoMutations();
+
+  // Computed tasks from direct queries
+  const dailyTasks = useMemo(() =>
+    allTasks.filter(task => task.section === 'daily'),
+    [allTasks]
+  );
+
+  const upcomingTasks = useMemo(() => {
+    const today = getTodayString();
+    return allTasks.filter(task => {
+      if (task.section !== 'upcoming') return false;
+      if (task.is_recurring) return false;
+      return !task.start_date || task.start_date > today;
+    });
+  }, [allTasks]);
+
   // UI interaction states
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<TaskData | null>(null);
-  // Task sorting state when user manually sorts tasks
   const [sortedTasks, setSortedTasks] = useState<Record<string, TaskData[]>>({
     daily: [],
     today: [],
     upcoming: []
   });
-  // Task filtering states
   const [upcomingFilter, setUpcomingFilter] = useState({
     startDate: '',
     endDate: '',
     enabled: true
   });
-  // Toggle for daily tasks filtering
   const [showAllDailyTasks, setShowAllDailyTasks] = useState(false);
 
   // Get current date for filtering
-  const currentDate: string = useMemo(() => {
-    return getTodayString();
-  }, []);
+  const currentDate: string = useMemo(() => getTodayString(), []);
 
   // Get current day of week for recurring task filtering
   const currentDayOfWeek = useMemo(() => {
@@ -76,7 +89,7 @@ export const useTodoBoard = () => {
   // Filtered daily tasks logic
   const filteredDailyTasks = useMemo(() => {
     const filtered = filterDailyTasksByDate(dailyTasks, currentDate, showAllDailyTasks);
-    return sortDailyTasksTimeFirst(filtered); // Apply consistent start_time asc sorting
+    return sortDailyTasksTimeFirst(filtered);
   }, [dailyTasks, currentDate, currentDayOfWeek, showAllDailyTasks]);
 
   const filteredUpcomingTasks = useMemo(() => {
@@ -84,7 +97,6 @@ export const useTodoBoard = () => {
     return sortTasksByDateTimeAndCompletion(filtered);
   }, [upcomingTasks, upcomingFilter]);
 
-  // Filtered upcoming tasks with date filtering
   const filteredUpcomingRecurringTasks = useMemo(() => {
     const tasks = upcomingTasksWithRecurring.filter(task => task.section !== 'daily');
     const filtered = filterTasksByDateRange(tasks, upcomingFilter);
@@ -115,7 +127,7 @@ export const useTodoBoard = () => {
     }
   ], [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks, sortedTasks]);
 
-  // Only reset sorted tasks when the task IDs change (new/deleted tasks), not when completion status changes
+  // Reset sorted tasks when task IDs change
   useEffect(() => {
     const currentDailyIds = filteredDailyTasks.map(t => t.id).sort().join(',');
     const currentTodayIds = todayTasksWithRecurring.filter(task => task.section !== 'daily').map(t => t.id).sort().join(',');
@@ -129,7 +141,6 @@ export const useTodoBoard = () => {
       const prevTodayIds = prev.today.map(t => t.id).sort().join(',');
       const prevUpcomingIds = prev.upcoming.map(t => t.id).sort().join(',');
 
-      // If task IDs changed (new/deleted tasks), reset sorted arrays
       if (currentDailyIds !== prevDailyIds || currentTodayIds !== prevTodayIds || currentUpcomingIds !== prevUpcomingIds) {
         return {
           daily: [],
@@ -138,23 +149,14 @@ export const useTodoBoard = () => {
         };
       }
 
-      // If task IDs are the same but data might have changed, update with fresh data while preserving order
       const updateTasksArray = (sortedArray: TaskData[], freshTasks: TaskData[]) => {
         if (sortedArray.length === 0) return [];
-
-        // Create a map of fresh task data
         const freshTaskMap = new Map(freshTasks.map(task => [task.id, task]));
-
-        // Update sorted array with fresh data, maintaining order
         return sortedArray
-          .map(sortedTask => {
-            const freshTask = freshTaskMap.get(sortedTask.id);
-            return freshTask || sortedTask;
-          })
-          .filter(task => freshTaskMap.has(task.id)); // Remove deleted tasks
+          .map(sortedTask => freshTaskMap.get(sortedTask.id) || sortedTask)
+          .filter(task => freshTaskMap.has(task.id));
       };
 
-      // Only update if we have sorted tasks to preserve
       if (prev.daily.length > 0 || prev.today.length > 0 || prev.upcoming.length > 0) {
         return {
           daily: updateTasksArray(prev.daily, filteredDailyTasks),
@@ -166,7 +168,6 @@ export const useTodoBoard = () => {
         };
       }
 
-      // No change needed
       return prev;
     });
   }, [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks]);
@@ -183,24 +184,19 @@ export const useTodoBoard = () => {
     setExpandedTask(expandedTask === taskId ? null : taskId);
   };
 
-  // Ensures editing a recurring instance modifies the original task
   const openEditModal = (task: TaskData) => {
-    // Handle recurring task instances
     if (task.id.includes('_') && task.parent_task_id) {
-      // Create edit task with original ID for proper database updates
       const editTask = {
         ...task,
         id: task.parent_task_id || task.id.split('_')[0]
       };
       setTaskToEdit(editTask);
     } else {
-      // Regular task - edit as-is
       setTaskToEdit(task);
     }
     setEditModalOpen(true);
   };
 
-  // Allows users to manually reorder tasks within sections. Updates local state to override default ordering
   const handleTasksSort = (sectionKey: string, tasks: TaskData[]) => {
     setSortedTasks(prev => ({
       ...prev,
@@ -208,13 +204,33 @@ export const useTodoBoard = () => {
     }));
   };
 
-  // Loading state
-  const isAnyLoading = isLoading || isLoadingTodayRecurring || isLoadingUpcomingRecurring;
-
-  // Toggle function for daily tasks filter
   const toggleShowAllDailyTasks = () => {
     setShowAllDailyTasks(prev => !prev);
   };
+
+  // Invalidate cache functions for mutations
+  const invalidateTimetableCache = () => {
+    queryClient.invalidateQueries({ queryKey: todoKeys.timetable.tasks });
+    queryClient.invalidateQueries({ queryKey: todoKeys.timetable.allWeeks });
+  };
+
+  const refetchTimetable = (weekStartDate?: string) => {
+    if (weekStartDate) {
+      queryClient.invalidateQueries({ queryKey: todoKeys.timetable.week(weekStartDate) });
+    } else {
+      invalidateTimetableCache();
+    }
+  };
+
+  // Loading state
+  const isAnyLoading = isLoading || isLoadingTodayRecurring || isLoadingUpcomingRecurring;
+
+  // Create fresh task combination for mutations
+  const getAllCurrentTasks = () => [
+    ...allTasks,
+    ...todayTasksWithRecurring,
+    ...upcomingTasksWithRecurring
+  ];
 
   return {
     // Data
@@ -224,6 +240,7 @@ export const useTodoBoard = () => {
     upcomingTasksWithRecurring,
     filteredUpcomingTasks,
     filteredUpcomingRecurringTasks,
+    getAllCurrentTasks, 
 
     // State
     expandedTask,
@@ -242,6 +259,11 @@ export const useTodoBoard = () => {
     deleteTask,
     toggleTaskExpansion,
     toggleShowAllDailyTasks,
+    refetch,
+    refetchTodayRecurring,
+    refetchUpcomingRecurring,
+    invalidateTimetableCache,
+    refetchTimetable,
 
     // Helper functions
     formatDate,

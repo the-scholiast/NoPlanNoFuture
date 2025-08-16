@@ -1,14 +1,48 @@
-import { useState, useMemo, } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { IncompleteTasksState, IncompleteTaskWithOverdue } from '../types';
 import { DateFilterState } from '../../shared/types';
 import { getCurrentWeekStart, getCurrentWeekEnd } from '../../shared/utils';
 import { TaskData } from '@/types/todoTypes';
 import { getTodayString } from '@/lib/utils/dateUtils';
 import { useTodoMutations } from '../../shared/hooks/useTodoMutations';
-import { useTodo } from '@/contexts/TodoContext';
+import { todoApi } from '@/lib/api/todos';
+import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
+import { todoKeys } from '@/lib/queryKeys';
 import { combineAllTasks, isRecurringInstance } from '../../shared/utils';
 
 export const useIncompleteTasks = () => {
+  // Direct queries instead of context
+  const { data: allTasks = [], isLoading: isLoadingAll } = useQuery({
+    queryKey: todoKeys.all,
+    queryFn: todoApi.getAll,
+  });
+
+  const { data: todayTasksWithRecurring = [], isLoading: isLoadingToday } = useQuery({
+    queryKey: todoKeys.today,
+    queryFn: recurringTodoApi.getTodayTasks,
+  });
+
+  const { data: upcomingTasksWithRecurring = [], isLoading: isLoadingUpcoming } = useQuery({
+    queryKey: todoKeys.upcoming,
+    queryFn: recurringTodoApi.getUpcomingTasks,
+  });
+
+  // Compute derived data from queries
+  const dailyTasks = useMemo(() => 
+    allTasks.filter(task => task.section === 'daily'), 
+    [allTasks]
+  );
+
+  const upcomingTasks = useMemo(() => {
+    const today = getTodayString();
+    return allTasks.filter(task => {
+      if (task.section !== 'upcoming') return false;
+      if (task.is_recurring) return false;
+      return !task.start_date || task.start_date > today;
+    });
+  }, [allTasks]);
+
   const [state, setState] = useState<IncompleteTasksState>({
     expandedTask: null,
     isTasksExpanded: false,
@@ -20,15 +54,34 @@ export const useIncompleteTasks = () => {
       enabled: true
     }
   });
+
   const { toggleTaskFunction, deleteTaskMutation } = useTodoMutations();
-  const { dailyTasks, todayTasksWithRecurring, upcomingTasks, upcomingTasksWithRecurring, isLoading, error } = useTodo();
 
   // Calculate current date for overdue calculation
-  const currentDate = useMemo(() => {
-    return getTodayString()
+  const currentDate = useMemo(() => getTodayString(), []);
+
+  // Date helpers
+  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+  
+  const currentWeek = useMemo(() => ({
+    start: getCurrentWeekStart(),
+    end: getCurrentWeekEnd()
+  }), []);
+
+  const currentMonth = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    
+    return {
+      start: `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-${String(firstDay.getDate()).padStart(2, '0')}`,
+      end: `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`
+    };
   }, []);
 
-  const allTasksData = combineAllTasks(dailyTasks, todayTasksWithRecurring, upcomingTasks, upcomingTasksWithRecurring)
+  const allTasksData = combineAllTasks(dailyTasks, todayTasksWithRecurring, upcomingTasks, upcomingTasksWithRecurring);
 
   // Filter and transform tasks to show incomplete/overdue ones
   const processedIncompleteTasks = useMemo(() => {
@@ -79,7 +132,7 @@ export const useIncompleteTasks = () => {
           is_incomplete: true
         };
       });
-  }, [allTasksData, currentDate,]);
+  }, [allTasksData, currentDate]);
 
   // Apply search filter and date filter
   const filteredTasks = useMemo(() => {
@@ -122,9 +175,8 @@ export const useIncompleteTasks = () => {
       return dateA.localeCompare(dateB);
     });
 
-    // Use sorted tasks if manually sorted, otherwise use filtered
     return filtered;
-  }, [processedIncompleteTasks, state.searchQuery, state.dateFilter, state.sortedIncompleteTasks,]);
+  }, [processedIncompleteTasks, state.searchQuery, state.dateFilter]);
 
   // Action handlers
   const toggleTaskExpansion = (taskId: string) => {
@@ -182,6 +234,84 @@ export const useIncompleteTasks = () => {
     deleteTaskMutation.mutate(taskId);
   };
 
+  const handleClearAllTasks = () => {
+    // Delete all incomplete tasks
+    filteredTasks.forEach(task => {
+      deleteTaskMutation.mutate(task.id);
+    });
+  };
+
+  // Date filter helper functions
+  const handleDateFilterChange = (field: 'startDate' | 'endDate', value: string) => {
+    updateDateFilter({ [field]: value });
+  };
+
+  const toggleDateFilter = () => {
+    updateDateFilter({ enabled: !state.dateFilter.enabled });
+  };
+
+  const resetDateFilter = () => {
+    updateDateFilter({
+      startDate: today,
+      endDate: today,
+      enabled: true
+    });
+  };
+
+  const setWeekFilter = () => {
+    updateDateFilter({
+      startDate: currentWeek.start,
+      endDate: currentWeek.end,
+      enabled: true
+    });
+  };
+
+  const setMonthFilter = () => {
+    updateDateFilter({
+      startDate: currentMonth.start,
+      endDate: currentMonth.end,
+      enabled: true
+    });
+  };
+
+  const clearDateFilter = () => {
+    updateDateFilter({ enabled: false });
+  };
+
+  const getFilterDisplayText = () => {
+    if (!state.dateFilter.enabled) return 'All dates';
+
+    const formatLocalDate = (dateStr: string) => {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      return date.toLocaleDateString();
+    };
+
+    if (state.dateFilter.startDate === state.dateFilter.endDate &&
+      state.dateFilter.startDate === today) {
+      return 'Today only';
+    }
+
+    if (state.dateFilter.startDate === currentWeek.start &&
+      state.dateFilter.endDate === currentWeek.end) {
+      return 'This week';
+    }
+
+    if (state.dateFilter.startDate === currentMonth.start &&
+      state.dateFilter.endDate === currentMonth.end) {
+      return 'This month';
+    }
+
+    if (state.dateFilter.startDate === state.dateFilter.endDate) {
+      return formatLocalDate(state.dateFilter.startDate);
+    }
+
+    return `${formatLocalDate(state.dateFilter.startDate)} - ${formatLocalDate(state.dateFilter.endDate)}`;
+  };
+
+  // Combined loading state
+  const isLoading = isLoadingAll || isLoadingToday || isLoadingUpcoming;
+
   return {
     // Data
     incompleteTasks: filteredTasks,
@@ -195,7 +325,7 @@ export const useIncompleteTasks = () => {
 
     // Loading states
     isLoading,
-    error,
+    error: null, // Individual queries handle their own errors
 
     // Actions
     toggleTaskExpansion,
@@ -205,5 +335,15 @@ export const useIncompleteTasks = () => {
     updateSortedTasks,
     handleCompleteTask,
     handleDeleteTask,
+    handleClearAllTasks,
+
+    // Date filter functions
+    handleDateFilterChange,
+    toggleDateFilter,
+    resetDateFilter,
+    setWeekFilter,
+    setMonthFilter,
+    clearDateFilter,
+    getFilterDisplayText,
   };
 };
