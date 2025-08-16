@@ -29,7 +29,7 @@ export const useCompletedTasks = () => {
 
   // Date helpers
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
-  
+
   const currentWeek = useMemo(() => ({
     start: getCurrentWeekStart(),
     end: getCurrentWeekEnd()
@@ -41,7 +41,7 @@ export const useCompletedTasks = () => {
     const month = now.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    
+
     return {
       start: `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-${String(firstDay.getDate()).padStart(2, '0')}`,
       end: `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`
@@ -116,7 +116,9 @@ export const useCompletedTasks = () => {
   const updateSearchQuery = (query: string) => {
     setState(prev => ({
       ...prev,
-      searchQuery: query
+      searchQuery: query,
+      // Clear sorted tasks when search changes
+      sortedCompletedTasks: []
     }));
   };
 
@@ -224,8 +226,8 @@ export const useCompletedTasks = () => {
 
   return {
     // Data
-    completedTasks: filteredTasks,
-    totalCompletedTasks: filteredTasks.length,
+    completedTasks: state.sortedCompletedTasks.length > 0 ? state.sortedCompletedTasks : filteredTasks,
+    totalCompletedTasks: state.sortedCompletedTasks.length > 0 ? state.sortedCompletedTasks.length : filteredTasks.length,
 
     // State
     expandedTask: state.expandedTask,
