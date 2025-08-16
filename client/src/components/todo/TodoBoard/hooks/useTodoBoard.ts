@@ -82,46 +82,35 @@ export const useTodoBoard = () => {
   const upcomingTasksRef = useRef<TaskData[]>([]);
 
   useEffect(() => {
-    // Only update if daily tasks actually changed (not just refetched)
-    const tasksChanged = JSON.stringify(dailyTasksRef.current) !== JSON.stringify(filteredDailyTasks);
+  const dailyFiltered = filteredDailyTasks;
+  // Use the existing utility function that matches your original sorting logic
+  const todayFiltered = sortTasksByDateTimeAndCompletion(
+    todayTasksWithRecurring.filter(task => task.section !== 'daily')
+  );
+  const upcomingCombined = [
+    ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
+    ...filteredUpcomingRecurringTasks
+  ];
 
-    if (tasksChanged) {
-      dailyTasksRef.current = filteredDailyTasks;
-      setSortedTasks(prev => ({
-        ...prev,
-        daily: filteredDailyTasks
-      }));
-    }
-  }, [filteredDailyTasks, showAllDailyTasks]);
+  // Only update if any of the three sections actually changed
+  const dailyChanged = JSON.stringify(dailyTasksRef.current) !== JSON.stringify(dailyFiltered);
+  const todayChanged = JSON.stringify(todayTasksRef.current) !== JSON.stringify(todayFiltered);
+  const upcomingChanged = JSON.stringify(upcomingTasksRef.current) !== JSON.stringify(upcomingCombined);
 
-  useEffect(() => {
-    const todayFiltered = todayTasksWithRecurring.filter(task => task.section !== 'daily');
-    const tasksChanged = JSON.stringify(todayTasksRef.current) !== JSON.stringify(todayFiltered);
+  if (dailyChanged || todayChanged || upcomingChanged) {
+    // Update refs first to prevent re-triggering
+    dailyTasksRef.current = dailyFiltered;
+    todayTasksRef.current = todayFiltered;
+    upcomingTasksRef.current = upcomingCombined;
 
-    if (tasksChanged) {
-      todayTasksRef.current = todayFiltered;
-      setSortedTasks(prev => ({
-        ...prev,
-        today: todayFiltered
-      }));
-    }
-  }, [todayTasksWithRecurring]);
-
-  useEffect(() => {
-    const upcomingCombined = [
-      ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
-      ...filteredUpcomingRecurringTasks
-    ];
-    const tasksChanged = JSON.stringify(upcomingTasksRef.current) !== JSON.stringify(upcomingCombined);
-
-    if (tasksChanged) {
-      upcomingTasksRef.current = upcomingCombined;
-      setSortedTasks(prev => ({
-        ...prev,
-        upcoming: upcomingCombined
-      }));
-    }
-  }, [filteredUpcomingTasks, filteredUpcomingRecurringTasks]);
+    // Single state update for all sections
+    setSortedTasks({
+      daily: dailyFiltered,
+      today: todayFiltered,
+      upcoming: upcomingCombined
+    });
+  }
+}, [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks, showAllDailyTasks]);
 
 
   // Sections configuration
