@@ -47,7 +47,7 @@ export const useTodoBoard = () => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<TaskData | null>(null);
   // Task sorting state when user manually sorts tasks
-  const [sortedTasks, setSortedTasks] = useState<{ [key: string]: TaskData[] }>({
+  const [sortedTasks, setSortedTasks] = useState<Record<string, TaskData[]>>({
     daily: [],
     today: [],
     upcoming: []
@@ -96,24 +96,80 @@ export const useTodoBoard = () => {
     {
       title: "Daily Tasks",
       sectionKey: 'daily',
-      tasks: filteredDailyTasks, // Direct from React Query
+      tasks: sortedTasks.daily.length > 0 ? sortedTasks.daily : filteredDailyTasks,
     },
     {
       title: "Today",
       sectionKey: 'today',
-      tasks: sortTasksByDateTimeAndCompletion(
+      tasks: sortedTasks.today.length > 0 ? sortedTasks.today : sortTasksByDateTimeAndCompletion(
         todayTasksWithRecurring.filter(task => task.section !== 'daily')
-      ), // Direct from React Query
+      ),
     },
     {
       title: "Upcoming",
       sectionKey: 'upcoming',
-      tasks: [
+      tasks: sortedTasks.upcoming.length > 0 ? sortedTasks.upcoming : [
         ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
         ...filteredUpcomingRecurringTasks
-      ], // Direct from React Query
+      ],
     }
-  ], [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks]);
+  ], [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks, sortedTasks]);
+
+  // Only reset sorted tasks when the task IDs change (new/deleted tasks), not when completion status changes
+  useEffect(() => {
+    const currentDailyIds = filteredDailyTasks.map(t => t.id).sort().join(',');
+    const currentTodayIds = todayTasksWithRecurring.filter(task => task.section !== 'daily').map(t => t.id).sort().join(',');
+    const currentUpcomingIds = [
+      ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
+      ...filteredUpcomingRecurringTasks
+    ].map(t => t.id).sort().join(',');
+
+    setSortedTasks(prev => {
+      const prevDailyIds = prev.daily.map(t => t.id).sort().join(',');
+      const prevTodayIds = prev.today.map(t => t.id).sort().join(',');
+      const prevUpcomingIds = prev.upcoming.map(t => t.id).sort().join(',');
+
+      // If task IDs changed (new/deleted tasks), reset sorted arrays
+      if (currentDailyIds !== prevDailyIds || currentTodayIds !== prevTodayIds || currentUpcomingIds !== prevUpcomingIds) {
+        return {
+          daily: [],
+          today: [],
+          upcoming: []
+        };
+      }
+
+      // If task IDs are the same but data might have changed, update with fresh data while preserving order
+      const updateTasksArray = (sortedArray: TaskData[], freshTasks: TaskData[]) => {
+        if (sortedArray.length === 0) return [];
+
+        // Create a map of fresh task data
+        const freshTaskMap = new Map(freshTasks.map(task => [task.id, task]));
+
+        // Update sorted array with fresh data, maintaining order
+        return sortedArray
+          .map(sortedTask => {
+            const freshTask = freshTaskMap.get(sortedTask.id);
+            return freshTask || sortedTask;
+          })
+          .filter(task => freshTaskMap.has(task.id)); // Remove deleted tasks
+      };
+
+      // Only update if we have sorted tasks to preserve
+      if (prev.daily.length > 0 || prev.today.length > 0 || prev.upcoming.length > 0) {
+        return {
+          daily: updateTasksArray(prev.daily, filteredDailyTasks),
+          today: updateTasksArray(prev.today, todayTasksWithRecurring.filter(task => task.section !== 'daily')),
+          upcoming: updateTasksArray(prev.upcoming, [
+            ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
+            ...filteredUpcomingRecurringTasks
+          ])
+        };
+      }
+
+      // No change needed
+      return prev;
+    });
+  }, [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks]);
 
   const getRecurringPatternDisplay = (task: TaskData) => {
     return recurringTodoApi.getRecurringDescription(task);

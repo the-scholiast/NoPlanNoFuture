@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, } from 'react';
+import React, { useState, useRef} from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,6 +36,8 @@ export const CompactTaskSorting: React.FC<CompactTaskSortingProps> = ({
   defaultSort = { field: 'start_time', order: 'asc' }
 }) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>(defaultSort);
+    const lastTasksRef = useRef<string>('');
+  const lastSortConfigRef = useRef<string>('');
 
   // Simplified sorting logic using shared utilities
   const applySorting = (config: SortConfig) => {
@@ -54,10 +56,17 @@ export const CompactTaskSorting: React.FC<CompactTaskSortingProps> = ({
 
   // Apply sorting when needed
   React.useEffect(() => {
-    if (tasks.length > 0) {
+    const tasksSignature = tasks.map(t => `${t.id}-${t.completed}-${t.start_time}-${t.priority}`).join('|');
+    const sortConfigSignature = `${sortConfig.field}-${sortConfig.order}`;
+
+    // Only apply sorting if something actually changed
+    if (tasks.length > 0 && 
+        (tasksSignature !== lastTasksRef.current || sortConfigSignature !== lastSortConfigRef.current)) {
+      lastTasksRef.current = tasksSignature;
+      lastSortConfigRef.current = sortConfigSignature;
       applySorting(sortConfig);
     }
-  }, [tasks.map(t => t.id).join(',')]);
+  }, [tasks, sortConfig.field, sortConfig.order]);
 
   const handleSortChange = (field: SortField, order?: SortOrder) => {
     const newSortConfig = {
