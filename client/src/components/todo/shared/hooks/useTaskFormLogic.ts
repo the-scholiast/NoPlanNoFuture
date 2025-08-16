@@ -38,31 +38,21 @@ class TaskLogicHelper {
 
   private static applySectionLogic<T extends TaskFormData>(updatedTask: T, section: string): void {
     if (section === 'daily') {
-      // Daily tasks: automatically make recurring and select every day
       updatedTask.is_recurring = true;
       updatedTask.recurring_days = [...DAYS_OF_WEEK];
-      // Clear dates for daily tasks
-      updatedTask.start_date = '';
-      updatedTask.end_date = '';
     } else if (section === 'today') {
-      // Today tasks: set start date to current date, disable end date and recurring
-      updatedTask.start_date = getTodayString();
+      updatedTask.start_date = updatedTask.start_date || getTodayString();
       updatedTask.end_date = '';
       updatedTask.is_recurring = false;
       updatedTask.recurring_days = [];
     } else if (section === 'upcoming') {
-      // Upcoming tasks: disable recurring
       updatedTask.is_recurring = false;
       updatedTask.recurring_days = [];
-      // Clear start date if it's today's date
       if (updatedTask.start_date === getTodayString()) {
-        updatedTask.start_date = '';
+        updatedTask.start_date = updatedTask.start_date || '';
       }
     } else if (section === 'none') {
-      updatedTask.start_date = '';
       updatedTask.end_date = '';
-      updatedTask.start_time = '';
-      updatedTask.end_time = '';
       updatedTask.is_schedule = true;
     }
   }
