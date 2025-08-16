@@ -12,6 +12,7 @@ import { DailyTaskToggle } from '@/components/todo/TodoBoard/components/DailyTas
 import TaskCard from '../shared/components/TaskCard';
 import { combineAllTasks, } from '../shared';
 import { useQueryClient } from '@tanstack/react-query';
+import { TaskData } from '@/types/todoTypes';
 
 export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   const {
@@ -51,30 +52,46 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   };
 
   // Use shared toggle function
-  const toggleTask = async (taskId: string) => {
-  try {
+  const toggleTask = (taskId: string) => {
     console.log('📋 TodoBoard: Toggling task', taskId);
+
+    // Find the task in current data
     const allTasks = combineAllTasks(filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks);
-    await toggleTaskFunction(taskId, allTasks, isRecurringInstance);
-    
-    console.log('📋 TodoBoard: Task toggled, forcing CompletedTasks refresh...');
-    
-    // Force immediate refetch of completed tasks with multiple attempts
-    queryClient.refetchQueries({
-      predicate: (query) => query.queryKey[0] === 'completed-tasks'
-    });
-    
-    // Additional force refetch after a short delay to ensure completion records are saved
-    setTimeout(() => {
-      queryClient.refetchQueries({
-        predicate: (query) => query.queryKey[0] === 'completed-tasks'
+    const task = allTasks.find(t => t.id === taskId);
+
+    if (!task) {
+      console.error('Task not found:', taskId);
+      return;
+    }
+
+    console.log('📋 Current task state:', task.completed);
+
+    // Call the mutation (this will handle the API call)
+    toggleTaskFunction(taskId, allTasks, isRecurringInstance);
+
+    // FORCE immediate cache update
+    queryClient.setQueryData(['recurring-todos', 'today'], (old: TaskData[] | undefined) => {
+      if (!old) return old;
+      return old.map(t => {
+        if (t.id === taskId) {
+          console.log('🔄 Manually updating task in cache:', taskId, 'to', !t.completed);
+          return { ...t, completed: !t.completed };
+        }
+        return t;
       });
-    }, 200);
-    
-  } catch (error) {
-    console.error('TodoBoard: Error in toggleTask:', error);
-  }
-};
+    });
+
+    // Also update main todos cache if needed
+    queryClient.setQueryData(['todos'], (old: TaskData[] | undefined) => {
+      if (!old) return old;
+      return old.map(t => {
+        if (t.id === taskId || (taskId.includes('_') && t.id === taskId.split('_')[0])) {
+          return { ...t, completed: !t.completed };
+        }
+        return t;
+      });
+    });
+  };
 
   if (isLoading) {
     return (

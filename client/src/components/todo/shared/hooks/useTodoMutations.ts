@@ -4,6 +4,7 @@ import { todoCompletionsApi } from '@/lib/api/todoCompletions';
 import { TaskData } from '@/types/todoTypes';
 import { getTodayString } from '@/lib/utils/dateUtils';
 import { useDataRefresh } from './useDataRefresh';
+import { transformTaskData } from '@/lib/api/transformers'; 
 
 export const useTodoMutations = () => {
   const { refreshAllData, refreshTodayData, refreshUpcomingData } = useDataRefresh();
@@ -57,49 +58,79 @@ export const useTodoMutations = () => {
 
       return { taskId, originalTaskId, wasCompleted: task.completed };
     },
-    // ✅ OPTIMISTIC UPDATES - This is the key fix
+
     onMutate: async ({ taskId, allTasks }) => {
       console.log('⚡ OPTIMISTIC UPDATE START:', taskId);
-      
-      // Cancel outgoing refetches
+
+      // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['todos'] });
       await queryClient.cancelQueries({ queryKey: ['recurring-todos'] });
-      await queryClient.cancelQueries({ queryKey: ['completed-tasks-context'] });
 
-      // Snapshot previous values
-      const previousTodos = queryClient.getQueryData(['todos']);
-      const previousTodayRecurring = queryClient.getQueryData(['recurring-todos', 'today']);
-      const previousUpcomingRecurring = queryClient.getQueryData(['recurring-todos', 'upcoming']);
-      const previousCompleted = queryClient.getQueryData(['completed-tasks-context']);
+      // Get current cache data first
+      const currentTodos = queryClient.getQueryData(['todos']) as TaskData[] | undefined;
+      const currentTodayRecurring = queryClient.getQueryData(['recurring-todos', 'today']) as TaskData[] | undefined;
+      const currentUpcomingRecurring = queryClient.getQueryData(['recurring-todos', 'upcoming']) as TaskData[] | undefined;
 
-      // Find the task to update
-      const task = allTasks.find(t => t.id === taskId);
+      // Find task in cache (not in stale allTasks parameter)
+      const allCurrentTasks = [
+        ...(currentTodos || []),
+        ...(currentTodayRecurring || []),
+        ...(currentUpcomingRecurring || [])
+      ];
+
+      const task = allCurrentTasks.find(t => t.id === taskId || (taskId.includes('_') && t.id === taskId.split('_')[0]));
+
       if (!task) {
         console.warn('Task not found for optimistic update:', taskId);
-        return { previousTodos, previousTodayRecurring, previousUpcomingRecurring, previousCompleted };
+        return;
       }
+
+      console.log('🔍 Task state debug:', {
+        taskId,
+        currentCompleted: task.completed,
+        taskSource: 'CACHE (not parameter)'
+      });
 
       const newCompleted = !task.completed;
       console.log(`Optimistically updating ${taskId} to completed: ${newCompleted}`);
 
-      // Helper function to update task in cache
-      const updateTaskInCache = (cacheData: TaskData[] = []) =>
-        cacheData.map(t => {
+      // Helper function to update tasks
+      const updateTaskInArray = (tasks: TaskData[]): TaskData[] => {
+        return tasks.map(t => {
           if (t.id === taskId || (taskId.includes('_') && t.id === taskId.split('_')[0])) {
-            return { ...t, completed: newCompleted };
+            const updatedTask = {
+              ...t,
+              completed: newCompleted,
+              completed_at: newCompleted ? new Date().toISOString() : undefined
+            };
+            console.log('✅ Updating task:', t.id, 'from', t.completed, 'to', newCompleted);
+            return transformTaskData(updatedTask);
           }
           return t;
         });
+      };
 
-      // Optimistically update all relevant caches
-      queryClient.setQueryData(['todos'], updateTaskInCache);
-      queryClient.setQueryData(['recurring-todos', 'today'], updateTaskInCache);
-      queryClient.setQueryData(['recurring-todos', 'upcoming'], updateTaskInCache);
+      // Apply optimistic updates to each cache separately
+      if (currentTodos) {
+        queryClient.setQueryData(['todos'], updateTaskInArray(currentTodos));
+      }
+      if (currentTodayRecurring) {
+        queryClient.setQueryData(['recurring-todos', 'today'], updateTaskInArray(currentTodayRecurring));
+      }
+      if (currentUpcomingRecurring) {
+        queryClient.setQueryData(['recurring-todos', 'upcoming'], updateTaskInArray(currentUpcomingRecurring));
+      }
 
       console.log('✅ OPTIMISTIC UPDATE COMPLETE');
-      return { previousTodos, previousTodayRecurring, previousUpcomingRecurring, previousCompleted };
+
+      return {
+        previousTodos: currentTodos,
+        previousTodayRecurring: currentTodayRecurring,
+        previousUpcomingRecurring: currentUpcomingRecurring
+      };
     },
-    // On error, rollback
+
+    // Rollback on error
     onError: (err, variables, context) => {
       console.log('❌ MUTATION ERROR - Rolling back optimistic update:', err);
       if (context?.previousTodos) {
@@ -111,13 +142,11 @@ export const useTodoMutations = () => {
       if (context?.previousUpcomingRecurring) {
         queryClient.setQueryData(['recurring-todos', 'upcoming'], context.previousUpcomingRecurring);
       }
-      if (context?.previousCompleted) {
-        queryClient.setQueryData(['completed-tasks-context'], context.previousCompleted);
-      }
     },
-    // Always refetch after completion
-    onSettled: () => {
-      console.log('🔄 MUTATION SETTLED - Final cache refresh');
+
+    // Immediately refresh cache after mutation completes
+    onSuccess: () => {
+      console.log('✅ TOGGLE TASK SUCCESS - Refreshing cache');
       refreshAllData();
     },
   });

@@ -13,20 +13,34 @@ import {
   getTimeRangeDisplay,
   isRecurringInstance,
 } from '../../shared';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { todoApi } from '@/lib/api/todos';
 
 // Business logic for the TodoBoard component
 export const useTodoBoard = () => {
   const {
     dailyTasks,                    // Recurring daily tasks from your database
-    todayTasksWithRecurring,       // Today's tasks + recurring instances (from server-side generation)
-    upcomingTasksWithRecurring,    // Future recurring task instances (from server-side generation)
     upcomingTasks,                 // Regular upcoming tasks
-    isLoading,                     // Main tasks loading state
-    isLoadingTodayRecurring,       // Today's recurring tasks loading state
-    isLoadingUpcomingRecurring,    // Upcoming recurring tasks loading state
     error,                         // Any query errors
   } = useTodo();
+  const queryClient = useQueryClient();
+  const { data: allTasks = [], isLoading } = useQuery({
+    queryKey: ['todos'],
+    queryFn: todoApi.getAll,
+    staleTime: 1000,
+  });
 
+  const { data: todayTasksWithRecurring = [], isLoading: isLoadingTodayRecurring } = useQuery({
+    queryKey: ['recurring-todos', 'today'],
+    queryFn: recurringTodoApi.getTodayTasks,
+    staleTime: 0,
+  });
+
+  const { data: upcomingTasksWithRecurring = [], isLoading: isLoadingUpcomingRecurring } = useQuery({
+    queryKey: ['recurring-todos', 'upcoming'],
+    queryFn: recurringTodoApi.getUpcomingTasks,
+    staleTime: 1000 * 60 * 5,
+  });
   const { deleteTaskMutation, } = useTodoMutations();
   // UI interaction states
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
@@ -77,60 +91,29 @@ export const useTodoBoard = () => {
     return sortTasksByDateTimeAndCompletion(filtered);
   }, [upcomingTasksWithRecurring, upcomingFilter]);
 
-  const dailyTasksRef = useRef<TaskData[]>([]);
-  const todayTasksRef = useRef<TaskData[]>([]);
-  const upcomingTasksRef = useRef<TaskData[]>([]);
-
-  useEffect(() => {
-  const dailyFiltered = filteredDailyTasks;
-  // Use the existing utility function that matches your original sorting logic
-  const todayFiltered = sortTasksByDateTimeAndCompletion(
-    todayTasksWithRecurring.filter(task => task.section !== 'daily')
-  );
-  const upcomingCombined = [
-    ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
-    ...filteredUpcomingRecurringTasks
-  ];
-
-  // Only update if any of the three sections actually changed
-  const dailyChanged = JSON.stringify(dailyTasksRef.current) !== JSON.stringify(dailyFiltered);
-  const todayChanged = JSON.stringify(todayTasksRef.current) !== JSON.stringify(todayFiltered);
-  const upcomingChanged = JSON.stringify(upcomingTasksRef.current) !== JSON.stringify(upcomingCombined);
-
-  if (dailyChanged || todayChanged || upcomingChanged) {
-    // Update refs first to prevent re-triggering
-    dailyTasksRef.current = dailyFiltered;
-    todayTasksRef.current = todayFiltered;
-    upcomingTasksRef.current = upcomingCombined;
-
-    // Single state update for all sections
-    setSortedTasks({
-      daily: dailyFiltered,
-      today: todayFiltered,
-      upcoming: upcomingCombined
-    });
-  }
-}, [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks, showAllDailyTasks]);
-
-
   // Sections configuration
-  const sections: TodoSection[] = [
+  const sections: TodoSection[] = useMemo(() => [
     {
       title: "Daily Tasks",
       sectionKey: 'daily',
-      tasks: sortedTasks.daily,
+      tasks: filteredDailyTasks, // Direct from React Query
     },
     {
       title: "Today",
       sectionKey: 'today',
-      tasks: sortedTasks.today,
+      tasks: sortTasksByDateTimeAndCompletion(
+        todayTasksWithRecurring.filter(task => task.section !== 'daily')
+      ), // Direct from React Query
     },
     {
       title: "Upcoming",
       sectionKey: 'upcoming',
-      tasks: sortedTasks.upcoming,
+      tasks: [
+        ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
+        ...filteredUpcomingRecurringTasks
+      ], // Direct from React Query
     }
-  ];
+  ], [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks]);
 
   const getRecurringPatternDisplay = (task: TaskData) => {
     return recurringTodoApi.getRecurringDescription(task);

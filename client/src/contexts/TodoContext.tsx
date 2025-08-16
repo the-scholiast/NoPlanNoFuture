@@ -68,10 +68,10 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
   } = useQuery({
     queryKey: ['recurring-todos', 'today'],
     queryFn: recurringTodoApi.getTodayTasks,
-    staleTime: 0,
+    staleTime: 1000,
     refetchOnWindowFocus: true,
     // Only fetch if we have loaded the main tasks
-    enabled: !isLoading && allTasks.length >= 0,
+    enabled: !isLoading,
   });
 
   // Query for upcoming tasks with recurring instances (from server)
@@ -85,7 +85,7 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
     staleTime: 1000 * 60 * 5, // 5 minutes
     refetchOnWindowFocus: true,
     // Only fetch if we have loaded the main tasks
-    enabled: !isLoading && allTasks.length >= 0,
+    enabled: !isLoading,
   });
 
   // Query for completed tasks
@@ -96,7 +96,7 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
   } = useQuery({
     queryKey: ['completed-tasks-context'],
     queryFn: () => todoCompletionsApi.getCompletedTasks(),
-    staleTime: 0, // Always consider stale for immediate updates
+    staleTime: 1000 * 30,
     refetchOnWindowFocus: true,
     refetchInterval: false,
   });
@@ -161,6 +161,45 @@ export const TodoProvider: React.FC<TodoProviderProps> = ({ children }) => {
 
     return () => clearInterval(interval);
   }, [refetch, refetchTodayRecurring, refetchUpcomingRecurring, refetchCompletedTasks]);
+
+  useEffect(() => {
+    // Force initial data population
+    const populateCache = async () => {
+      try {
+        console.log('🔄 Forcing initial cache population...');
+
+        // Force immediate query execution
+        await queryClient.fetchQuery({
+          queryKey: ['todos'],
+          queryFn: todoApi.getAll,
+          staleTime: 0,
+        });
+
+        await queryClient.fetchQuery({
+          queryKey: ['recurring-todos', 'today'],
+          queryFn: recurringTodoApi.getTodayTasks,
+          staleTime: 0,
+        });
+
+        console.log('✅ Initial cache population complete');
+
+        // Verify cache after population
+        const todosCache = queryClient.getQueryData(['todos']) as TaskData[] | undefined;
+        const todayCache = queryClient.getQueryData(['recurring-todos', 'today']) as TaskData[] | undefined;
+
+        console.log('📊 Cache after forced population:', {
+          todos: todosCache?.length || 0,
+          todayRecurring: todayCache?.length || 0
+        });
+
+      } catch (error) {
+        console.error('❌ Error forcing cache population:', error);
+      }
+    };
+
+    // Run immediately when component mounts
+    populateCache();
+  }, [queryClient]);
 
   const value: TodoContextType = {
     allTasks,
