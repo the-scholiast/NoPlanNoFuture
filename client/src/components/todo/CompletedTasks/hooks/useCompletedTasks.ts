@@ -215,6 +215,13 @@ export const useCompletedTasks = () => {
     return `${formatLocalDate(state.dateFilter.startDate)} - ${formatLocalDate(state.dateFilter.endDate)}`;
   };
 
+  const handleClearAllTasks = () => {
+    // Delete all incomplete tasks
+    filteredTasks.forEach(task => {
+      deleteTaskMutation.mutate(task.id);
+    });
+  };
+
   return {
     // Data
     completedTasks: filteredTasks,
@@ -238,6 +245,7 @@ export const useCompletedTasks = () => {
     updateSortedTasks,
     handleUncompleteTask,
     handleDeleteTask,
+    handleClearAllTasks,
 
     // Date filter functions
     handleDateFilterChange,
