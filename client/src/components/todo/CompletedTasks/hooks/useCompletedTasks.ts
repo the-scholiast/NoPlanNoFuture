@@ -1,12 +1,13 @@
 import { useState, useMemo, } from 'react';
 import { CompletedTasksState, DateFilterState, CompletedTaskWithCompletion } from '../../shared/types';
-import { useCompletedTasksMutations } from '../../shared/hooks/useCompletedTasksMutations';
 import { getCurrentWeekStart, getCurrentWeekEnd } from '../../shared/utils';
+import { useTodoMutations } from '../../shared/hooks/useTodoMutations';
 import { useTodo } from '@/contexts/TodoContext';
 
 export const useCompletedTasks = () => {
   const { completedTasks, isLoadingCompletedTasks: isLoading, error } = useTodo();
-  // Component state
+  const { deleteTaskMutation, uncompleteTaskMutation } = useTodoMutations();
+
   const [state, setState] = useState<CompletedTasksState>({
     expandedTask: null,
     isTasksExpanded: false,
@@ -73,9 +74,6 @@ export const useCompletedTasks = () => {
 
     return result;
   }, [processedCompletedTasks, state.searchQuery, state.dateFilter, state.sortedCompletedTasks,]);
-
-  // Get mutations
-  const { uncompleteTaskMutation, deleteTaskMutation } = useCompletedTasksMutations();
 
   // Action handlers
   const toggleTaskExpansion = (completionId: string) => {

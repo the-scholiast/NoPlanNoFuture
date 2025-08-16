@@ -1,11 +1,12 @@
 import { useState, useMemo, } from 'react';
 import { IncompleteTasksState, IncompleteTaskWithOverdue } from '../types';
 import { DateFilterState } from '../../shared/types';
-import { useIncompleteTasksMutations } from '../../shared/hooks/useIncompleteTasksMutations';
 import { getCurrentWeekStart, getCurrentWeekEnd } from '../../shared/utils';
 import { TaskData } from '@/types/todoTypes';
 import { getTodayString } from '@/lib/utils/dateUtils';
+import { useTodoMutations } from '../../shared/hooks/useTodoMutations';
 import { useTodo } from '@/contexts/TodoContext';
+import { combineAllTasks, isRecurringInstance } from '../../shared/utils';
 
 export const useIncompleteTasks = () => {
   const [state, setState] = useState<IncompleteTasksState>({
@@ -19,13 +20,15 @@ export const useIncompleteTasks = () => {
       enabled: true
     }
   });
-  const { completeTaskMutation, deleteTaskMutation } = useIncompleteTasksMutations();
-  const { allTasks: allTasksData, isLoading, error } = useTodo();
+  const { toggleTaskFunction, deleteTaskMutation } = useTodoMutations();
+  const { dailyTasks, todayTasksWithRecurring, upcomingTasks, upcomingTasksWithRecurring, isLoading, error } = useTodo();
 
   // Calculate current date for overdue calculation
   const currentDate = useMemo(() => {
     return getTodayString()
   }, []);
+
+  const allTasksData = combineAllTasks(dailyTasks, todayTasksWithRecurring, upcomingTasks, upcomingTasksWithRecurring)
 
   // Filter and transform tasks to show incomplete/overdue ones
   const processedIncompleteTasks = useMemo(() => {
@@ -76,7 +79,7 @@ export const useIncompleteTasks = () => {
           is_incomplete: true
         };
       });
-  }, [allTasksData, currentDate, ]);
+  }, [allTasksData, currentDate,]);
 
   // Apply search filter and date filter
   const filteredTasks = useMemo(() => {
@@ -121,7 +124,7 @@ export const useIncompleteTasks = () => {
 
     // Use sorted tasks if manually sorted, otherwise use filtered
     return filtered;
-  }, [processedIncompleteTasks, state.searchQuery, state.dateFilter, state.sortedIncompleteTasks, ]);
+  }, [processedIncompleteTasks, state.searchQuery, state.dateFilter, state.sortedIncompleteTasks,]);
 
   // Action handlers
   const toggleTaskExpansion = (taskId: string) => {
@@ -165,7 +168,14 @@ export const useIncompleteTasks = () => {
   };
 
   const handleCompleteTask = (taskId: string) => {
-    completeTaskMutation.mutate(taskId);
+    // Get all tasks for the toggle function
+    const allTasks = combineAllTasks(
+      dailyTasks,
+      todayTasksWithRecurring,
+      upcomingTasks,
+      upcomingTasksWithRecurring
+    );
+    toggleTaskFunction(taskId, allTasks, isRecurringInstance);
   };
 
   const handleDeleteTask = (taskId: string) => {
