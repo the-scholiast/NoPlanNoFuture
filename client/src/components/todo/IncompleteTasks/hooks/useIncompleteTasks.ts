@@ -83,19 +83,24 @@ export const useIncompleteTasks = () => {
 
   const allTasksData = combineAllTasks(dailyTasks, todayTasksWithRecurring, upcomingTasks, upcomingTasksWithRecurring);
 
-  // Filter and transform tasks to show incomplete/overdue ones
-  const processedIncompleteTasks = useMemo(() => {
+  // Process incomplete tasks from all sources
+  const processedIncompleteTasks = useMemo((): IncompleteTaskWithOverdue[] => {
+    const currentDate = getTodayString();
+    const allTasksData = [...allTasks, ...todayTasksWithRecurring, ...upcomingTasksWithRecurring];
+
     return allTasksData
       .filter((task: TaskData) => {
-        // Skip completed or deleted tasks
-        if (task.completed || task.deleted_at) return false;
+        // Skip completed tasks
+        if (task.completed) return false;
 
-        // Check if task is incomplete based on date criteria
+        // Skip original recurring tasks to avoid duplicates with instances**
+        if (task.is_recurring && !task.id.includes('_')) {
+          return false;
+        }
+
+        // Rest of existing logic...
         const startDate = task.start_date;
         const endDate = task.end_date;
-
-        // If no dates, not considered incomplete
-        if (!startDate && !endDate) return false;
 
         // Case 1: Has start_date but no end_date - incomplete if start_date < current_date
         if (startDate && !endDate) {
