@@ -39,6 +39,10 @@ export interface AddTaskModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAddTasks: (tasks: TaskData[]) => void;
+  preFilledData?: {
+    selectedDate?: string; 
+    selectedTime?: string; 
+  };
 }
 
 export interface InternalTaskData {

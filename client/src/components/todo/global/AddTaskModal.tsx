@@ -1,15 +1,15 @@
 "use client"
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AddTaskModalProps, TaskData, CreateTaskData } from '@/types/todoTypes';
 import { transformCreateTaskData } from '@/lib/api/transformers';
-import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField, } from '../shared/';
+import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField, TaskFormData, } from '../shared/';
 import { useMultiTaskFormLogic, validateMultipleTasks, useTodoMutations } from '../shared/';
 
-export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTaskModalProps) {
+export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilledData }: AddTaskModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,10 +20,35 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
     removeTask,
     updateTask,
     getTaskHelpers,
-    resetTasks
+    resetTasks,
+    initializeWithData
   } = useMultiTaskFormLogic();
 
   const { createTaskMutation } = useTodoMutations();
+
+  // Add helper function to convert time slot format
+  const convertTimeSlotTo24Hour = (timeSlot: string): string => {
+    const [time, period] = timeSlot.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+
+    if (period === 'AM' && hours === 12) hours = 0;
+    if (period === 'PM' && hours !== 12) hours += 12;
+
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  };
+
+  // Add helper function to calculate end time (30 minutes later)
+  const calculateEndTime = (startTime: string): string => {
+    const startTime24 = convertTimeSlotTo24Hour(startTime);
+    const [hours, minutes] = startTime24.split(':').map(Number);
+    const startMinutes = hours * 60 + minutes;
+    const endMinutes = startMinutes + 30;
+
+    const endHours = Math.floor(endMinutes / 60);
+    const endMins = endMinutes % 60;
+
+    return `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+  };
 
   // Handle applying tasks
   const handleApply = async () => {
@@ -69,6 +94,31 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks }: AddTask
     setError(null);
     onOpenChange(false);
   };
+
+  useEffect(() => {
+    if (open && preFilledData) {
+      // Create initial task with pre-filled data
+      const initialTaskData = {
+        title: '',
+        section: 'none' as const,
+        priority: 'low' as const,
+        description: '',
+        start_date: preFilledData.selectedDate || '',
+        end_date: preFilledData.selectedDate || '',
+        start_time: preFilledData.selectedTime ? convertTimeSlotTo24Hour(preFilledData.selectedTime) : '',
+        end_time: preFilledData.selectedTime ? calculateEndTime(preFilledData.selectedTime) : '',
+        is_recurring: false,
+        recurring_days: [],
+        is_schedule: true, // Set to true since we're setting specific times
+      };
+
+      // Initialize the first task with pre-filled data
+      initializeWithData(initialTaskData);
+    } else if (open && !preFilledData) {
+      // Reset to default when opening without pre-filled data
+      resetTasks();
+    }
+  }, [open, preFilledData, initializeWithData, resetTasks]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

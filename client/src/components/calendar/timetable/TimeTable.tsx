@@ -35,7 +35,10 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<TaskData | null>(null);
 
-  const [conflictResolution, setConflictResolution] = useState<'stack' | 'side-by-side' | 'indicator'>('side-by-side');
+  const [preFilledData, setPreFilledData] = useState<{
+    selectedDate?: string;
+    selectedTime?: string;
+  } | undefined>(undefined);
 
   // Add after line 100 (after other helper functions)
   const detectTimeConflicts = (dayIndex: number, weekDates: Date[]) => {
@@ -567,6 +570,15 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
   const handleEmptySlotClick = (dayIndex: number, timeSlot: string) => {
     if (!weekDates || weekDates.length === 0) return;
 
+    // Format the selected date and time for pre-filling
+    const selectedDate = formatDateForTask(weekDates[dayIndex]);
+    const selectedTime = timeSlot;
+
+    setPreFilledData({
+      selectedDate,
+      selectedTime
+    });
+
     setAddModalOpen(true);
   };
 
@@ -714,8 +726,14 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
 
       <AddTaskModal
         open={addModalOpen}
-        onOpenChange={setAddModalOpen}
+        onOpenChange={(open) => {
+          setAddModalOpen(open);
+          if (!open) {
+            setPreFilledData(undefined);
+          }
+        }}
         onAddTasks={handleAddTasks}
+        preFilledData={preFilledData}
       />
     </div>
   )

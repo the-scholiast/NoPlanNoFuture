@@ -299,6 +299,15 @@ export function useMultiTaskFormLogic() {
     setTasks([resetTask]);
   };
 
+  const initializeWithData = (initialData: Partial<TaskFormData>) => {
+    const initialTask = {
+      ...placeholderTask,
+      ...initialData,
+      id: '1',
+    };
+    setTasks([initialTask]);
+  };
+
   return {
     tasks,
     setTasks,
@@ -307,6 +316,7 @@ export function useMultiTaskFormLogic() {
     updateTask,
     getTaskHelpers,
     resetTasks,
-    placeholderTask
+    placeholderTask,
+    initializeWithData
   };
 }
