@@ -23,6 +23,11 @@ export const useDataRefresh = () => {
         return isCompletedTasks;
       }
     });
+
+    queryClient.invalidateQueries({
+      queryKey: ['timetable-week'],
+      exact: false
+    });
   };
 
   const refreshTodayData = () => {
@@ -33,6 +38,10 @@ export const useDataRefresh = () => {
         return query.queryKey[0] === 'completed-tasks' || query.queryKey[0] === 'completed-tasks-context';
       }
     });
+    queryClient.invalidateQueries({
+      queryKey: ['timetable-week'],
+      exact: false
+    });
   };
 
   const refreshUpcomingData = () => {
@@ -42,6 +51,10 @@ export const useDataRefresh = () => {
       predicate: (query) => {
         return query.queryKey[0] === 'completed-tasks' || query.queryKey[0] === 'completed-tasks-context';
       }
+    });
+    queryClient.invalidateQueries({
+      queryKey: ['timetable-week'],
+      exact: false
     });
   };
 
