@@ -153,7 +153,7 @@ class TaskHelpers {
       },
 
       isEndDateDisabled: (): boolean => {
-        return task.section === 'today';
+        return task.section === 'today' || task.section === 'upcoming' || (task.section === 'none' && !task.is_recurring);
       },
 
       isRecurringDisabled: (): boolean => {

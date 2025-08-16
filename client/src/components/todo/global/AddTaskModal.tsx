@@ -197,7 +197,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilled
                   task={task}
                   updateField={(field, value) => updateTask(task.id, field, value)}
                   isSubmitting={isSubmitting}
-                  isEndDateDisabled={task.section === 'today'}
+                  isEndDateDisabled={task.section === 'today' || (task.section === 'none' && !task.is_recurring) || task.section === 'upcoming'}
                   getMinEndDate={() => taskHelpers.getMinEndDate()}
                   handleEndDateBlur={(value) => taskHelpers.handleEndDateBlur(value)}
                 />
@@ -208,6 +208,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilled
                   updateField={(field, value) => updateTask(task.id, field, value)}
                   isSubmitting={isSubmitting}
                   fieldPrefix={`-${task.id}`}
+                  forceChecked={task.section === 'none'}
                 />
               </div>
             );

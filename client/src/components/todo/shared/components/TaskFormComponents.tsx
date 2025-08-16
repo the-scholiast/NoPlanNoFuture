@@ -270,16 +270,20 @@ interface ScheduleFieldProps {
   updateField: (field: keyof TaskFormData, value: any) => void;
   isSubmitting: boolean;
   fieldPrefix?: string;
+  forceChecked?: boolean;
 }
 
-export function ScheduleField({ task, updateField, isSubmitting, fieldPrefix = '' }: ScheduleFieldProps) {
+export function ScheduleField({ task, updateField, isSubmitting, fieldPrefix = '', forceChecked = false  }: ScheduleFieldProps) {
+  const isChecked = forceChecked || task.is_schedule || false;
+  const isDisabled = forceChecked || isSubmitting;
+
   return (
     <div className="flex items-center gap-2">
       <Checkbox
         id={`schedule${fieldPrefix}`}
-        checked={task.is_schedule || false}
-        onCheckedChange={(checked) => updateField('is_schedule', checked === true)}
-        disabled={isSubmitting}
+        checked={isChecked}
+        onCheckedChange={forceChecked ? () => {} : (checked) => updateField('is_schedule', checked === true)}
+        disabled={isDisabled}
       />
       <Label htmlFor={`schedule${fieldPrefix}`} className="text-sm font-medium">
         Add to calendar/timetable

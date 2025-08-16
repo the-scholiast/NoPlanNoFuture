@@ -199,6 +199,7 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
               updateField={updateField}
               isSubmitting={isSubmitting}
               fieldPrefix="-edit"
+              forceChecked={task.section === 'none'}
             />
           </div>
         </div>
