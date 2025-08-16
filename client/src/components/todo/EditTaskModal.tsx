@@ -1,5 +1,3 @@
-"use client"
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -7,12 +5,53 @@ import { TaskData, EditTaskModalProps } from '@/types/todoTypes';
 import { updateTaskData, transformTaskFormDataBackend } from '@/lib/api/transformers';
 import { useTodoMutations, useTaskFormLogic, validateEditTask } from './shared/';
 import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField } from './shared/';
+import { TaskFormData } from './shared/components'; 
 
 export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated }: EditTaskModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const { updateTaskMutation } = useTodoMutations();
+
+  // Helper function to determine if this is a recurring task instance
+  const isRecurringInstance = (task: TaskData): boolean => {
+    return !!(task.parent_task_id && task.id.includes('_'));
+  };
+
+  // Helper function to get original task data for recurring instances
+  const getOriginalTaskData = (task: TaskData): TaskFormData => {
+    if (isRecurringInstance(task)) {
+      // For recurring instances, don't use the instance_date as start_date instead, use the original task's start_date
+      return {
+        title: task.title || '',
+        section: task.section || 'daily',
+        priority: task.priority || 'low',
+        description: task.description || '',
+        start_date: '', // Don't inherit instance_date for recurring tasks
+        end_date: task.end_date || '',
+        start_time: task.start_time || '',
+        end_time: task.end_time || '',
+        is_recurring: task.is_recurring || false,
+        recurring_days: task.recurring_days || [],
+        is_schedule: task.is_schedule || false,
+      };
+    } else {
+      // For regular tasks, use all the original data
+      return {
+        title: task.title || '',
+        section: task.section || 'daily',
+        priority: task.priority || 'low',
+        description: task.description || '',
+        start_date: task.start_date || '',
+        end_date: task.end_date || '',
+        start_time: task.start_time || '',
+        end_time: task.end_time || '',
+        is_recurring: task.is_recurring || false,
+        recurring_days: task.recurring_days || [],
+        is_schedule: task.is_schedule || false,
+      };
+    }
+  };
 
   // Use shared hook for task logic
   const {
@@ -29,19 +68,8 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
   // Reset form when task changes or modal opens
   useEffect(() => {
     if (task && open) {
-      setEditableTask({
-        title: task.title || '',
-        section: task.section || 'daily',
-        priority: task.priority || 'low',
-        description: task.description || '',
-        start_date: task.start_date || '',
-        end_date: task.end_date || '',
-        start_time: task.start_time || '',
-        end_time: task.end_time || '',
-        is_recurring: task.is_recurring || false,
-        recurring_days: task.recurring_days || [],
-        is_schedule: task.is_schedule || false,
-      });
+      const taskData = getOriginalTaskData(task);
+      setEditableTask(taskData);
       setError(null);
     }
   }, [task, open, setEditableTask]);
@@ -74,13 +102,17 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
         };
       }
 
+      // Determine which task ID to update
+      const taskIdToUpdate = isRecurringInstance(task) ? task.parent_task_id! : task.id;
+
       // Prepare updates (only send fields that actually have values)
       const updates = updateTaskData(taskDataToUpdate);
 
+      console.log('Updating task ID:', taskIdToUpdate);
       console.log('Sending updates to backend:', updates);
 
       // Use the shared mutation instead of direct API call
-      await updateTaskMutation.mutateAsync({ id: task.id, updates });
+      await updateTaskMutation.mutateAsync({ id: taskIdToUpdate, updates });
 
       // Notify parent component
       onTaskUpdated();
@@ -105,75 +137,78 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle>Edit Task</DialogTitle>
-            {editableTask.is_recurring && (
-              <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full">
-                Recurring: {getRecurringDescription()}
-              </span>
-            )}
-          </div>
+          <DialogTitle>Edit Task</DialogTitle>
         </DialogHeader>
 
         {error && (
-          <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md">
+          <div className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 text-sm p-3 rounded-md whitespace-pre-line">
             {error}
           </div>
         )}
 
         <div className="space-y-4">
-          {/* Basic task fields */}
-          <TaskBasicFields
-            task={editableTask}
-            updateField={updateField}
-            isSubmitting={isSubmitting}
-          />
+          {/* Task Container */}
+          <div className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800 space-y-4">
+            {/* Header Row with Task Label */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium">Edit Task</span>
+                {editableTask.is_recurring && (
+                  <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full">
+                    Recurring: {getRecurringDescription()}
+                  </span>
+                )}
+              </div>
+            </div>
 
-          {/* Recurring Section */}
-          <RecurringSection
-            task={editableTask}
-            updateField={updateField}
-            isSubmitting={isSubmitting}
-            fieldPrefix="-edit"
-            showRecurringToggle={true} // Always show toggle in edit modal
-            shouldShowSection={editableTask.section === 'daily' || editableTask.section === 'none'}
-            toggleDay={toggleDay}
-            toggleEveryDay={toggleEveryDay}
-            isEveryDaySelected={isEveryDaySelected}
-            isDaySelected={isDaySelected}
-            getRecurringDescription={getRecurringDescription}
-          />
+            {/* Basic Task Fields */}
+            <TaskBasicFields
+              task={editableTask}
+              updateField={updateField}
+              isSubmitting={isSubmitting}
+              fieldPrefix="-edit"
+            />
 
-          {/* Date and Time Fields */}
-          <DateTimeFields
-            task={editableTask}
-            updateField={updateField}
-            isSubmitting={isSubmitting}
-          />
+            {/* Recurring Section */}
+            <RecurringSection
+              task={editableTask}
+              updateField={updateField}
+              isSubmitting={isSubmitting}
+              fieldPrefix="-edit"
+              showRecurringToggle={editableTask.section === 'none'} // Show toggle for none
+              shouldShowSection={editableTask.section === 'daily' || editableTask.section === 'none'}
+              toggleDay={toggleDay}
+              toggleEveryDay={toggleEveryDay}
+              isEveryDaySelected={isEveryDaySelected}
+              isDaySelected={isDaySelected}
+              getRecurringDescription={getRecurringDescription}
+            />
 
-          {/* Schedule Field */}
-          <ScheduleField
-            task={editableTask}
-            updateField={updateField}
-            isSubmitting={isSubmitting}
-          />
+            {/* Date and Time Fields */}
+            <DateTimeFields
+              task={editableTask}
+              updateField={updateField}
+              isSubmitting={isSubmitting}
+            />
+
+            {/* Schedule Field */}
+            <ScheduleField
+              task={editableTask}
+              updateField={updateField}
+              isSubmitting={isSubmitting}
+              fieldPrefix="-edit"
+            />
+          </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <Button
-            variant="outline"
-            onClick={handleCancel}
-            disabled={isSubmitting}
-          >
+        {/* Modal Actions */}
+        <div className="flex justify-end gap-2 pt-4">
+          <Button variant="outline" onClick={handleCancel} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button
-            onClick={handleSave}
-            disabled={isSubmitting}
-          >
+          <Button onClick={handleSave} disabled={isSubmitting}>
             {isSubmitting ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
