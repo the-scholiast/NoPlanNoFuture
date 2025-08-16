@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -95,30 +95,33 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilled
     onOpenChange(false);
   };
 
+  // Initialize with pre-filled data
   useEffect(() => {
-    if (open && preFilledData) {
-      // Create initial task with pre-filled data
-      const initialTaskData = {
-        title: '',
-        section: 'none' as const,
-        priority: 'low' as const,
-        description: '',
-        start_date: preFilledData.selectedDate || '',
-        end_date: preFilledData.selectedDate || '',
-        start_time: preFilledData.selectedTime ? convertTimeSlotTo24Hour(preFilledData.selectedTime) : '',
-        end_time: preFilledData.selectedTime ? calculateEndTime(preFilledData.selectedTime) : '',
-        is_recurring: false,
-        recurring_days: [],
-        is_schedule: true, // Set to true since we're setting specific times
-      };
+    if (!open || !preFilledData) return;
 
-      // Initialize the first task with pre-filled data
-      initializeWithData(initialTaskData);
-    } else if (open && !preFilledData) {
-      // Reset to default when opening without pre-filled data
-      resetTasks();
-    }
-  }, [open, preFilledData, initializeWithData, resetTasks]);
+    const initialTaskData = {
+      title: '',
+      section: 'none' as const,
+      priority: 'low' as const,
+      description: '',
+      start_date: preFilledData.selectedDate || '',
+      end_date: '',
+      start_time: preFilledData.selectedTime ? convertTimeSlotTo24Hour(preFilledData.selectedTime) : '',
+      end_time: preFilledData.selectedTime ? calculateEndTime(preFilledData.selectedTime) : '',
+      is_recurring: false,
+      recurring_days: [],
+      is_schedule: true,
+    };
+
+    initializeWithData(initialTaskData);
+  }, [open, preFilledData?.selectedDate, preFilledData?.selectedTime]);
+
+  // Reset when opening without pre-filled data  
+  useEffect(() => {
+    if (!open || preFilledData) return;
+
+    resetTasks();
+  }, [open, preFilledData]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
