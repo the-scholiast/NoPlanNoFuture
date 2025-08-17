@@ -7,7 +7,7 @@ import { todoApi } from '@/lib/api/todos';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { todoKeys } from '@/lib/queryKeys';
 import { TodoSection } from '../../shared/types';
-import { filterDailyTasksByDate, sortTasksByDateTimeAndCompletion, filterTasksByDateRange, sortDailyTasksTimeFirst } from '../../shared';
+import { filterDailyTasksByDate, filterTasksByDateRange, sortTasksTimeFirst } from '../../shared';
 import { formatDate, formatTime, getDateRangeDisplay, getTimeRangeDisplay, isRecurringInstance, } from '../../shared';
 
 // Business logic for the TodoBoard component
@@ -98,18 +98,18 @@ export const useTodoBoard = () => {
   // Filtered daily tasks logic
   const filteredDailyTasks = useMemo(() => {
     const filtered = filterDailyTasksByDate(dailyTasks, currentDate, showAllDailyTasks);
-    return sortDailyTasksTimeFirst(filtered);
+    return sortTasksTimeFirst(filtered);
   }, [dailyTasks, currentDate, currentDayOfWeek, showAllDailyTasks]);
 
   const filteredUpcomingTasks = useMemo(() => {
     const filtered = filterTasksByDateRange(upcomingTasks, upcomingFilter);
-    return sortTasksByDateTimeAndCompletion(filtered);
+    return sortTasksTimeFirst(filtered);
   }, [upcomingTasks, upcomingFilter]);
 
   const filteredUpcomingRecurringTasks = useMemo(() => {
     const tasks = upcomingTasksWithRecurring.filter(task => task.section !== 'daily');
     const filtered = filterTasksByDateRange(tasks, upcomingFilter);
-    return sortTasksByDateTimeAndCompletion(filtered);
+    return sortTasksTimeFirst(filtered);
   }, [upcomingTasksWithRecurring, upcomingFilter]);
 
   // Sections configuration
@@ -122,7 +122,7 @@ export const useTodoBoard = () => {
     {
       title: "Today",
       sectionKey: 'today',
-      tasks: sortedTasks.today.length > 0 ? sortedTasks.today : sortTasksByDateTimeAndCompletion(
+      tasks: sortedTasks.today.length > 0 ? sortedTasks.today : sortTasksTimeFirst(
         todayTasksWithRecurring.filter(task => task.section !== 'daily' && task.section !== 'none')
       ),
     },
