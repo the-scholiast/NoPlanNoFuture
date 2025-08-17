@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { TaskData } from '@/types/todoTypes';
 import { useTodoMutations } from '../../shared/hooks';
@@ -136,7 +136,17 @@ export const useTodoBoard = () => {
     }
   ], [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks, sortedTasks]);
 
-  // Reset sorted tasks when task IDs change
+  // Reset sorted tasks when task IDs change - use useRef to prevent infinite loops
+  const previousTaskIds = useRef<{
+    daily: string;
+    today: string;
+    upcoming: string;
+  }>({
+    daily: '',
+    today: '',
+    upcoming: ''
+  });
+
   useEffect(() => {
     const currentDailyIds = filteredDailyTasks.map(t => t.id).sort().join(',');
     const currentTodayIds = todayTasksWithRecurring.filter(task => task.section !== 'daily' && task.section !== 'none').map(t => t.id).sort().join(',');
@@ -145,42 +155,25 @@ export const useTodoBoard = () => {
       ...filteredUpcomingRecurringTasks
     ].map(t => t.id).sort().join(',');
 
-    setSortedTasks(prev => {
-      const prevDailyIds = prev.daily.map(t => t.id).sort().join(',');
-      const prevTodayIds = prev.today.map(t => t.id).sort().join(',');
-      const prevUpcomingIds = prev.upcoming.map(t => t.id).sort().join(',');
-
-      if (currentDailyIds !== prevDailyIds || currentTodayIds !== prevTodayIds || currentUpcomingIds !== prevUpcomingIds) {
-        return {
-          daily: [],
-          today: [],
-          upcoming: []
-        };
-      }
-
-      const updateTasksArray = (sortedArray: TaskData[], freshTasks: TaskData[]) => {
-        if (sortedArray.length === 0) return [];
-        const freshTaskMap = new Map(freshTasks.map(task => [task.id, task]));
-        return sortedArray
-          .map(sortedTask => freshTaskMap.get(sortedTask.id) || sortedTask)
-          .filter(task => freshTaskMap.has(task.id));
+    // Only update if task IDs actually changed
+    if (
+      currentDailyIds !== previousTaskIds.current.daily ||
+      currentTodayIds !== previousTaskIds.current.today ||
+      currentUpcomingIds !== previousTaskIds.current.upcoming
+    ) {
+      previousTaskIds.current = {
+        daily: currentDailyIds,
+        today: currentTodayIds,
+        upcoming: currentUpcomingIds
       };
 
-      if (prev.daily.length > 0 || prev.today.length > 0 || prev.upcoming.length > 0) {
-        return {
-          daily: updateTasksArray(prev.daily, filteredDailyTasks),
-          today: updateTasksArray(prev.today, todayTasksWithRecurring.filter(task => task.section !== 'daily' && task.section !== 'none')),
-          upcoming: updateTasksArray(prev.upcoming, [
-            ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
-            ...filteredUpcomingRecurringTasks
-          ])
-        };
-      }
-
-      return prev;
-    });
+      setSortedTasks({
+        daily: [],
+        today: [],
+        upcoming: []
+      });
+    }
   }, [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks]);
-
   const getRecurringPatternDisplay = (task: TaskData) => {
     return recurringTodoApi.getRecurringDescription(task);
   };
