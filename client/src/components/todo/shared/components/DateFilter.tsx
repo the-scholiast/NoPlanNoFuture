@@ -9,16 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { getTodayString, formatDateString } from '@/lib/utils/dateUtils';
 import { formatLocalDate } from '../utils';
-
-export interface DateFilterState {
-  startDate: string;
-  endDate: string;
-  enabled: boolean;
-}
+import { DateRangeFilter } from '../types';
 
 interface DateFilterProps {
-  dateFilter: DateFilterState;
-  onFilterChange: (filter: Partial<DateFilterState>) => void;
+  dateFilter: DateRangeFilter;
+  onFilterChange: (filter: Partial<DateRangeFilter>) => void;
   className?: string;
 }
 
