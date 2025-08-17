@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useRef} from 'react';
+import React, { useState, useRef } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -44,11 +44,11 @@ export const CompactTaskSorting = <T extends TaskData = TaskData>({
     let sortedTasks: T[];
 
     if (config.field === 'start_time') {
-      // Use the same time-first logic as Daily section
-      sortedTasks = sortTasksTimeFirst([...tasks], config.order) as T[];
+      // Use the generic time-first logic
+      sortedTasks = sortTasksTimeFirst(tasks, config.order);
     } else {
       // Use generic field sorting for other fields
-      sortedTasks = sortTasksByField([...tasks], config.field, config.order) as T[];
+      sortedTasks = sortTasksByField(tasks, config.field, config.order);
     }
 
     onTasksChange(sortedTasks);
@@ -61,7 +61,7 @@ export const CompactTaskSorting = <T extends TaskData = TaskData>({
     };
 
     setSortConfig(newSortConfig);
-    
+
     // If onSortChange prop is provided, use it instead of applySorting
     if (onSortChange) {
       onSortChange(newSortConfig.field, newSortConfig.order);
