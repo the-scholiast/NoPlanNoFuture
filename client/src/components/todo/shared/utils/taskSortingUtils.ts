@@ -109,10 +109,6 @@ export const sortTasksTimeFirst = <T extends TaskData>(tasks: T[], order: 'asc' 
 // Generic sorting function for different fields
 export const sortTasksByField = <T extends TaskData>(tasks: T[], field: string, order: 'asc' | 'desc' = 'asc'): T[] => {
   return tasks.sort((a, b) => {
-    // Always sort by completion first
-    if (a.completed !== b.completed) {
-      return a.completed ? 1 : -1;
-    }
 
     let comparison = 0;
 
