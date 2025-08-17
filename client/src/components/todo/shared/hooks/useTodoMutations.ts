@@ -245,37 +245,37 @@ export const useTodoMutations = () => {
   });
 
   const completeTaskMutation = useMutation({
-  mutationFn: async ({ 
-    taskId, 
-    instanceDate 
-  }: { 
-    taskId: string; 
-    instanceDate?: string; // Optional - defaults to today
-  }) => {
-    const task = await todoApi.get(taskId);
-    if (!task) throw new Error('Task not found');
+    mutationFn: async ({
+      taskId,
+      instanceDate
+    }: {
+      taskId: string;
+      instanceDate?: string; // Optional - defaults to today
+    }) => {
+      const task = await todoApi.get(taskId);
+      if (!task) throw new Error('Task not found');
 
-    const today = getTodayString();
-    const now = getTodayString();
-    const useDate = instanceDate || today; // Use provided date or default to today
-    const originalTaskId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
+      const today = getTodayString();
+      const now = getTodayString();
+      const useDate = instanceDate || today; // Use provided date or default to today
+      const originalTaskId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
 
-    await todoCompletionsApi.createCompletion(originalTaskId, useDate);
+      await todoCompletionsApi.createCompletion(originalTaskId, useDate);
 
-    const updates: Partial<TaskData> = {
-      completed: true,
-      completed_at: now,
-      completion_count: (task.completion_count || 0) + 1,
-    };
+      const updates: Partial<TaskData> = {
+        completed: true,
+        completed_at: now,
+        completion_count: (task.completion_count || 0) + 1,
+      };
 
-    if (task.section === 'daily') {
-      updates.last_completed_date = useDate;
-    }
+      if (task.section === 'daily') {
+        updates.last_completed_date = useDate;
+      }
 
-    return todoApi.update(taskId, updates);
-  },
-  onSuccess: refreshAllData,
-});
+      return todoApi.update(taskId, updates);
+    },
+    onSuccess: refreshAllData,
+  });
 
   const bulkDeleteCompletionsMutation = useMutation({
     mutationFn: async (completionIds: string[]) => {
@@ -323,8 +323,8 @@ export const useTodoMutations = () => {
     updateTaskMutation,
     deleteTaskMutation,
     uncompleteTaskMutation,
-    completeTaskMutation, 
-    bulkDeleteCompletionsMutation, 
+    completeTaskMutation,
+    bulkDeleteCompletionsMutation,
 
     // Utility
     refreshAllData,
