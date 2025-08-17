@@ -78,3 +78,32 @@ export const filterTasksByDateRange = (tasks: TaskData[], filter: DateRangeFilte
     return taskDateObj >= startDateObj && taskDateObj <= endDateObj;
   });
 };
+
+export const applySearchFilter = <T extends { title: string; description?: string }>(
+  tasks: T[],
+  searchQuery: string
+): T[] => {
+  if (!searchQuery.trim()) return tasks;
+  
+  const query = searchQuery.toLowerCase();
+  return tasks.filter(task =>
+    task.title.toLowerCase().includes(query) ||
+    task.description?.toLowerCase().includes(query)
+  );
+};
+
+export const applyDateFilter = <T extends Record<string, any>>(
+  tasks: T[],
+  dateFilter: DateRangeFilter,
+  getDateField: (task: T) => string | null | undefined
+): T[] => {
+  if (!dateFilter.enabled || tasks.length === 0) return tasks;
+
+  return tasks.filter(task => {
+    const dateValue = getDateField(task);
+    if (!dateValue) return false;
+
+    const dateStr = dateValue.includes('T') ? dateValue.split('T')[0] : dateValue;
+    return dateStr >= dateFilter.startDate && dateStr <= dateFilter.endDate;
+  });
+};

@@ -1,4 +1,3 @@
-import { parseToLocalDate } from "@/lib/utils/dateUtils";
 import { TaskData } from "@/types/todoTypes";
 
 export const hasDateTime = (task: TaskData) => !!(task.start_date || task.start_time || task.end_date || task.end_time);
@@ -6,9 +5,7 @@ export const hasDateTime = (task: TaskData) => !!(task.start_date || task.start_
 export const getTimeInMinutes = (timeString?: string): number => {
   if (!timeString) return 0;
 
-  // Handle both "HH:MM" and "H:MM AM/PM" formats
   if (timeString.includes('AM') || timeString.includes('PM')) {
-    // Parse 12-hour format like "8:00 AM"
     const [time, period] = timeString.split(' ');
     const [hours, minutes] = time.split(':').map(Number);
     let hour24 = hours;
@@ -21,7 +18,6 @@ export const getTimeInMinutes = (timeString?: string): number => {
 
     return hour24 * 60 + (minutes || 0);
   } else {
-    // Parse 24-hour format like "08:00"
     const [hours, minutes] = timeString.split(':').map(Number);
     return (hours || 0) * 60 + (minutes || 0);
   }
@@ -41,7 +37,7 @@ export const getPriorityWeight = (priority?: string): number => {
   }
 };
 
-export const getDateTimeComparison = (task1: TaskData, task2: TaskData): number => {
+export const getDateTimeComparison = <T extends TaskData>(task1: T, task2: T): number => {
   const date1 = getDateObject(task1.start_date);
   const date2 = getDateObject(task2.start_date);
 
@@ -70,7 +66,7 @@ export const getDateTimeComparison = (task1: TaskData, task2: TaskData): number 
 };
 
 // Core sorting algorithm that matches Daily section behavior
-export const sortTasksTimeFirst = (tasks: TaskData[], order: 'asc' | 'desc' = 'asc') => {
+export const sortTasksTimeFirst = <T extends TaskData>(tasks: T[], order: 'asc' | 'desc' = 'asc'): T[] => {
   return tasks.sort((a, b) => {
     // First, sort by completion status (incomplete tasks first)
     if (a.completed !== b.completed) {
@@ -111,7 +107,7 @@ export const sortTasksTimeFirst = (tasks: TaskData[], order: 'asc' | 'desc' = 'a
 };
 
 // Generic sorting function for different fields
-export const sortTasksByField = (tasks: TaskData[], field: string, order: 'asc' | 'desc' = 'asc') => {
+export const sortTasksByField = <T extends TaskData>(tasks: T[], field: string, order: 'asc' | 'desc' = 'asc'): T[] => {
   return tasks.sort((a, b) => {
     // Always sort by completion first
     if (a.completed !== b.completed) {
@@ -149,7 +145,3 @@ export const sortTasksByField = (tasks: TaskData[], field: string, order: 'asc' 
     return order === 'asc' ? comparison : -comparison;
   });
 };
-
-// Legacy functions for backward compatibility
-export const sortDailyTasksTimeFirst = (tasks: TaskData[]) => sortTasksTimeFirst(tasks, 'asc');
-export const sortTasksByDateTimeAndCompletion = (tasks: TaskData[]) => sortTasksTimeFirst(tasks, 'asc');
