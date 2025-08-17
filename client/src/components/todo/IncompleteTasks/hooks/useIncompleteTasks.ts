@@ -1,19 +1,19 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useMemo, } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { IncompleteTasksState, IncompleteTaskWithOverdue } from '../types';
-import { DateRangeFilter } from '../../shared/types';
-import { getCurrentWeekStart, getCurrentWeekEnd } from '../../shared/utils';
+import { IncompleteTaskWithOverdue } from '../types';
 import { TaskData } from '@/types/todoTypes';
 import { getTodayString } from '@/lib/utils/dateUtils';
-import { todoApi, } from '@/lib/api/todos';
+import { todoApi } from '@/lib/api/todos';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { todoKeys } from '@/lib/queryKeys';
 import { useTodoMutations } from '../../shared';
-import { sortTasksTimeFirst, sortTasksByField } from '../../shared/utils/taskSortingUtils';
+import { useDateFilter, useTaskState, useTaskSorting } from '../../shared/hooks/';
+import { applySearchFilter, applyDateFilter } from '../../shared/utils/';
 
 export const useIncompleteTasks = () => {
   const queryClient = useQueryClient();
   const { completeTaskMutation, deleteTaskMutation } = useTodoMutations();
+
   // Direct queries instead of context
   const { data: allTasks = [], isLoading: isLoadingAll } = useQuery({
     queryKey: todoKeys.all,
@@ -30,101 +30,50 @@ export const useIncompleteTasks = () => {
     queryFn: recurringTodoApi.getUpcomingTasks,
   });
 
-  // Compute derived data from queries
-  const dailyTasks = useMemo(() =>
-    allTasks.filter(task => task.section === 'daily'),
-    [allTasks]
-  );
+  // Use shared hooks
+  const {
+    dateFilter,
+    updateDateFilter,
+    handleDateFilterChange,
+    toggleDateFilter,
+    resetDateFilter,
+    setWeekFilter,
+    setMonthFilter,
+    clearDateFilter,
+    getFilterDisplayText,
+  } = useDateFilter();
 
-  const upcomingTasks = useMemo(() => {
-    const today = getTodayString();
-    return allTasks.filter(task => {
-      if (task.section !== 'upcoming') return false;
-      if (task.is_recurring) return false;
-      return !task.start_date || task.start_date > today;
-    });
-  }, [allTasks]);
+  const {
+    state,
+    toggleTaskExpansion,
+    toggleTasksExpansion,
+    updateSearchQuery,
+    updateSortedTasks,
+  } = useTaskState<IncompleteTaskWithOverdue>();
 
-  const [state, setState] = useState<IncompleteTasksState>({
-    expandedTask: null,
-    isTasksExpanded: false,
-    sortedIncompleteTasks: [],
-    searchQuery: '',
-    dateFilter: {
-      startDate: getCurrentWeekStart(),
-      endDate: getCurrentWeekEnd(),
-      enabled: true
-    }
-  });
+  const { setSortConfiguration, applySorting } = useTaskSorting<IncompleteTaskWithOverdue>();
 
-  // Sort configuration state
-  const [sortConfig, setSortConfig] = useState<{ field: string, order: 'asc' | 'desc' } | null>(null);
-
-  // Calculate current date for overdue calculation
-  const currentDate = useMemo(() => getTodayString(), []);
-
-  // Date helpers
-  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
-
-  const currentWeek = useMemo(() => ({
-    start: getCurrentWeekStart(),
-    end: getCurrentWeekEnd()
-  }), []);
-
-  const currentMonth = useMemo(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-
-    return {
-      start: `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-${String(firstDay.getDate()).padStart(2, '0')}`,
-      end: `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`
-    };
-  }, []);
-
-  // Process incomplete tasks from all sources
+  // Process incomplete tasks from all sources (existing logic)
   const processedIncompleteTasks = useMemo((): IncompleteTaskWithOverdue[] => {
     const currentDate = getTodayString();
     const allTasksData = [...allTasks, ...todayTasksWithRecurring, ...upcomingTasksWithRecurring];
 
     return allTasksData
       .filter((task: TaskData) => {
-        // Skip completed tasks
         if (task.completed) return false;
-
-        // Skip tasks that have been completed before (completion_count > 0)
         if (task.completion_count && task.completion_count > 0) return false;
+        if (task.is_recurring && !task.id.includes('_')) return false;
 
-        // Skip original recurring tasks to avoid duplicates with instances
-        if (task.is_recurring && !task.id.includes('_')) {
-          return false;
-        }
-
-        // Rest of existing logic...
         const startDate = task.start_date;
         const endDate = task.end_date;
 
-        // Case 1: Has start_date but no end_date - incomplete if start_date < current_date
-        if (startDate && !endDate) {
-          return startDate < currentDate;
-        }
-
-        // Case 2: Has both start_date and end_date - incomplete if both < current_date
-        if (startDate && endDate) {
-          return endDate < currentDate;
-        }
-
-        // Case 3: Has end_date but no start_date - incomplete if end_date < current_date
-        if (!startDate && endDate) {
-          return endDate < currentDate;
-        }
+        if (startDate && !endDate) return startDate < currentDate;
+        if (startDate && endDate) return endDate < currentDate;
+        if (!startDate && endDate) return endDate < currentDate;
 
         return false;
       })
       .map((task: TaskData): IncompleteTaskWithOverdue => {
-        // Calculate overdue days
         let overdueDays = 0;
         const relevantDate = task.end_date || task.start_date;
 
@@ -143,50 +92,27 @@ export const useIncompleteTasks = () => {
       });
   }, [allTasks, todayTasksWithRecurring, upcomingTasksWithRecurring]);
 
-  // Apply search filter and sorting
+  // Apply filtering and sorting
   const filteredTasks = useMemo(() => {
     let filtered = processedIncompleteTasks;
 
-    // Search filter
-    if (state.searchQuery.trim()) {
-      const query = state.searchQuery.toLowerCase();
-      filtered = filtered.filter(task =>
-        task.title.toLowerCase().includes(query) ||
-        task.description?.toLowerCase().includes(query)
-      );
-    }
+    // Apply search filter
+    filtered = applySearchFilter(filtered, state.searchQuery);
 
-    // Apply date filter if enabled
-    if (state.dateFilter.enabled && filtered.length > 0) {
-      filtered = filtered.filter(task => {
-        // Filter based on the task's relevant date (end_date or start_date)
-        const relevantDate = task.end_date || task.start_date;
-        if (!relevantDate) return false;
+    // Apply date filter
+    filtered = applyDateFilter(filtered, dateFilter, (task) =>
+      task.end_date || task.start_date
+    );
 
-        const taskDateStr = relevantDate.includes('T') ?
-          relevantDate.split('T')[0] : relevantDate;
+    // Apply sorting
+    filtered = applySorting(filtered);
 
-        return taskDateStr >= state.dateFilter.startDate &&
-          taskDateStr <= state.dateFilter.endDate;
-      });
-    }
-
-    // Apply sorting if configured
-    if (sortConfig) {
-      if (sortConfig.field === 'start_time') {
-        filtered = sortTasksTimeFirst([...filtered], sortConfig.order) as IncompleteTaskWithOverdue[];
-      } else {
-        filtered = sortTasksByField([...filtered], sortConfig.field, sortConfig.order) as IncompleteTaskWithOverdue[];
-      }
-    } else {
-      // Default sort by overdue days (most overdue first), then by date
+    // Default sort if no custom sorting
+    if (!filtered.length) {
       filtered.sort((a, b) => {
-        // First sort by overdue days (descending)
         if (a.overdueDays !== b.overdueDays) {
           return b.overdueDays - a.overdueDays;
         }
-
-        // Then sort by relevant date (earliest first)
         const dateA = a.end_date || a.start_date || '';
         const dateB = b.end_date || b.start_date || '';
         return dateA.localeCompare(dateB);
@@ -194,53 +120,9 @@ export const useIncompleteTasks = () => {
     }
 
     return filtered;
-  }, [processedIncompleteTasks, state.searchQuery, state.dateFilter, sortConfig]);
+  }, [processedIncompleteTasks, state.searchQuery, dateFilter, applySorting]);
 
   // Action handlers
-  const toggleTaskExpansion = (taskId: string) => {
-    setState(prev => ({
-      ...prev,
-      expandedTask: prev.expandedTask === taskId ? null : taskId
-    }));
-  };
-
-  const toggleTasksExpansion = () => {
-    setState(prev => ({
-      ...prev,
-      isTasksExpanded: !prev.isTasksExpanded
-    }));
-  };
-
-  const updateSearchQuery = (query: string) => {
-    setState(prev => ({
-      ...prev,
-      searchQuery: query,
-      // Clear sorted tasks when search changes
-      sortedIncompleteTasks: []
-    }));
-  };
-
-  const updateDateFilter = (filter: Partial<DateRangeFilter>) => {
-    setState(prev => {
-      const newDateFilter = { ...prev.dateFilter, ...filter };
-      return {
-        ...prev,
-        dateFilter: newDateFilter,
-        // Clear sorted tasks when filter changes to ensure fresh data
-        sortedIncompleteTasks: []
-      };
-    });
-  };
-
-  const updateSortedTasks = useCallback((tasks: IncompleteTaskWithOverdue[]) => {
-    // Do nothing - we handle sorting differently now
-  }, []);
-
-  // Stable sort configuration setter
-  const setSortConfiguration = useCallback((field: string, order: 'asc' | 'desc') => {
-    setSortConfig({ field, order });
-  }, []);
-
   const handleCompleteTask = (taskId: string) => {
     completeTaskMutation.mutate({ taskId });
   };
@@ -250,85 +132,15 @@ export const useIncompleteTasks = () => {
   };
 
   const handleClearAllTasks = () => {
-    // Delete all incomplete tasks
     filteredTasks.forEach(task => {
       deleteTaskMutation.mutate(task.id);
     });
   };
 
-  // Date filter helper functions
-  const handleDateFilterChange = (field: 'startDate' | 'endDate', value: string) => {
-    updateDateFilter({ [field]: value });
-  };
-
-  const toggleDateFilter = () => {
-    updateDateFilter({ enabled: !state.dateFilter.enabled });
-  };
-
-  const resetDateFilter = () => {
-    updateDateFilter({
-      startDate: today,
-      endDate: today,
-      enabled: true
-    });
-  };
-
-  const setWeekFilter = () => {
-    updateDateFilter({
-      startDate: currentWeek.start,
-      endDate: currentWeek.end,
-      enabled: true
-    });
-  };
-
-  const setMonthFilter = () => {
-    updateDateFilter({
-      startDate: currentMonth.start,
-      endDate: currentMonth.end,
-      enabled: true
-    });
-  };
-
-  const clearDateFilter = () => {
-    updateDateFilter({ enabled: false });
-  };
-
-  const getFilterDisplayText = () => {
-    if (!state.dateFilter.enabled) return 'All dates';
-
-    const formatLocalDate = (dateStr: string) => {
-      const [year, month, day] = dateStr.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
-      return date.toLocaleDateString();
-    };
-
-    if (state.dateFilter.startDate === state.dateFilter.endDate &&
-      state.dateFilter.startDate === today) {
-      return 'Today only';
-    }
-
-    if (state.dateFilter.startDate === currentWeek.start &&
-      state.dateFilter.endDate === currentWeek.end) {
-      return 'This week';
-    }
-
-    if (state.dateFilter.startDate === currentMonth.start &&
-      state.dateFilter.endDate === currentMonth.end) {
-      return 'This month';
-    }
-
-    if (state.dateFilter.startDate === state.dateFilter.endDate) {
-      return formatLocalDate(state.dateFilter.startDate);
-    }
-
-    return `${formatLocalDate(state.dateFilter.startDate)} - ${formatLocalDate(state.dateFilter.endDate)}`;
-  };
-
-  // Combined loading state
   const isLoading = isLoadingAll || isLoadingToday || isLoadingUpcoming;
 
   return {
-    // Data - Use filtered tasks (now includes sorting)
+    // Data
     incompleteTasks: filteredTasks,
     totalIncompleteTasks: filteredTasks.length,
 
@@ -336,7 +148,7 @@ export const useIncompleteTasks = () => {
     expandedTask: state.expandedTask,
     isTasksExpanded: state.isTasksExpanded,
     searchQuery: state.searchQuery,
-    dateFilter: state.dateFilter,
+    dateFilter,
 
     // Loading states
     isLoading,
@@ -348,7 +160,7 @@ export const useIncompleteTasks = () => {
     updateSearchQuery,
     updateDateFilter,
     updateSortedTasks,
-    setSortConfiguration, 
+    setSortConfiguration,
     handleCompleteTask,
     handleDeleteTask,
     handleClearAllTasks,
