@@ -1,15 +1,15 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { IncompleteTasksState, IncompleteTaskWithOverdue } from '../types';
 import { DateFilterState } from '../../shared/types';
 import { getCurrentWeekStart, getCurrentWeekEnd } from '../../shared/utils';
 import { TaskData } from '@/types/todoTypes';
 import { getTodayString } from '@/lib/utils/dateUtils';
-import { useTodoMutations } from '../../shared/hooks/useTodoMutations';
 import { todoApi } from '@/lib/api/todos';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { todoKeys } from '@/lib/queryKeys';
 import { combineAllTasks, isRecurringInstance } from '../../shared/utils';
+import { useDataRefresh, useIncompleteTasksMutations } from '../../shared';
 
 export const useIncompleteTasks = () => {
   // Direct queries instead of context
@@ -55,7 +55,7 @@ export const useIncompleteTasks = () => {
     }
   });
 
-  const { toggleTaskFunction, deleteTaskMutation } = useTodoMutations();
+  const { completeTaskMutation, deleteTaskMutation } = useIncompleteTasksMutations();
 
   // Calculate current date for overdue calculation
   const currentDate = useMemo(() => getTodayString(), []);
@@ -227,14 +227,7 @@ export const useIncompleteTasks = () => {
   };
 
   const handleCompleteTask = (taskId: string) => {
-    // Get all tasks for the toggle function
-    const allTasks = combineAllTasks(
-      dailyTasks,
-      todayTasksWithRecurring,
-      upcomingTasks,
-      upcomingTasksWithRecurring
-    );
-    toggleTaskFunction(taskId, allTasks, isRecurringInstance);
+    completeTaskMutation.mutate(taskId);
   };
 
   const handleDeleteTask = (taskId: string) => {

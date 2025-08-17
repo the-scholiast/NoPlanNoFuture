@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CompletedTasksState, DateFilterState, CompletedTaskWithCompletion } from '../../shared/types';
 import { getCurrentWeekStart, getCurrentWeekEnd } from '../../shared/utils';
-import { useTodoMutations } from '../../shared/hooks/useTodoMutations';
+import { useCompletedTasksMutations } from '../../shared/hooks/useCompletedTasksMutations';
 import { todoCompletionsApi } from '@/lib/api/todoCompletions';
 import { todoKeys } from '@/lib/queryKeys';
 
@@ -11,9 +11,12 @@ export const useCompletedTasks = () => {
   const { data: completedTasks = [], isLoading, error } = useQuery({
     queryKey: todoKeys.completed,
     queryFn: () => todoCompletionsApi.getCompletedTasks(),
+    staleTime: 0, // Always refetch to get latest data
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
-  const { deleteTaskMutation, uncompleteTaskMutation } = useTodoMutations();
+  const { deleteTaskMutation, uncompleteTaskMutation } = useCompletedTasksMutations();
 
   const [state, setState] = useState<CompletedTasksState>({
     expandedTask: null,

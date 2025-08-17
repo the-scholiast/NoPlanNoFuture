@@ -16,81 +16,117 @@ export const useTodoMutations = () => {
     mutationFn: async ({ taskId, allTasks }: { taskId: string; allTasks: TaskData[] }) => {
       const today = getTodayString();
       const originalTaskId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
-      const isRecurringInstance = taskId.includes('_') && !taskId.endsWith('_recurring');
 
-      // Find task in the current data
-      const task = allTasks.find(t => t.id === taskId || (taskId.includes('_') && t.id === taskId.split('_')[0]));
-
+      // Find the task in the provided allTasks array
+      const task = allTasks.find(t => t.id === taskId || t.id === originalTaskId);
       if (!task) {
-        throw new Error(`Task not found: ${taskId}`);
+        throw new Error('Task not found');
       }
+
+      const isRecurringTask = task.is_recurring;
+      const isDailyTask = task.section === 'daily';
 
       if (!task.completed) {
-        // Marking as complete
-        if (isRecurringInstance) {
-          await todoCompletionsApi.createCompletion(originalTaskId, today);
-        } else {
-          const updates: Partial<TaskData> = {
-            completed: true,
-            completed_at: new Date().toISOString(),
-            completion_count: (task.completion_count || 0) + 1,
-          };
+        // Completing a task
+        console.log('🔄 Completing task:', taskId, 'Daily:', isDailyTask, 'Recurring:', isRecurringTask);
 
-          if (task.section === 'daily') {
-            updates.last_completed_date = today;
-          }
-
-          await todoApi.update(originalTaskId, updates);
+        // Create completion record for CompletedTasks component
+        try {
           await todoCompletionsApi.createCompletion(originalTaskId, today);
+        } catch (completionError) {
+          console.error('Failed to create completion record:', completionError);
+          // Continue with task update even if completion record fails
         }
+
+        const updates: Partial<TaskData> = {
+          completed: true,
+          completed_at: today,
+        };
+
+        if (isDailyTask) {
+          updates.completion_count = (task.completion_count || 0) + 1;
+          updates.last_completed_date = today;
+        }
+
+        return todoApi.update(originalTaskId, updates);
       } else {
-        // Marking as incomplete
-        await todoCompletionsApi.deleteCompletionByTaskAndDate(originalTaskId, today);
+        // Uncompleting a task
+        console.log('🔄 Uncompleting task:', taskId, 'Daily:', isDailyTask, 'Recurring:', isRecurringTask);
 
-        if (!isRecurringInstance) {
-          await todoApi.update(originalTaskId, {
-            completed: false,
-            completed_at: undefined,
-          });
+        // For uncompleting, we need to delete today's completion record
+        try {
+          const todayCompletions = await todoCompletionsApi.getCompletionsForTaskAndDate(originalTaskId, today);
+          if (todayCompletions.length > 0) {
+            await todoCompletionsApi.deleteCompletion(todayCompletions[0].id);
+          }
+        } catch (completionError) {
+          console.error('Failed to delete completion record:', completionError);
+          // Continue with task update even if completion deletion fails
         }
-      }
 
-      return { taskId, originalTaskId, wasCompleted: task.completed };
+        const updates: Partial<TaskData> = {
+          completed: false,
+          completed_at: undefined,
+        };
+
+        if (isDailyTask) {
+          updates.completion_count = Math.max((task.completion_count || 1) - 1, 0);
+          // Only clear last_completed_date if completion_count becomes 0
+          if (updates.completion_count === 0) {
+            updates.last_completed_date = undefined;
+          }
+        }
+
+        return todoApi.update(originalTaskId, updates);
+      }
     },
 
     onMutate: async ({ taskId, allTasks }) => {
-      console.log('⚡ OPTIMISTIC UPDATE START:', taskId);
+      console.log('🔄 OPTIMISTIC UPDATE START:', taskId);
 
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: todoKeys.all });
       await queryClient.cancelQueries({ queryKey: todoKeys.today });
       await queryClient.cancelQueries({ queryKey: todoKeys.upcoming });
 
-      // Get current cache data
-      const currentTodos = queryClient.getQueryData(todoKeys.all) as TaskData[] | undefined;
-      const currentTodayRecurring = queryClient.getQueryData(todoKeys.today) as TaskData[] | undefined;
-      const currentUpcomingRecurring = queryClient.getQueryData(todoKeys.upcoming) as TaskData[] | undefined;
+      // Snapshot current data
+      const currentTodos = queryClient.getQueryData<TaskData[]>(todoKeys.all);
+      const currentTodayRecurring = queryClient.getQueryData<TaskData[]>(todoKeys.today);
+      const currentUpcomingRecurring = queryClient.getQueryData<TaskData[]>(todoKeys.upcoming);
 
-      // Find task in provided data
-      const task = allTasks.find(t => t.id === taskId || (taskId.includes('_') && t.id === taskId.split('_')[0]));
-
+      // Find the task to toggle
+      const task = allTasks.find(t => t.id === taskId) || allTasks.find(t => t.id === taskId.split('_')[0]);
       if (!task) {
         console.warn('Task not found for optimistic update:', taskId);
         return;
       }
 
       const newCompleted = !task.completed;
-      console.log(`Optimistically updating ${taskId} to completed: ${newCompleted}`);
+      console.log('🔄 Toggling task:', taskId, 'from', task.completed, 'to', newCompleted);
 
-      // Helper function to update tasks
-      const updateTaskInArray = (tasks: TaskData[]): TaskData[] => {
+      // Helper function to update task in an array
+      const updateTaskInArray = (tasks: TaskData[]) => {
         return tasks.map(t => {
-          if (t.id === taskId || (taskId.includes('_') && t.id === taskId.split('_')[0])) {
+          if (t.id === taskId || t.id === taskId.split('_')[0]) {
             const updatedTask = {
               ...t,
               completed: newCompleted,
               completed_at: newCompleted ? new Date().toISOString() : undefined
             };
+
+            // Handle daily task completion count
+            if (t.section === 'daily') {
+              if (newCompleted) {
+                updatedTask.completion_count = (t.completion_count || 0) + 1;
+                updatedTask.last_completed_date = getTodayString();
+              } else {
+                updatedTask.completion_count = Math.max((t.completion_count || 1) - 1, 0);
+                if (updatedTask.completion_count === 0) {
+                  updatedTask.last_completed_date = undefined;
+                }
+              }
+            }
+
             console.log('✅ Updating task:', t.id, 'from', t.completed, 'to', newCompleted);
             return transformTaskData(updatedTask);
           }

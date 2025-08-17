@@ -4,6 +4,7 @@ export const todoKeys = {
   today: ['recurring-todos', 'today'] as const,
   upcoming: ['recurring-todos', 'upcoming'] as const,
   completed: ['completed-tasks'] as const,
+  incomplete: ['incomplete-tasks'] as const,
   timetable: {
     tasks: ['timetable-tasks'] as const,
     week: (weekStartDate: string) => ['timetable-week', weekStartDate] as const,

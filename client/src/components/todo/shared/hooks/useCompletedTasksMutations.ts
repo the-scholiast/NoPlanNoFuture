@@ -1,12 +1,14 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { todoApi } from '@/lib/api/todos';
 import { todoCompletionsApi } from '@/lib/api/todoCompletions';
 import { TaskData } from '@/types/todoTypes';
 import { getTodayString } from '@/lib/utils/dateUtils';
 import { useDataRefresh } from './useDataRefresh';
+import { todoKeys } from '@/lib/queryKeys';
 
 // Mutations specifically for CompletedTasks component operations
 export const useCompletedTasksMutations = () => {
+  const queryClient = useQueryClient();
   const { refreshAllData } = useDataRefresh();
 
   // Uncomplete task mutation - deletes the specific completion record
@@ -52,6 +54,51 @@ export const useCompletedTasksMutations = () => {
 
       return { completionId, taskId: completion.task_id };
     },
+
+    // ADD OPTIMISTIC UPDATES
+    onMutate: async (completionId: string) => {
+      console.log('⚡ OPTIMISTIC: Uncompleting task with completion ID:', completionId);
+
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: todoKeys.completed });
+      await queryClient.cancelQueries({ queryKey: todoKeys.all });
+      await queryClient.cancelQueries({ queryKey: todoKeys.today });
+      await queryClient.cancelQueries({ queryKey: todoKeys.upcoming });
+
+      // Snapshot current data
+      const previousCompleted = queryClient.getQueryData(todoKeys.completed);
+      const previousAll = queryClient.getQueryData(todoKeys.all);
+      const previousToday = queryClient.getQueryData(todoKeys.today);
+      const previousUpcoming = queryClient.getQueryData(todoKeys.upcoming);
+
+      // Optimistically remove from completed tasks
+      queryClient.setQueryData(todoKeys.completed, (old: any[]) => {
+        if (!old) return old;
+        return old.filter(item => item.completion?.id !== completionId);
+      });
+
+      console.log('✅ OPTIMISTIC: Removed from completed tasks cache');
+
+      return { previousCompleted, previousAll, previousToday, previousUpcoming };
+    },
+
+    // Rollback on error
+    onError: (err, completionId, context) => {
+      console.log('❌ UNCOMPLETE ERROR - Rolling back optimistic update:', err);
+      if (context?.previousCompleted) {
+        queryClient.setQueryData(todoKeys.completed, context.previousCompleted);
+      }
+      if (context?.previousAll) {
+        queryClient.setQueryData(todoKeys.all, context.previousAll);
+      }
+      if (context?.previousToday) {
+        queryClient.setQueryData(todoKeys.today, context.previousToday);
+      }
+      if (context?.previousUpcoming) {
+        queryClient.setQueryData(todoKeys.upcoming, context.previousUpcoming);
+      }
+    },
+
     onSuccess: refreshAllData,
   });
 

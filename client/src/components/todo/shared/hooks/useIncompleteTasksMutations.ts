@@ -4,10 +4,13 @@ import { TaskData } from '@/types/todoTypes';
 import { getTodayString, formatDateString } from '@/lib/utils/dateUtils';
 import { todoCompletionsApi } from '@/lib/api/todoCompletions';
 import { useDataRefresh } from './useDataRefresh';
+import { useQueryClient } from '@tanstack/react-query';
+import { todoKeys } from '@/lib/queryKeys';
 
 // Mutations specifically for IncompleteTasks component operations
 export const useIncompleteTasksMutations = () => {
   const { refreshAllData } = useDataRefresh();
+  const queryClient = useQueryClient();
 
   // Complete task mutation - marks an incomplete task as complete
   const completeTaskMutation = useMutation({
@@ -42,6 +45,60 @@ export const useIncompleteTasksMutations = () => {
 
       await todoApi.update(taskId, updates);
     },
+
+    // ADD OPTIMISTIC UPDATES
+    onMutate: async (taskId: string) => {
+      console.log('⚡ OPTIMISTIC: Completing task:', taskId);
+
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: todoKeys.all });
+      await queryClient.cancelQueries({ queryKey: todoKeys.today });
+      await queryClient.cancelQueries({ queryKey: todoKeys.upcoming });
+
+      // Snapshot current data
+      const previousAll = queryClient.getQueryData(todoKeys.all);
+      const previousToday = queryClient.getQueryData(todoKeys.today);
+      const previousUpcoming = queryClient.getQueryData(todoKeys.upcoming);
+
+      // Optimistically update task as completed
+      const updateTaskInArray = (tasks: any[]) => {
+        if (!tasks) return tasks;
+        return tasks.map(task => {
+          if (task.id === taskId || (taskId.includes('_') && task.id === taskId.split('_')[0])) {
+            return {
+              ...task,
+              completed: true,
+              completed_at: new Date().toISOString(),
+              completion_count: (task.completion_count || 0) + 1,
+            };
+          }
+          return task;
+        });
+      };
+
+      queryClient.setQueryData(todoKeys.all, updateTaskInArray);
+      queryClient.setQueryData(todoKeys.today, updateTaskInArray);
+      queryClient.setQueryData(todoKeys.upcoming, updateTaskInArray);
+
+      console.log('✅ OPTIMISTIC: Marked task as completed');
+
+      return { previousAll, previousToday, previousUpcoming };
+    },
+
+    // Rollback on error
+    onError: (err, taskId, context) => {
+      console.log('❌ COMPLETE ERROR - Rolling back optimistic update:', err);
+      if (context?.previousAll) {
+        queryClient.setQueryData(todoKeys.all, context.previousAll);
+      }
+      if (context?.previousToday) {
+        queryClient.setQueryData(todoKeys.today, context.previousToday);
+      }
+      if (context?.previousUpcoming) {
+        queryClient.setQueryData(todoKeys.upcoming, context.previousUpcoming);
+      }
+    },
+
     onSuccess: refreshAllData,
   });
 
