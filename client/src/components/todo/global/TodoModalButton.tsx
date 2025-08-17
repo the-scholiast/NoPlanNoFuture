@@ -10,19 +10,8 @@ import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { todoKeys } from '@/lib/queryKeys';
 import { useTodoMutations } from '@/components/todo/';
 import { getTodayString } from '@/lib/utils/dateUtils';
-import {
-  getSectionLabel,
-  isRecurringInstance,
-  getDateRangeDisplay,
-  getTimeRangeDisplay,
-  combineAllTasks,
-} from '@/components/todo/shared';
-import {
-  filterDailyTasksByDate,
-  sortTasksByDateTimeAndCompletion,
-  sortDailyTasksTimeFirst,
-  hasDateTime
-} from '@/components/todo/shared/utils';
+import { getSectionLabel, isRecurringInstance, getDateRangeDisplay, getTimeRangeDisplay, } from '@/components/todo/shared';
+import { filterDailyTasksByDate, sortTasksTimeFirst, hasDateTime } from '@/components/todo/shared/utils';
 
 export default function TodoModalButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -67,18 +56,18 @@ export default function TodoModalButton() {
   // Apply date filtering and time-first sorting using existing utilities
   const filteredDailyTasks = useMemo(() => {
     const filtered = filterDailyTasksByDate(dailyTasks, currentDate, false);
-    return sortDailyTasksTimeFirst(filtered);
+    return sortTasksTimeFirst(filtered);
   }, [dailyTasks, currentDate]);
 
   // Apply sorting using existing utility
   const filteredUpcomingTasks = useMemo(() => {
-    return sortTasksByDateTimeAndCompletion(upcomingTasks);
+    return sortTasksTimeFirst(upcomingTasks);
   }, [upcomingTasks]);
 
   // Apply sorting to upcoming recurring tasks using existing utility
   const filteredUpcomingRecurringTasks = useMemo(() => {
     const filtered = upcomingTasksWithRecurring.filter(task => task.section !== 'daily');
-    return sortTasksByDateTimeAndCompletion(filtered);
+    return sortTasksTimeFirst(filtered);
   }, [upcomingTasksWithRecurring]);
 
   // Group tasks by section with proper filtering and sorting
@@ -100,14 +89,14 @@ export default function TodoModalButton() {
         }
 
         // Use existing sorting for the rest
-        return sortTasksByDateTimeAndCompletion([a, b])[0] === a ? -1 : 1;
+        return sortTasksTimeFirst([a, b])[0] === a ? -1 : 1;
       });
 
     return {
       daily: filteredDailyTasks,
       today: todayTasks,
       upcoming: [
-        ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
+        ...filteredUpcomingTasks.filter(task => task.section !== 'daily' && task.section !== 'none'),
         ...filteredUpcomingRecurringTasks
       ]
     };
