@@ -31,7 +31,7 @@ export interface CompletedTasksState {
   isTasksExpanded: boolean;
   sortedCompletedTasks: CompletedTaskWithCompletion[];
   searchQuery: string;
-  dateFilter: DateFilterState;
+  dateFilter: DateRangeFilter;
 }
 
 // Legacy interface for backward compatibility (if needed)
@@ -47,13 +47,6 @@ export interface CompletedTaskWithCompletion extends TaskData {
   completion: TodoCompletion;
   is_recurring_instance: boolean;
   completion_count?: number;
-}
-
-// Common filter interfaces
-export interface DateFilterState {
-  startDate: string;
-  endDate: string;
-  enabled: boolean;
 }
 
 // Helper function types

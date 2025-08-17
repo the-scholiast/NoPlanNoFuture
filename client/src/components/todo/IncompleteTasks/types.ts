@@ -1,4 +1,5 @@
 import { TaskData } from '@/types/todoTypes';
+import { DateRangeFilter } from '../shared/types';
 
 // Helper function types (matching the shared types pattern)
 export type FormatDateFunction = (dateString?: string) => string | null;
@@ -36,11 +37,7 @@ export interface IncompleteTasksState {
   isTasksExpanded: boolean;
   sortedIncompleteTasks: IncompleteTaskWithOverdue[];
   searchQuery: string;
-  dateFilter: {
-    startDate: string;
-    endDate: string;
-    enabled: boolean;
-  };
+  dateFilter: DateRangeFilter
 }
 
 // Filter options specific to incomplete tasks
