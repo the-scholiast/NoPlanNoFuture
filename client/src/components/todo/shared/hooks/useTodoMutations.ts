@@ -88,6 +88,8 @@ export const useTodoMutations = () => {
       await queryClient.cancelQueries({ queryKey: todoKeys.all });
       await queryClient.cancelQueries({ queryKey: todoKeys.today });
       await queryClient.cancelQueries({ queryKey: todoKeys.upcoming });
+      await queryClient.cancelQueries({ queryKey: todoKeys.completed });
+      await queryClient.cancelQueries({ queryKey: todoKeys.incomplete });
 
       // Snapshot current data
       const currentTodos = queryClient.getQueryData<TaskData[]>(todoKeys.all);
@@ -171,6 +173,8 @@ export const useTodoMutations = () => {
     // Refresh data after mutation completes
     onSuccess: () => {
       console.log('✅ TOGGLE TASK SUCCESS - Refreshing cache');
+      queryClient.invalidateQueries({ queryKey: todoKeys.completed });
+      queryClient.invalidateQueries({ queryKey: todoKeys.incomplete });
       refreshAllData();
     },
   });

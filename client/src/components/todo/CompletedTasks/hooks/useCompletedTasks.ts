@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CompletedTasksState, DateFilterState, CompletedTaskWithCompletion } from '../../shared/types';
 import { getCurrentWeekStart, getCurrentWeekEnd } from '../../shared/utils';
 import { useCompletedTasksMutations } from '../../shared/hooks/useCompletedTasksMutations';
@@ -7,6 +7,7 @@ import { todoCompletionsApi } from '@/lib/api/todoCompletions';
 import { todoKeys } from '@/lib/queryKeys';
 
 export const useCompletedTasks = () => {
+  const queryClient = useQueryClient();
   // Direct query instead of context
   const { data: completedTasks = [], isLoading, error } = useQuery({
     queryKey: todoKeys.completed,
@@ -145,7 +146,14 @@ export const useCompletedTasks = () => {
   };
 
   const handleUncompleteTask = (completionId: string) => {
-    uncompleteTaskMutation.mutate(completionId);
+    uncompleteTaskMutation.mutate(completionId, {
+      onSuccess: () => {
+        // Force invalidation of all related queries
+        queryClient.invalidateQueries({ queryKey: todoKeys.completed });
+        queryClient.invalidateQueries({ queryKey: todoKeys.incomplete });
+        queryClient.invalidateQueries({ queryKey: todoKeys.all });
+      }
+    });
   };
 
   const handleDeleteTask = (taskId: string) => {

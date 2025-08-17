@@ -14,6 +14,7 @@ export const useDataRefresh = () => {
       queryClient.invalidateQueries({ queryKey: todoKeys.today }),
       queryClient.invalidateQueries({ queryKey: todoKeys.upcoming }),
       queryClient.invalidateQueries({ queryKey: todoKeys.completed }),
+      queryClient.invalidateQueries({ queryKey: todoKeys.incomplete }),
       queryClient.invalidateQueries({ queryKey: todoKeys.timetable.allWeeks }),
       
       // Legacy query keys for backward compatibility

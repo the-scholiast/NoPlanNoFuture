@@ -12,6 +12,7 @@ import { combineAllTasks, isRecurringInstance } from '../../shared/utils';
 import { useDataRefresh, useIncompleteTasksMutations } from '../../shared';
 
 export const useIncompleteTasks = () => {
+  const queryClient = useQueryClient();
   // Direct queries instead of context
   const { data: allTasks = [], isLoading: isLoadingAll } = useQuery({
     queryKey: todoKeys.all,
@@ -227,7 +228,14 @@ export const useIncompleteTasks = () => {
   };
 
   const handleCompleteTask = (taskId: string) => {
-    completeTaskMutation.mutate(taskId);
+    completeTaskMutation.mutate(taskId, {
+      onSuccess: () => {
+        // Force invalidation of all related queries  
+        queryClient.invalidateQueries({ queryKey: todoKeys.completed });
+        queryClient.invalidateQueries({ queryKey: todoKeys.incomplete });
+        queryClient.invalidateQueries({ queryKey: todoKeys.all });
+      }
+    });
   };
 
   const handleDeleteTask = (taskId: string) => {
