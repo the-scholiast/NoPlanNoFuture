@@ -83,6 +83,7 @@ export const getIncompletedTodos = async (userId) => {
     .select('*')
     .eq('user_id', userId)
     .eq('completed', false)
+    .or('completion_count.is.null,completion_count.eq.0')
     .is('deleted_at', null) // Exclude deleted tasks
     .order('created_at', { ascending: false });
 

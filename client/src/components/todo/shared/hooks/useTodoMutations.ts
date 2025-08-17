@@ -43,10 +43,9 @@ export const useTodoMutations = () => {
           completed_at: today,
         };
 
-        if (isDailyTask) {
-          updates.completion_count = (task.completion_count || 0) + 1;
-          updates.last_completed_date = today;
-        }
+        updates.completion_count = (task.completion_count || 0) + 1;
+        updates.last_completed_date = today;
+
 
         return todoApi.update(originalTaskId, updates);
       } else {
@@ -69,13 +68,12 @@ export const useTodoMutations = () => {
           completed_at: undefined,
         };
 
-        if (isDailyTask) {
-          updates.completion_count = Math.max((task.completion_count || 1) - 1, 0);
-          // Only clear last_completed_date if completion_count becomes 0
-          if (updates.completion_count === 0) {
-            updates.last_completed_date = undefined;
-          }
+        updates.completion_count = Math.max((task.completion_count || 1) - 1, 0);
+        // Only clear last_completed_date if completion_count becomes 0
+        if (updates.completion_count === 0) {
+          updates.last_completed_date = undefined;
         }
+
 
         return todoApi.update(originalTaskId, updates);
       }
@@ -117,17 +115,17 @@ export const useTodoMutations = () => {
             };
 
             // Handle daily task completion count
-            if (t.section === 'daily') {
-              if (newCompleted) {
-                updatedTask.completion_count = (t.completion_count || 0) + 1;
-                updatedTask.last_completed_date = getTodayString();
-              } else {
-                updatedTask.completion_count = Math.max((t.completion_count || 1) - 1, 0);
-                if (updatedTask.completion_count === 0) {
-                  updatedTask.last_completed_date = undefined;
-                }
+
+            if (newCompleted) {
+              updatedTask.completion_count = (t.completion_count || 0) + 1;
+              updatedTask.last_completed_date = getTodayString();
+            } else {
+              updatedTask.completion_count = Math.max((t.completion_count || 1) - 1, 0);
+              if (updatedTask.completion_count === 0) {
+                updatedTask.last_completed_date = undefined;
               }
             }
+
 
             console.log('✅ Updating task:', t.id, 'from', t.completed, 'to', newCompleted);
             return transformTaskData(updatedTask);
@@ -232,12 +230,11 @@ export const useTodoMutations = () => {
           completed_at: undefined,
         };
 
-        if (task.section === 'daily') {
-          updates.completion_count = Math.max((task.completion_count || 1) - 1, 0);
-          if (updates.completion_count === 0) {
-            updates.last_completed_date = undefined;
-          }
+        updates.completion_count = Math.max((task.completion_count || 1) - 1, 0);
+        if (updates.completion_count === 0) {
+          updates.last_completed_date = undefined;
         }
+
 
         await todoApi.update(completion.task_id, updates);
       }

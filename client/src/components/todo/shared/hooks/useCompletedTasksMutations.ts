@@ -41,12 +41,11 @@ export const useCompletedTasksMutations = () => {
         };
 
         // For daily tasks, also decrement completion count
-        if (task.section === 'daily') {
-          updates.completion_count = Math.max((task.completion_count || 1) - 1, 0);
-          // Clear last_completed_date only if completion_count becomes 0
-          if (updates.completion_count === 0) {
-            updates.last_completed_date = undefined;
-          }
+
+        updates.completion_count = Math.max((task.completion_count || 1) - 1, 0);
+        // Clear last_completed_date only if completion_count becomes 0
+        if (updates.completion_count === 0) {
+          updates.last_completed_date = undefined;
         }
 
         await todoApi.update(completion.task_id, updates);
@@ -198,11 +197,9 @@ export const useCompletedTasksMutations = () => {
             completed_at: undefined,
           };
 
-          if (task.section === 'daily') {
-            updates.completion_count = Math.max((task.completion_count || 1) - 1, 0);
-            if (updates.completion_count === 0) {
-              updates.last_completed_date = undefined;
-            }
+          updates.completion_count = Math.max((task.completion_count || 1) - 1, 0);
+          if (updates.completion_count === 0) {
+            updates.last_completed_date = undefined;
           }
 
           await todoApi.update(taskId, updates);
@@ -221,16 +218,10 @@ export const useCompletedTasksMutations = () => {
       await todoCompletionsApi.deleteAllTaskCompletions(taskId);
 
       // Mark the task as incomplete
-      const task = await todoApi.get(taskId);
       const updates: Partial<TaskData> = {
         completed: false,
         completed_at: undefined,
       };
-
-      if (task.section === 'daily') {
-        updates.completion_count = 0;
-        updates.last_completed_date = undefined;
-      }
 
       await todoApi.update(taskId, updates);
     },

@@ -58,7 +58,7 @@ export const useIncompleteTasks = () => {
   });
 
   // ADD: Sort configuration state
-  const [sortConfig, setSortConfig] = useState<{field: string, order: 'asc' | 'desc'} | null>(null);
+  const [sortConfig, setSortConfig] = useState<{ field: string, order: 'asc' | 'desc' } | null>(null);
 
   const { completeTaskMutation, deleteTaskMutation } = useIncompleteTasksMutations();
 
@@ -95,6 +95,9 @@ export const useIncompleteTasks = () => {
       .filter((task: TaskData) => {
         // Skip completed tasks
         if (task.completed) return false;
+
+        // Skip tasks that have been completed before (completion_count > 0)
+        if (task.completion_count && task.completion_count > 0) return false;
 
         // Skip original recurring tasks to avoid duplicates with instances
         if (task.is_recurring && !task.id.includes('_')) {
