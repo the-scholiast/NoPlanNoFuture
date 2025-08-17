@@ -1,19 +1,19 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { IncompleteTasksState, IncompleteTaskWithOverdue } from '../types';
-import { CompletedTaskWithCompletion, DateFilterState } from '../../shared/types';
+import { DateRangeFilter } from '../../shared/types';
 import { getCurrentWeekStart, getCurrentWeekEnd } from '../../shared/utils';
 import { TaskData } from '@/types/todoTypes';
 import { getTodayString } from '@/lib/utils/dateUtils';
-import { todoApi } from '@/lib/api/todos';
+import { todoApi, } from '@/lib/api/todos';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { todoKeys } from '@/lib/queryKeys';
-import { combineAllTasks, isRecurringInstance } from '../../shared/utils';
-import { useDataRefresh, useIncompleteTasksMutations } from '../../shared';
+import { useTodoMutations } from '../../shared';
 import { sortTasksTimeFirst, sortTasksByField } from '../../shared/utils/taskSortingUtils';
 
 export const useIncompleteTasks = () => {
   const queryClient = useQueryClient();
+  const { completeTaskMutation, deleteTaskMutation } = useTodoMutations();
   // Direct queries instead of context
   const { data: allTasks = [], isLoading: isLoadingAll } = useQuery({
     queryKey: todoKeys.all,
@@ -57,10 +57,8 @@ export const useIncompleteTasks = () => {
     }
   });
 
-  // ADD: Sort configuration state
+  // Sort configuration state
   const [sortConfig, setSortConfig] = useState<{ field: string, order: 'asc' | 'desc' } | null>(null);
-
-  const { completeTaskMutation, deleteTaskMutation } = useIncompleteTasksMutations();
 
   // Calculate current date for overdue calculation
   const currentDate = useMemo(() => getTodayString(), []);
@@ -222,7 +220,7 @@ export const useIncompleteTasks = () => {
     }));
   };
 
-  const updateDateFilter = (filter: Partial<DateFilterState>) => {
+  const updateDateFilter = (filter: Partial<DateRangeFilter>) => {
     setState(prev => {
       const newDateFilter = { ...prev.dateFilter, ...filter };
       return {
@@ -238,13 +236,13 @@ export const useIncompleteTasks = () => {
     // Do nothing - we handle sorting differently now
   }, []);
 
-  // ADD: Stable sort configuration setter
+  // Stable sort configuration setter
   const setSortConfiguration = useCallback((field: string, order: 'asc' | 'desc') => {
     setSortConfig({ field, order });
   }, []);
 
   const handleCompleteTask = (taskId: string) => {
-    completeTaskMutation.mutate(taskId);
+    completeTaskMutation.mutate({ taskId });
   };
 
   const handleDeleteTask = (taskId: string) => {
@@ -350,7 +348,7 @@ export const useIncompleteTasks = () => {
     updateSearchQuery,
     updateDateFilter,
     updateSortedTasks,
-    setSortConfiguration, // ADD this
+    setSortConfiguration, 
     handleCompleteTask,
     handleDeleteTask,
     handleClearAllTasks,

@@ -1,9 +1,9 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CompletedTasksState, DateFilterState, CompletedTaskWithCompletion } from '../../shared/types';
-import { getCurrentWeekStart, getCurrentWeekEnd } from '../../shared/utils';
-import { useCompletedTasksMutations } from '../../shared/hooks/useCompletedTasksMutations';
+import { CompletedTasksState, DateRangeFilter, CompletedTaskWithCompletion } from '../../shared/types';
+import { getCurrentWeekStart, getCurrentWeekEnd, } from '../../shared/utils';
 import { todoCompletionsApi } from '@/lib/api/todoCompletions';
+import { useTodoMutations } from '../../shared';
 import { todoKeys } from '@/lib/queryKeys';
 import { sortTasksTimeFirst, sortTasksByField } from '../../shared/utils/taskSortingUtils';
 
@@ -18,7 +18,7 @@ export const useCompletedTasks = () => {
     refetchOnMount: true,
   });
 
-  const { deleteTaskMutation, uncompleteTaskMutation } = useCompletedTasksMutations();
+  const { deleteTaskMutation, uncompleteTaskMutation } = useTodoMutations();
 
   const [state, setState] = useState<CompletedTasksState>({
     expandedTask: null,
@@ -140,7 +140,7 @@ export const useCompletedTasks = () => {
     }));
   };
 
-  const updateDateFilter = (filter: Partial<DateFilterState>) => {
+  const updateDateFilter = (filter: Partial<DateRangeFilter>) => {
     setState(prev => {
       const newDateFilter = { ...prev.dateFilter, ...filter };
       return {

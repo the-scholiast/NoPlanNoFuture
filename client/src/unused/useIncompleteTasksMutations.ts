@@ -3,7 +3,7 @@ import { todoApi } from '@/lib/api/todos';
 import { TaskData } from '@/types/todoTypes';
 import { getTodayString, formatDateString } from '@/lib/utils/dateUtils';
 import { todoCompletionsApi } from '@/lib/api/todoCompletions';
-import { useDataRefresh } from './useDataRefresh';
+import { useDataRefresh } from '../components/todo/shared/hooks/useDataRefresh';
 import { useQueryClient } from '@tanstack/react-query';
 import { todoKeys } from '@/lib/queryKeys';
 

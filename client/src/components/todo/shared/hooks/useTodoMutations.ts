@@ -244,6 +244,78 @@ export const useTodoMutations = () => {
     onSuccess: refreshAllData,
   });
 
+  const completeTaskMutation = useMutation({
+  mutationFn: async ({ 
+    taskId, 
+    instanceDate 
+  }: { 
+    taskId: string; 
+    instanceDate?: string; // Optional - defaults to today
+  }) => {
+    const task = await todoApi.get(taskId);
+    if (!task) throw new Error('Task not found');
+
+    const today = getTodayString();
+    const now = getTodayString();
+    const useDate = instanceDate || today; // Use provided date or default to today
+    const originalTaskId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
+
+    await todoCompletionsApi.createCompletion(originalTaskId, useDate);
+
+    const updates: Partial<TaskData> = {
+      completed: true,
+      completed_at: now,
+      completion_count: (task.completion_count || 0) + 1,
+    };
+
+    if (task.section === 'daily') {
+      updates.last_completed_date = useDate;
+    }
+
+    return todoApi.update(taskId, updates);
+  },
+  onSuccess: refreshAllData,
+});
+
+  const bulkDeleteCompletionsMutation = useMutation({
+    mutationFn: async (completionIds: string[]) => {
+      const results = await Promise.all(
+        completionIds.map(id => todoCompletionsApi.deleteCompletion(id))
+      );
+
+      const today = getTodayString();
+      const affectedTasks = new Set<string>();
+
+      for (const completionId of completionIds) {
+        try {
+          const completion = await todoCompletionsApi.getCompletion(completionId);
+          if (completion) affectedTasks.add(completion.task_id);
+        } catch (error) {
+          // Completion already deleted, that's okay
+        }
+      }
+
+      for (const taskId of affectedTasks) {
+        const todayCompletions = await todoCompletionsApi.getCompletionsForTaskAndDate(taskId, today);
+        if (todayCompletions.length === 0) {
+          const task = await todoApi.get(taskId);
+          const updates: Partial<TaskData> = {
+            completed: false,
+            completed_at: undefined,
+            completion_count: Math.max((task.completion_count || 1) - 1, 0),
+          };
+          if (updates.completion_count === 0) {
+            updates.last_completed_date = undefined;
+          }
+          await todoApi.update(taskId, updates);
+        }
+      }
+      return results;
+    },
+    onSuccess: refreshAllData,
+  });
+
+  // Update the return object:
   return {
     // Task operations
     toggleTaskFunction: createToggleTaskFunction(),
@@ -251,6 +323,8 @@ export const useTodoMutations = () => {
     updateTaskMutation,
     deleteTaskMutation,
     uncompleteTaskMutation,
+    completeTaskMutation, 
+    bulkDeleteCompletionsMutation, 
 
     // Utility
     refreshAllData,

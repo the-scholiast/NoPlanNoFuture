@@ -3,7 +3,7 @@ import { todoApi } from '@/lib/api/todos';
 import { todoCompletionsApi } from '@/lib/api/todoCompletions';
 import { TaskData } from '@/types/todoTypes';
 import { getTodayString } from '@/lib/utils/dateUtils';
-import { useDataRefresh } from './useDataRefresh';
+import { useDataRefresh } from '../components/todo/shared/hooks/useDataRefresh';
 import { todoKeys } from '@/lib/queryKeys';
 
 // Mutations specifically for CompletedTasks component operations
