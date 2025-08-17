@@ -7,28 +7,28 @@ export interface ValidationResult {
   errors: string[];
 }
 
-// Validate a single task
+// Validate a single task form before saving/editing
 export function validateSingleTask(task: TaskFormData, taskLabel: string = 'Task'): ValidationResult {
   const errors: string[] = [];
 
-  // Validate required fields
+  // Validate title exists
   if (!task.title.trim()) {
     errors.push(`${taskLabel}: Task title is required.`);
   }
 
-  // Validate recurring tasks have at least one day selected
+  // Recurring task must have days selected (for daily tasks and schedule tasks)
   if (task.is_recurring && (!task.recurring_days || task.recurring_days.length === 0)) {
     errors.push(`${taskLabel}: Recurring tasks must have at least one day selected.`);
   }
 
-  // Validate date ranges
+  // Date range validation - end must be after start
   if (task.start_date && task.end_date) {
     if (task.end_date <= task.start_date) {
       errors.push(`${taskLabel}: End date must be after start date.`);
     }
   }
 
-  // Validate time ranges when both dates and times are set
+  // Time range validation - end time must be after start time on same data
   if (task.start_time && task.end_time) {
     // If same date or no dates set, validate time order
     if (!task.start_date || !task.end_date || task.start_date === task.end_date) {
@@ -42,7 +42,7 @@ export function validateSingleTask(task: TaskFormData, taskLabel: string = 'Task
     }
   }
 
-  // Validate section-specific rules
+  // Section-specific rules for task organization
   if (task.section === 'today') {
     if (task.is_recurring) {
       errors.push(`${taskLabel}: Today tasks cannot be recurring.`);
@@ -54,13 +54,11 @@ export function validateSingleTask(task: TaskFormData, taskLabel: string = 'Task
       errors.push(`${taskLabel}: Today tasks must have today's date as start date.`);
     }
   }
-
   if (task.section === 'upcoming') {
     if (task.is_recurring) {
       errors.push(`${taskLabel}: Upcoming tasks cannot be recurring.`);
     }
   }
-
   if (task.section === 'daily') {
     if (!task.is_recurring) {
       errors.push(`${taskLabel}: Daily tasks must be recurring.`);
@@ -70,16 +68,15 @@ export function validateSingleTask(task: TaskFormData, taskLabel: string = 'Task
     }
   }
 
-  // Validate date formats (basic check)
+  // Format validation for dates (YYYY-MM-DD)
   if (task.start_date && !/^\d{4}-\d{2}-\d{2}$/.test(task.start_date)) {
     errors.push(`${taskLabel}: Invalid start date format.`);
   }
-
   if (task.end_date && !/^\d{4}-\d{2}-\d{2}$/.test(task.end_date)) {
     errors.push(`${taskLabel}: Invalid end date format.`);
   }
 
-  // Validate time formats (basic check)
+  // Format validation for times (supports both 24hr and 12hr formats)
   if (task.start_time) {
     console.log('Validating start_time:', JSON.stringify(task.start_time));
     const is24Hour = /^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/.test(task.start_time);
@@ -89,7 +86,6 @@ export function validateSingleTask(task: TaskFormData, taskLabel: string = 'Task
       errors.push(`${taskLabel}: Invalid start time format.`);
     }
   }
-
   if (task.end_time) {
     console.log('Validating end_time:', JSON.stringify(task.end_time));
     const is24Hour = /^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/.test(task.end_time);
@@ -106,10 +102,9 @@ export function validateSingleTask(task: TaskFormData, taskLabel: string = 'Task
   };
 }
 
-// Validate multiple tasks (for add modal)
+// Validate multiple tasks (used in AddTaskModal). Ensures at least one valid task.
 export function validateMultipleTasks(tasks: TaskFormData[]): ValidationResult {
-  // Filter tasks with valid task names
-  const validTasks = tasks.filter(task => task.title.trim() !== '');
+  const validTasks = tasks.filter(task => task.title.trim() !== ''); // Filter tasks with valid task names
 
   if (validTasks.length === 0) {
     return {
@@ -120,6 +115,7 @@ export function validateMultipleTasks(tasks: TaskFormData[]): ValidationResult {
 
   const allErrors: string[] = [];
 
+  // Validate each task individually and collect all errors
   validTasks.forEach((task, index) => {
     const taskNum = index + 1;
     const validation = validateSingleTask(task, `Task ${taskNum}`);
@@ -132,7 +128,7 @@ export function validateMultipleTasks(tasks: TaskFormData[]): ValidationResult {
   };
 }
 
-// Validate for edit modal (single task)
+// Simple wrapper for single task editing (used in EditTaskModal)
 export function validateEditTask(task: TaskFormData): ValidationResult {
   return validateSingleTask(task);
 }
