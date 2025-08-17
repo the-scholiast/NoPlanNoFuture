@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { CompactTaskSorting } from '@/components/todo/shared/components/TaskSortingComponent';
 import { CompletedTaskItem } from './CompletedTaskItem';
 import { useCompletedTasks } from './hooks/useCompletedTasks';
-import { CompletedTasksProps, CompletedTaskWithCompletion } from './types';
+import { CompletedTasksProps } from './types';
 import { formatDate, formatTime, getPriorityColor, getSectionLabel } from '../shared/utils';
 import { DateFilter } from '../shared/components/DateFilter';
 
@@ -28,7 +28,7 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     updateSearchQuery,
     updateDateFilter,
     updateSortedTasks,
-    setSortConfiguration, // ADD this
+    setSortConfiguration,
     handleUncompleteTask,
     handleDeleteTask,
     handleClearAllTasks,
