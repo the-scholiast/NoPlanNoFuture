@@ -25,6 +25,7 @@ export interface SortConfig {
 export interface CompactTaskSortingProps<T extends TaskData = TaskData> {
   tasks: T[];
   onTasksChange: (sortedTasks: T[]) => void;
+  onSortChange?: (field: SortField, order: SortOrder) => void; // ADD this
   className?: string;
   defaultSort?: SortConfig;
 }
@@ -32,41 +33,26 @@ export interface CompactTaskSortingProps<T extends TaskData = TaskData> {
 export const CompactTaskSorting = <T extends TaskData = TaskData>({
   tasks,
   onTasksChange,
+  onSortChange,
   className = "",
   defaultSort = { field: 'start_time', order: 'asc' }
 }: CompactTaskSortingProps<T>) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>(defaultSort);
-    const lastTasksRef = useRef<string>('');
-  const lastSortConfigRef = useRef<string>('');
 
   // Simplified sorting logic using shared utilities
   const applySorting = (config: SortConfig) => {
-  let sortedTasks: T[];
+    let sortedTasks: T[];
 
-  if (config.field === 'start_time') {
-    // Use the same time-first logic as Daily section
-    sortedTasks = sortTasksTimeFirst([...tasks], config.order) as T[];
-  } else {
-    // Use generic field sorting for other fields
-    sortedTasks = sortTasksByField([...tasks], config.field, config.order) as T[];
-  }
-
-  onTasksChange(sortedTasks);
-};
-
-  // Apply sorting when needed
-  React.useEffect(() => {
-    const tasksSignature = tasks.map(t => `${t.id}-${t.completed}-${t.start_time}-${t.priority}`).join('|');
-    const sortConfigSignature = `${sortConfig.field}-${sortConfig.order}`;
-
-    // Only apply sorting if something actually changed
-    if (tasks.length > 0 && 
-        (tasksSignature !== lastTasksRef.current || sortConfigSignature !== lastSortConfigRef.current)) {
-      lastTasksRef.current = tasksSignature;
-      lastSortConfigRef.current = sortConfigSignature;
-      applySorting(sortConfig);
+    if (config.field === 'start_time') {
+      // Use the same time-first logic as Daily section
+      sortedTasks = sortTasksTimeFirst([...tasks], config.order) as T[];
+    } else {
+      // Use generic field sorting for other fields
+      sortedTasks = sortTasksByField([...tasks], config.field, config.order) as T[];
     }
-  }, [tasks, sortConfig.field, sortConfig.order]);
+
+    onTasksChange(sortedTasks);
+  };
 
   const handleSortChange = (field: SortField, order?: SortOrder) => {
     const newSortConfig = {
@@ -75,7 +61,13 @@ export const CompactTaskSorting = <T extends TaskData = TaskData>({
     };
 
     setSortConfig(newSortConfig);
-    applySorting(newSortConfig);
+    
+    // If onSortChange prop is provided, use it instead of applySorting
+    if (onSortChange) {
+      onSortChange(newSortConfig.field, newSortConfig.order);
+    } else {
+      applySorting(newSortConfig);
+    }
   };
 
   const formatSortFieldName = (field: SortField): string => {

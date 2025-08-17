@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CompletedTasksState, DateFilterState, CompletedTaskWithCompletion } from '../../shared/types';
 import { getCurrentWeekStart, getCurrentWeekEnd } from '../../shared/utils';
 import { useCompletedTasksMutations } from '../../shared/hooks/useCompletedTasksMutations';
 import { todoCompletionsApi } from '@/lib/api/todoCompletions';
 import { todoKeys } from '@/lib/queryKeys';
+import { sortTasksTimeFirst, sortTasksByField } from '../../shared/utils/taskSortingUtils';
 
 export const useCompletedTasks = () => {
   const queryClient = useQueryClient();
@@ -30,6 +31,9 @@ export const useCompletedTasks = () => {
       enabled: true
     }
   });
+
+  // ADD: Sort configuration state
+  const [sortConfig, setSortConfig] = useState<{ field: string, order: 'asc' | 'desc' } | null>(null);
 
   // Date helpers
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
@@ -70,7 +74,8 @@ export const useCompletedTasks = () => {
     // Apply date filter if enabled
     if (state.dateFilter.enabled && filtered.length > 0) {
       filtered = filtered.filter(task => {
-        const completionDate = task.completion?.completed_at;
+        // Handle both direct completion date and nested completion object
+        const completionDate = task.completion?.completed_at || task.completed_at;
         if (!completionDate) {
           console.log('⚠️ Task has no completion date:', task);
           return false;
@@ -92,15 +97,24 @@ export const useCompletedTasks = () => {
       );
     }
 
-    // Sort by completion date (most recent first)
-    filtered.sort((a, b) => {
-      const dateA = new Date(a.completion.completed_at);
-      const dateB = new Date(b.completion.completed_at);
-      return dateB.getTime() - dateA.getTime();
-    });
+    // Apply sorting if configured
+    if (sortConfig) {
+      if (sortConfig.field === 'start_time') {
+        filtered = sortTasksTimeFirst([...filtered], sortConfig.order) as CompletedTaskWithCompletion[];
+      } else {
+        filtered = sortTasksByField([...filtered], sortConfig.field, sortConfig.order) as CompletedTaskWithCompletion[];
+      }
+    } else {
+      // Default sort by completion date (most recent first)
+      filtered.sort((a, b) => {
+        const dateA = new Date(a.completion?.completed_at || a.completed_at || '');
+        const dateB = new Date(b.completion?.completed_at || b.completed_at || '');
+        return dateB.getTime() - dateA.getTime();
+      });
+    }
 
     return filtered;
-  }, [processedCompletedTasks, state.searchQuery, state.dateFilter]);
+  }, [processedCompletedTasks, state.searchQuery, state.dateFilter, sortConfig]);
 
   // Action handlers
   const toggleTaskExpansion = (completionId: string) => {
@@ -138,22 +152,17 @@ export const useCompletedTasks = () => {
     });
   };
 
-  const updateSortedTasks = (tasks: CompletedTaskWithCompletion[]) => {
-    setState(prev => ({
-      ...prev,
-      sortedCompletedTasks: tasks
-    }));
-  };
+  const updateSortedTasks = useCallback((tasks: CompletedTaskWithCompletion[]) => {
+    // Do nothing - we handle sorting differently now
+  }, []);
+
+  // ADD: Stable sort configuration setter
+  const setSortConfiguration = useCallback((field: string, order: 'asc' | 'desc') => {
+    setSortConfig({ field, order });
+  }, []);
 
   const handleUncompleteTask = (completionId: string) => {
-    uncompleteTaskMutation.mutate(completionId, {
-      onSuccess: () => {
-        // Force invalidation of all related queries
-        queryClient.invalidateQueries({ queryKey: todoKeys.completed });
-        queryClient.invalidateQueries({ queryKey: todoKeys.incomplete });
-        queryClient.invalidateQueries({ queryKey: todoKeys.all });
-      }
-    });
+    uncompleteTaskMutation.mutate(completionId);
   };
 
   const handleDeleteTask = (taskId: string) => {
@@ -229,16 +238,16 @@ export const useCompletedTasks = () => {
   };
 
   const handleClearAllTasks = () => {
-    // Delete all incomplete tasks
+    // Delete all completed tasks
     filteredTasks.forEach(task => {
       deleteTaskMutation.mutate(task.id);
     });
   };
 
   return {
-    // Data
-    completedTasks: state.sortedCompletedTasks.length > 0 ? state.sortedCompletedTasks : filteredTasks,
-    totalCompletedTasks: state.sortedCompletedTasks.length > 0 ? state.sortedCompletedTasks.length : filteredTasks.length,
+    // Data - Use filtered tasks (now includes sorting)
+    completedTasks: filteredTasks,
+    totalCompletedTasks: filteredTasks.length,
 
     // State
     expandedTask: state.expandedTask,
@@ -256,6 +265,7 @@ export const useCompletedTasks = () => {
     updateSearchQuery,
     updateDateFilter,
     updateSortedTasks,
+    setSortConfiguration, // ADD this
     handleUncompleteTask,
     handleDeleteTask,
     handleClearAllTasks,

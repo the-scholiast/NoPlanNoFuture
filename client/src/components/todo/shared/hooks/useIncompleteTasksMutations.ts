@@ -50,17 +50,19 @@ export const useIncompleteTasksMutations = () => {
     onMutate: async (taskId: string) => {
       console.log('⚡ OPTIMISTIC: Completing task:', taskId);
 
-      // Cancel outgoing refetches
+      // Cancel outgoing refetches for ALL the queries IncompleteTasks component uses
       await queryClient.cancelQueries({ queryKey: todoKeys.all });
       await queryClient.cancelQueries({ queryKey: todoKeys.today });
       await queryClient.cancelQueries({ queryKey: todoKeys.upcoming });
+      await queryClient.cancelQueries({ queryKey: todoKeys.completed });
 
-      // Snapshot current data
+      // Snapshot current data from ALL the queries IncompleteTasks uses
       const previousAll = queryClient.getQueryData(todoKeys.all);
       const previousToday = queryClient.getQueryData(todoKeys.today);
       const previousUpcoming = queryClient.getQueryData(todoKeys.upcoming);
+      const previousCompleted = queryClient.getQueryData(todoKeys.completed);
 
-      // Optimistically update task as completed
+      // Optimistically update task as completed in ALL relevant caches
       const updateTaskInArray = (tasks: any[]) => {
         if (!tasks) return tasks;
         return tasks.map(task => {
@@ -70,22 +72,48 @@ export const useIncompleteTasksMutations = () => {
               completed: true,
               completed_at: new Date().toISOString(),
               completion_count: (task.completion_count || 0) + 1,
+              last_completed_date: task.section === 'daily' ? getTodayString() : task.last_completed_date
             };
           }
           return task;
         });
       };
 
+      // Update ALL the query caches that IncompleteTasks component uses
       queryClient.setQueryData(todoKeys.all, updateTaskInArray);
       queryClient.setQueryData(todoKeys.today, updateTaskInArray);
       queryClient.setQueryData(todoKeys.upcoming, updateTaskInArray);
 
-      console.log('✅ OPTIMISTIC: Marked task as completed');
+      // Also optimistically add to completed tasks cache
+      const taskToComplete =
+        (previousAll as any[])?.find(t => t.id === taskId || (taskId.includes('_') && t.id === taskId.split('_')[0])) ||
+        (previousToday as any[])?.find(t => t.id === taskId || (taskId.includes('_') && t.id === taskId.split('_')[0])) ||
+        (previousUpcoming as any[])?.find(t => t.id === taskId || (taskId.includes('_') && t.id === taskId.split('_')[0]));
 
-      return { previousAll, previousToday, previousUpcoming };
+      if (taskToComplete) {
+        queryClient.setQueryData(todoKeys.completed, (old: any[]) => {
+          if (!old) return [];
+          const newCompletion = {
+            ...taskToComplete,
+            completed: true,
+            completed_at: new Date().toISOString(),
+            completion: {
+              id: `temp-${taskId}-${Date.now()}`,
+              task_id: taskId.includes('_') ? taskId.split('_')[0] : taskId,
+              completed_at: new Date().toISOString(),
+              completed_on: getTodayString()
+            }
+          };
+          return [newCompletion, ...old];
+        });
+      }
+
+      console.log('✅ OPTIMISTIC: Marked task as completed and updated all caches');
+
+      return { previousAll, previousToday, previousUpcoming, previousCompleted };
     },
 
-    // Rollback on error
+    // Rollback on error - Restore ALL caches
     onError: (err, taskId, context) => {
       console.log('❌ COMPLETE ERROR - Rolling back optimistic update:', err);
       if (context?.previousAll) {
@@ -96,6 +124,9 @@ export const useIncompleteTasksMutations = () => {
       }
       if (context?.previousUpcoming) {
         queryClient.setQueryData(todoKeys.upcoming, context.previousUpcoming);
+      }
+      if (context?.previousCompleted) {
+        queryClient.setQueryData(todoKeys.completed, context.previousCompleted);
       }
     },
 

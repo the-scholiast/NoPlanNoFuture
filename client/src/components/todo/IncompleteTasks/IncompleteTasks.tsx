@@ -29,6 +29,7 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
     updateSearchQuery,
     updateDateFilter,
     updateSortedTasks,
+    setSortConfiguration, // ADD this
     handleCompleteTask,
     handleDeleteTask,
     handleClearAllTasks,
@@ -91,7 +92,8 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
           {totalIncompleteTasks > 0 && (
             <CompactTaskSorting
               tasks={incompleteTasks}
-              onTasksChange={(sortedTasks) => updateSortedTasks(sortedTasks as IncompleteTaskWithOverdue[])}
+              onTasksChange={() => { }} // Empty function - not used anymore
+              onSortChange={setSortConfiguration} // ADD this
               defaultSort={{ field: 'start_date', order: 'asc' }}
               className="flex-shrink-0"
             />
@@ -149,26 +151,20 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
                 onClick={toggleTasksExpansion}
                 className="h-auto p-0 hover:bg-transparent"
               >
-                {isTasksExpanded ? (
-                  <ChevronUp className="w-5 h-5 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
-                )}
+                {isTasksExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </Button>
-              <CardTitle className="flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-orange-600" />
-                Incomplete Tasks
-                <span className="text-sm font-normal text-muted-foreground">
-                  ({totalIncompleteTasks})
-                </span>
+              <div className="w-5 h-5 bg-orange-500 border-2 border-orange-500 rounded flex items-center justify-center mt-0.5">
+                <AlertCircle className="w-3 h-3 text-white" />
+              </div>
+              <CardTitle className="text-lg">
+                Incomplete Tasks ({totalIncompleteTasks})
               </CardTitle>
             </div>
           </CardHeader>
 
           {isTasksExpanded && (
-            <CardContent>
-              {/* Tasks List */}
-              <div className="space-y-3">
+            <CardContent className="pt-0">
+              <div className="space-y-1">
                 {incompleteTasks.map((task) => (
                   <IncompleteTaskItem
                     key={task.id}

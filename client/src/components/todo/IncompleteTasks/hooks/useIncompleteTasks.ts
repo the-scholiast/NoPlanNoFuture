@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { IncompleteTasksState, IncompleteTaskWithOverdue } from '../types';
-import { DateFilterState } from '../../shared/types';
+import { CompletedTaskWithCompletion, DateFilterState } from '../../shared/types';
 import { getCurrentWeekStart, getCurrentWeekEnd } from '../../shared/utils';
 import { TaskData } from '@/types/todoTypes';
 import { getTodayString } from '@/lib/utils/dateUtils';
@@ -10,6 +10,7 @@ import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { todoKeys } from '@/lib/queryKeys';
 import { combineAllTasks, isRecurringInstance } from '../../shared/utils';
 import { useDataRefresh, useIncompleteTasksMutations } from '../../shared';
+import { sortTasksTimeFirst, sortTasksByField } from '../../shared/utils/taskSortingUtils';
 
 export const useIncompleteTasks = () => {
   const queryClient = useQueryClient();
@@ -56,6 +57,9 @@ export const useIncompleteTasks = () => {
     }
   });
 
+  // ADD: Sort configuration state
+  const [sortConfig, setSortConfig] = useState<{field: string, order: 'asc' | 'desc'} | null>(null);
+
   const { completeTaskMutation, deleteTaskMutation } = useIncompleteTasksMutations();
 
   // Calculate current date for overdue calculation
@@ -82,8 +86,6 @@ export const useIncompleteTasks = () => {
     };
   }, []);
 
-  const allTasksData = combineAllTasks(dailyTasks, todayTasksWithRecurring, upcomingTasks, upcomingTasksWithRecurring);
-
   // Process incomplete tasks from all sources
   const processedIncompleteTasks = useMemo((): IncompleteTaskWithOverdue[] => {
     const currentDate = getTodayString();
@@ -94,7 +96,7 @@ export const useIncompleteTasks = () => {
         // Skip completed tasks
         if (task.completed) return false;
 
-        // Skip original recurring tasks to avoid duplicates with instances**
+        // Skip original recurring tasks to avoid duplicates with instances
         if (task.is_recurring && !task.id.includes('_')) {
           return false;
         }
@@ -138,9 +140,9 @@ export const useIncompleteTasks = () => {
           is_incomplete: true
         };
       });
-  }, [allTasksData, currentDate]);
+  }, [allTasks, todayTasksWithRecurring, upcomingTasksWithRecurring]);
 
-  // Apply search filter and date filter
+  // Apply search filter and sorting
   const filteredTasks = useMemo(() => {
     let filtered = processedIncompleteTasks;
 
@@ -168,21 +170,30 @@ export const useIncompleteTasks = () => {
       });
     }
 
-    // Sort by overdue days (most overdue first), then by date
-    filtered.sort((a, b) => {
-      // First sort by overdue days (descending)
-      if (a.overdueDays !== b.overdueDays) {
-        return b.overdueDays - a.overdueDays;
+    // Apply sorting if configured
+    if (sortConfig) {
+      if (sortConfig.field === 'start_time') {
+        filtered = sortTasksTimeFirst([...filtered], sortConfig.order) as IncompleteTaskWithOverdue[];
+      } else {
+        filtered = sortTasksByField([...filtered], sortConfig.field, sortConfig.order) as IncompleteTaskWithOverdue[];
       }
+    } else {
+      // Default sort by overdue days (most overdue first), then by date
+      filtered.sort((a, b) => {
+        // First sort by overdue days (descending)
+        if (a.overdueDays !== b.overdueDays) {
+          return b.overdueDays - a.overdueDays;
+        }
 
-      // Then sort by relevant date (earliest first)
-      const dateA = a.end_date || a.start_date || '';
-      const dateB = b.end_date || b.start_date || '';
-      return dateA.localeCompare(dateB);
-    });
+        // Then sort by relevant date (earliest first)
+        const dateA = a.end_date || a.start_date || '';
+        const dateB = b.end_date || b.start_date || '';
+        return dateA.localeCompare(dateB);
+      });
+    }
 
     return filtered;
-  }, [processedIncompleteTasks, state.searchQuery, state.dateFilter]);
+  }, [processedIncompleteTasks, state.searchQuery, state.dateFilter, sortConfig]);
 
   // Action handlers
   const toggleTaskExpansion = (taskId: string) => {
@@ -220,22 +231,17 @@ export const useIncompleteTasks = () => {
     });
   };
 
-  const updateSortedTasks = (tasks: IncompleteTaskWithOverdue[]) => {
-    setState(prev => ({
-      ...prev,
-      sortedIncompleteTasks: tasks
-    }));
-  };
+  const updateSortedTasks = useCallback((tasks: IncompleteTaskWithOverdue[]) => {
+    // Do nothing - we handle sorting differently now
+  }, []);
+
+  // ADD: Stable sort configuration setter
+  const setSortConfiguration = useCallback((field: string, order: 'asc' | 'desc') => {
+    setSortConfig({ field, order });
+  }, []);
 
   const handleCompleteTask = (taskId: string) => {
-    completeTaskMutation.mutate(taskId, {
-      onSuccess: () => {
-        // Force invalidation of all related queries  
-        queryClient.invalidateQueries({ queryKey: todoKeys.completed });
-        queryClient.invalidateQueries({ queryKey: todoKeys.incomplete });
-        queryClient.invalidateQueries({ queryKey: todoKeys.all });
-      }
-    });
+    completeTaskMutation.mutate(taskId);
   };
 
   const handleDeleteTask = (taskId: string) => {
@@ -321,9 +327,9 @@ export const useIncompleteTasks = () => {
   const isLoading = isLoadingAll || isLoadingToday || isLoadingUpcoming;
 
   return {
-    // Data
-    incompleteTasks: state.sortedIncompleteTasks.length > 0 ? state.sortedIncompleteTasks : filteredTasks,
-    totalIncompleteTasks: state.sortedIncompleteTasks.length > 0 ? state.sortedIncompleteTasks.length : filteredTasks.length,
+    // Data - Use filtered tasks (now includes sorting)
+    incompleteTasks: filteredTasks,
+    totalIncompleteTasks: filteredTasks.length,
 
     // State
     expandedTask: state.expandedTask,
@@ -333,7 +339,7 @@ export const useIncompleteTasks = () => {
 
     // Loading states
     isLoading,
-    error: null, // Individual queries handle their own errors
+    error: null,
 
     // Actions
     toggleTaskExpansion,
@@ -341,6 +347,7 @@ export const useIncompleteTasks = () => {
     updateSearchQuery,
     updateDateFilter,
     updateSortedTasks,
+    setSortConfiguration, // ADD this
     handleCompleteTask,
     handleDeleteTask,
     handleClearAllTasks,

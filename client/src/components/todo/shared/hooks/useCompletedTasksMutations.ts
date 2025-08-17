@@ -59,17 +59,21 @@ export const useCompletedTasksMutations = () => {
     onMutate: async (completionId: string) => {
       console.log('⚡ OPTIMISTIC: Uncompleting task with completion ID:', completionId);
 
-      // Cancel outgoing refetches
+      // Cancel outgoing refetches for ALL queries
       await queryClient.cancelQueries({ queryKey: todoKeys.completed });
       await queryClient.cancelQueries({ queryKey: todoKeys.all });
       await queryClient.cancelQueries({ queryKey: todoKeys.today });
       await queryClient.cancelQueries({ queryKey: todoKeys.upcoming });
 
-      // Snapshot current data
+      // Snapshot current data from ALL caches
       const previousCompleted = queryClient.getQueryData(todoKeys.completed);
       const previousAll = queryClient.getQueryData(todoKeys.all);
       const previousToday = queryClient.getQueryData(todoKeys.today);
       const previousUpcoming = queryClient.getQueryData(todoKeys.upcoming);
+
+      // Find the task being uncompleted from completed tasks cache
+      const completedTasksData = previousCompleted as any[];
+      const taskToUncomplete = completedTasksData?.find(item => item.completion?.id === completionId);
 
       // Optimistically remove from completed tasks
       queryClient.setQueryData(todoKeys.completed, (old: any[]) => {
@@ -77,12 +81,36 @@ export const useCompletedTasksMutations = () => {
         return old.filter(item => item.completion?.id !== completionId);
       });
 
-      console.log('✅ OPTIMISTIC: Removed from completed tasks cache');
+      // If we found the task, update it in ALL the caches that IncompleteTasks uses
+      if (taskToUncomplete) {
+        const updateTaskInArray = (tasks: any[]) => {
+          if (!tasks) return tasks;
+          return tasks.map(task => {
+            const taskId = taskToUncomplete.completion.task_id;
+            if (task.id === taskId || (task.id === taskToUncomplete.id)) {
+              return {
+                ...task,
+                completed: false,
+                completed_at: undefined,
+                completion_count: Math.max((task.completion_count || 1) - 1, 0)
+              };
+            }
+            return task;
+          });
+        };
+
+        // Update ALL query caches
+        queryClient.setQueryData(todoKeys.all, updateTaskInArray);
+        queryClient.setQueryData(todoKeys.today, updateTaskInArray);
+        queryClient.setQueryData(todoKeys.upcoming, updateTaskInArray);
+      }
+
+      console.log('✅ OPTIMISTIC: Removed from completed tasks and updated all caches');
 
       return { previousCompleted, previousAll, previousToday, previousUpcoming };
     },
 
-    // Rollback on error
+    // Rollback on error - Restore ALL caches
     onError: (err, completionId, context) => {
       console.log('❌ UNCOMPLETE ERROR - Rolling back optimistic update:', err);
       if (context?.previousCompleted) {
@@ -98,7 +126,6 @@ export const useCompletedTasksMutations = () => {
         queryClient.setQueryData(todoKeys.upcoming, context.previousUpcoming);
       }
     },
-
     onSuccess: refreshAllData,
   });
 

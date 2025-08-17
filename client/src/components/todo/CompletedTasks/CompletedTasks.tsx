@@ -28,6 +28,7 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     updateSearchQuery,
     updateDateFilter,
     updateSortedTasks,
+    setSortConfiguration, // ADD this
     handleUncompleteTask,
     handleDeleteTask,
     handleClearAllTasks,
@@ -90,7 +91,8 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
           {totalCompletedTasks > 0 && (
             <CompactTaskSorting
               tasks={completedTasks}
-              onTasksChange={(sortedTasks) => updateSortedTasks(sortedTasks as CompletedTaskWithCompletion[])}
+              onTasksChange={() => { }} // Empty function - not used anymore
+              onSortChange={setSortConfiguration} // ADD this
               defaultSort={{ field: 'start_date', order: 'desc' }}
               className="flex-shrink-0"
             />
@@ -148,31 +150,26 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
                 onClick={toggleTasksExpansion}
                 className="h-auto p-0 hover:bg-transparent"
               >
-                {isTasksExpanded ? (
-                  <ChevronUp className="w-5 h-5 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
-                )}
+                {isTasksExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </Button>
-              <CardTitle className="flex items-center gap-2">
-                <Check className="w-5 h-5 text-green-600" />
-                Completed Tasks
-                <span className="text-sm font-normal text-muted-foreground">
-                  ({totalCompletedTasks})
-                </span>
+              <div className="w-5 h-5 bg-green-500 border-2 border-green-500 rounded flex items-center justify-center mt-0.5">
+                      <Check className="w-3 h-3 text-white" />
+                    </div>
+              
+              <CardTitle className="text-lg">
+                Completed Tasks ({totalCompletedTasks})
               </CardTitle>
             </div>
           </CardHeader>
 
           {isTasksExpanded && (
-            <CardContent>
-              {/* Tasks List */}
-              <div className="space-y-3">
+            <CardContent className="pt-0">
+              <div className="space-y-1">
                 {completedTasks.map((task) => (
                   <CompletedTaskItem
-                    key={task.completion?.id || task.id}
+                    key={`${task.id}-${task.completion?.id}`}
                     task={task}
-                    isExpanded={expandedTask === (task.completion?.id || task.id)}
+                    isExpanded={expandedTask === task.completion?.id}
                     onToggleExpansion={toggleTaskExpansion}
                     onUncompleteTask={handleUncompleteTask}
                     onDeleteTask={handleDeleteTask}
