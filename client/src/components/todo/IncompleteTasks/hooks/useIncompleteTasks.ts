@@ -1,5 +1,5 @@
-import { useMemo, } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { IncompleteTaskWithOverdue } from '../types';
 import { TaskData } from '@/types/todoTypes';
 import { getTodayString } from '@/lib/utils/dateUtils';
@@ -11,9 +11,6 @@ import { useDateFilter, useTaskState, useTaskSorting } from '../../shared/hooks/
 import { applySearchFilter, applyDateFilter } from '../../shared/utils/';
 
 export const useIncompleteTasks = () => {
-  const queryClient = useQueryClient();
-  const { completeTaskMutation, deleteTaskMutation } = useTodoMutations();
-
   // Direct queries instead of context
   const { data: allTasks = [], isLoading: isLoadingAll } = useQuery({
     queryKey: todoKeys.all,
@@ -29,31 +26,13 @@ export const useIncompleteTasks = () => {
     queryKey: todoKeys.upcoming,
     queryFn: recurringTodoApi.getUpcomingTasks,
   });
-
-  // Use shared hooks
-  const {
-    dateFilter,
-    updateDateFilter,
-    handleDateFilterChange,
-    toggleDateFilter,
-    resetDateFilter,
-    setWeekFilter,
-    setMonthFilter,
-    clearDateFilter,
-    getFilterDisplayText,
-  } = useDateFilter();
-
-  const {
-    state,
-    toggleTaskExpansion,
-    toggleTasksExpansion,
-    updateSearchQuery,
-    updateSortedTasks,
-  } = useTaskState<IncompleteTaskWithOverdue>();
-
+  // Shared functions
+  const { dateFilter, updateDateFilter, } = useDateFilter();
+  const { state, toggleTaskExpansion, toggleTasksExpansion, updateSearchQuery, } = useTaskState<IncompleteTaskWithOverdue>();
   const { setSortConfiguration, applySorting } = useTaskSorting<IncompleteTaskWithOverdue>();
+  const { completeTaskMutation, deleteTaskMutation } = useTodoMutations();
 
-  // Process incomplete tasks from all sources (existing logic)
+  // Process incomplete tasks from all sources
   const processedIncompleteTasks = useMemo((): IncompleteTaskWithOverdue[] => {
     const currentDate = getTodayString();
     const allTasksData = [...allTasks, ...todayTasksWithRecurring, ...upcomingTasksWithRecurring];
@@ -159,19 +138,9 @@ export const useIncompleteTasks = () => {
     toggleTasksExpansion,
     updateSearchQuery,
     updateDateFilter,
-    updateSortedTasks,
     setSortConfiguration,
     handleCompleteTask,
     handleDeleteTask,
     handleClearAllTasks,
-
-    // Date filter functions
-    handleDateFilterChange,
-    toggleDateFilter,
-    resetDateFilter,
-    setWeekFilter,
-    setMonthFilter,
-    clearDateFilter,
-    getFilterDisplayText,
   };
 };

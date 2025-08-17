@@ -8,13 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { CompactTaskSorting } from '@/components/todo/shared/components/TaskSortingComponent';
 import { useIncompleteTasks } from './hooks/useIncompleteTasks';
-import { IncompleteTasksProps, IncompleteTaskWithOverdue } from './types';
+import { IncompleteTasksProps } from './types';
 import { IncompleteTaskItem } from './IncompleteTaskItemProps';
 import { DateFilter } from '../shared/components/DateFilter';
 import { formatDate, formatTime, getPriorityColor, getSectionLabel } from '../shared/utils';
 
 export default function IncompleteTasks({ className }: IncompleteTasksProps) {
-  // All logic comes from the hook - component is just UI
   const {
     incompleteTasks,
     totalIncompleteTasks,
@@ -28,8 +27,7 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
     toggleTasksExpansion,
     updateSearchQuery,
     updateDateFilter,
-    updateSortedTasks,
-    setSortConfiguration, // ADD this
+    setSortConfiguration,
     handleCompleteTask,
     handleDeleteTask,
     handleClearAllTasks,

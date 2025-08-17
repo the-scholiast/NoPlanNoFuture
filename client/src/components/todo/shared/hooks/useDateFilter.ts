@@ -99,15 +99,5 @@ export const useDateFilter = (initialEnabled = true) => {
     return `${formatLocalDate(dateFilter.startDate)} - ${formatLocalDate(dateFilter.endDate)}`;
   }, [dateFilter, today, currentWeek, currentMonth]);
 
-  return {
-    dateFilter,
-    updateDateFilter,
-    handleDateFilterChange,
-    toggleDateFilter,
-    resetDateFilter,
-    setWeekFilter,
-    setMonthFilter,
-    clearDateFilter,
-    getFilterDisplayText,
-  };
+  return { dateFilter, updateDateFilter, };
 };

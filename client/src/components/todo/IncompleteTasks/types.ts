@@ -1,11 +1,5 @@
 import { TaskData } from '@/types/todoTypes';
-import { DateRangeFilter } from '../shared/types';
-
-// Helper function types (matching the shared types pattern)
-export type FormatDateFunction = (dateString?: string) => string | null;
-export type FormatTimeFunction = (timeString?: string) => string | null;
-export type GetSectionLabelFunction = (section: string) => string;
-export type GetPriorityColorFunction = (priority: string) => string;
+import { FormatDateFunction, FormatTimeFunction, GetSectionLabelFunction, GetPriorityColorFunction } from '../shared/types';
 
 // Props for the IncompleteTasks component
 export interface IncompleteTasksProps {
@@ -29,40 +23,4 @@ export interface IncompleteTaskItemProps {
   formatTime: FormatTimeFunction;
   getSectionLabel: GetSectionLabelFunction;
   getPriorityColor: GetPriorityColorFunction;
-}
-
-// State management for IncompleteTasks component
-export interface IncompleteTasksState {
-  expandedTask: string | null;
-  isTasksExpanded: boolean;
-  sortedIncompleteTasks: IncompleteTaskWithOverdue[];
-  searchQuery: string;
-  dateFilter: DateRangeFilter
-}
-
-// Filter options specific to incomplete tasks
-export interface IncompleteTaskFilter {
-  showOverdueOnly: boolean;
-  minOverdueDays: number;
-  maxOverdueDays: number;
-}
-
-// Sort options for incomplete tasks
-export interface IncompleteTaskSort {
-  field: 'overdueDays' | 'start_date' | 'end_date' | 'created_at' | 'priority' | 'title';
-  order: 'asc' | 'desc';
-}
-
-// Mutation result types
-export interface IncompleteTaskMutationResult<T = any> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
-
-// Bulk operation types for incomplete tasks
-export interface BulkIncompleteTaskOptions {
-  taskIds: string[];
-  action: 'complete' | 'delete' | 'update_dates';
-  confirmAction?: boolean;
 }

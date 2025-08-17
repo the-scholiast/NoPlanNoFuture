@@ -27,7 +27,6 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     toggleTasksExpansion,
     updateSearchQuery,
     updateDateFilter,
-    updateSortedTasks,
     setSortConfiguration,
     handleUncompleteTask,
     handleDeleteTask,

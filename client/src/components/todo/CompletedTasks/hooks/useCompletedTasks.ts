@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { CompletedTaskWithCompletion } from '../../shared/types';
 import { todoCompletionsApi } from '@/lib/api/todoCompletions';
 import { useTodoMutations } from '../../shared';
@@ -8,8 +8,6 @@ import { useDateFilter, useTaskState, useTaskSorting } from '../../shared/hooks/
 import { applySearchFilter, applyDateFilter } from '../../shared/utils/';
 
 export const useCompletedTasks = () => {
-  const queryClient = useQueryClient();
-
   // Direct query instead of context
   const { data: completedTasks = [], isLoading, error } = useQuery({
     queryKey: todoKeys.completed,
@@ -20,28 +18,8 @@ export const useCompletedTasks = () => {
   });
 
   const { deleteTaskMutation, uncompleteTaskMutation } = useTodoMutations();
-
-  // Use shared hooks
-  const {
-    dateFilter,
-    updateDateFilter,
-    handleDateFilterChange,
-    toggleDateFilter,
-    resetDateFilter,
-    setWeekFilter,
-    setMonthFilter,
-    clearDateFilter,
-    getFilterDisplayText,
-  } = useDateFilter();
-
-  const {
-    state,
-    toggleTaskExpansion,
-    toggleTasksExpansion,
-    updateSearchQuery,
-    updateSortedTasks,
-  } = useTaskState<CompletedTaskWithCompletion>();
-
+  const { dateFilter, updateDateFilter, } = useDateFilter();
+  const { state, toggleTaskExpansion, toggleTasksExpansion, updateSearchQuery, } = useTaskState<CompletedTaskWithCompletion>();
   const { setSortConfiguration, applySorting } = useTaskSorting<CompletedTaskWithCompletion>();
 
   // Transform query data to component format 
@@ -117,19 +95,9 @@ export const useCompletedTasks = () => {
     toggleTasksExpansion,
     updateSearchQuery,
     updateDateFilter,
-    updateSortedTasks,
     setSortConfiguration,
     handleUncompleteTask,
     handleDeleteTask,
     handleClearAllTasks,
-
-    // Date filter functions
-    handleDateFilterChange,
-    toggleDateFilter,
-    resetDateFilter,
-    setWeekFilter,
-    setMonthFilter,
-    clearDateFilter,
-    getFilterDisplayText,
   };
 };
