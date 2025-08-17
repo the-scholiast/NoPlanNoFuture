@@ -123,7 +123,7 @@ export const useTodoBoard = () => {
       title: "Today",
       sectionKey: 'today',
       tasks: sortedTasks.today.length > 0 ? sortedTasks.today : sortTasksByDateTimeAndCompletion(
-        todayTasksWithRecurring.filter(task => task.section !== 'daily')
+        todayTasksWithRecurring.filter(task => task.section !== 'daily' && task.section !== 'none')
       ),
     },
     {
@@ -139,7 +139,7 @@ export const useTodoBoard = () => {
   // Reset sorted tasks when task IDs change
   useEffect(() => {
     const currentDailyIds = filteredDailyTasks.map(t => t.id).sort().join(',');
-    const currentTodayIds = todayTasksWithRecurring.filter(task => task.section !== 'daily').map(t => t.id).sort().join(',');
+    const currentTodayIds = todayTasksWithRecurring.filter(task => task.section !== 'daily' && task.section !== 'none').map(t => t.id).sort().join(',');
     const currentUpcomingIds = [
       ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
       ...filteredUpcomingRecurringTasks
@@ -169,7 +169,7 @@ export const useTodoBoard = () => {
       if (prev.daily.length > 0 || prev.today.length > 0 || prev.upcoming.length > 0) {
         return {
           daily: updateTasksArray(prev.daily, filteredDailyTasks),
-          today: updateTasksArray(prev.today, todayTasksWithRecurring.filter(task => task.section !== 'daily')),
+          today: updateTasksArray(prev.today, todayTasksWithRecurring.filter(task => task.section !== 'daily' && task.section !== 'none')),
           upcoming: updateTasksArray(prev.upcoming, [
             ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
             ...filteredUpcomingRecurringTasks

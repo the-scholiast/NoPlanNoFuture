@@ -44,8 +44,8 @@ export default function TodoModalButton() {
   });
 
   // Computed tasks from direct queries
-  const dailyTasks = useMemo(() => 
-    allTasks.filter(task => task.section === 'daily'), 
+  const dailyTasks = useMemo(() =>
+    allTasks.filter(task => task.section === 'daily'),
     [allTasks]
   );
 
@@ -85,7 +85,7 @@ export default function TodoModalButton() {
   const groupedTasks = useMemo(() => {
     // Apply sorting to today tasks using existing utility
     const todayTasks = todayTasksWithRecurring
-      .filter(task => task.section !== 'daily')
+      .filter(task => task.section !== 'daily' && task.section !== 'none')
       .sort((a, b) => {
         // Custom sorting for today tasks (prioritize tasks without dates/times)
         if (a.completed !== b.completed) {
@@ -162,7 +162,7 @@ export default function TodoModalButton() {
       </Button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 mt-2 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 max-h-96 overflow-hidden">
+        <div className="absolute top-full right-0 mt-2 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 overflow-hidden">
           <div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700">
             <h3 className="font-semibold text-sm">Quick Tasks</h3>
             <Button
@@ -175,7 +175,7 @@ export default function TodoModalButton() {
             </Button>
           </div>
 
-          <div className="max-h-80 overflow-y-auto">
+          <div className="max-h-[600px] overflow-y-auto">
             {['daily', 'today', 'upcoming'].map(section => (
               <div key={section} className="border-b border-gray-100 dark:border-gray-700 last:border-b-0">
                 <div className="p-3 bg-gray-50 dark:bg-gray-750">
@@ -187,7 +187,6 @@ export default function TodoModalButton() {
                 <div className="p-2 space-y-1">
                   {groupedTasks[section as keyof typeof groupedTasks]
                     .filter(task => !task.completed)
-                    .slice(0, 5)
                     .map(task => (
                       <div
                         key={task.id}
@@ -206,7 +205,7 @@ export default function TodoModalButton() {
                           <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                             {task.title}
                           </div>
-                          
+
                           <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
                             {task.start_date && (
                               <div className="flex items-center space-x-1">
@@ -228,12 +227,6 @@ export default function TodoModalButton() {
                   {groupedTasks[section as keyof typeof groupedTasks].filter(task => !task.completed).length === 0 && (
                     <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-2">
                       No incomplete tasks
-                    </div>
-                  )}
-
-                  {groupedTasks[section as keyof typeof groupedTasks].filter(task => !task.completed).length > 5 && (
-                    <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-1">
-                      +{groupedTasks[section as keyof typeof groupedTasks].filter(task => !task.completed).length - 5} more tasks
                     </div>
                   )}
                 </div>
