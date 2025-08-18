@@ -17,10 +17,8 @@ import {
   deleteAllTodos,
   getDailyTaskStats,
   resetDailyTasks,
-  getCompletedDailyTasks
 } from '../controllers/index.js';
 import supabase from '../supabaseAdmin.js';
-import { formatDateString } from '../utils/dateUtils.js';
 
 const router = express.Router();
 
@@ -147,10 +145,10 @@ router.get('/completions', authenticateUser, async (req, res, next) => {
     // Transform to the format expected by CompletedTasks component
     const result = completions?.map(completion => {
       const task = completion.todos;
-      
+
       // Check if this is a recurring task completed on its end date
-      const isRecurringEndDateCompletion = task.is_recurring && 
-        task.end_date && 
+      const isRecurringEndDateCompletion = task.is_recurring &&
+        task.end_date &&
         task.end_date === completion.instance_date;
 
       return {
@@ -178,16 +176,6 @@ router.get('/completions', authenticateUser, async (req, res, next) => {
 });
 
 // ===== DAILY TASK SPECIFIC ROUTES =====
-
-// Endpoint fetches completed daily tasks
-router.get('/daily/completed', authenticateUser, async (req, res, next) => {
-  try {
-    const completedDailyTasks = await getCompletedDailyTasks(req.user.id);
-    res.json(completedDailyTasks);
-  } catch (error) {
-    next(error);
-  }
-});
 
 // Endpoint resets daily tasks for a new day
 router.post('/daily/reset', authenticateUser, async (req, res, next) => {
@@ -327,42 +315,26 @@ router.patch('/:id/restore', authenticateUser, async (req, res, next) => {
   }
 });
 
-// Endpoint soft deletes a todo item (moves to trash)
-router.delete('/:id', authenticateUser, async (req, res, next) => {
+// Endpoint soft deletes a task (moves to trash)
+router.delete('/:id/soft-delete', authenticateUser, async (req, res, next) => {
   try {
-    // Use soft delete if available, otherwise fall back to hard delete
-    try {
-      const todo = await softDeleteTodo(req.user.id, req.params.id);
-      res.json(todo);
-    } catch (softDeleteError) {
-      // If soft delete isn't available, use regular delete
-      if (softDeleteError.message.includes('requires database migration')) {
-        const result = await deleteTodo(req.user.id, req.params.id);
-        res.json(result);
-      } else {
-        throw softDeleteError;
-      }
-    }
+    const todo = await softDeleteTodo(req.user.id, req.params.id);
+    res.json(todo)
   } catch (error) {
     next(error);
   }
-});
+})
 
 // Endpoint permanently deletes a single todo from trash
 router.delete('/:id/permanent', authenticateUser, async (req, res, next) => {
   try {
-    const { data, error } = await supabase
-      .from('todos')
-      .delete()
-      .eq('id', req.params.id)
-      .eq('user_id', req.user.id)
-      .select()
-      .single();
+    const result = await deleteTodo(req.user.id, req.params.id);
 
-    if (error) throw error;
-    if (!data) return res.status(404).json({ error: 'Todo not found' });
+    if (!result.deletedTodo) {
+      return res.status(404).json({ error: 'Todo not found' });
+    }
 
-    res.json({ message: 'Todo permanently deleted', deletedTodo: data });
+    res.json({ message: 'Todo permanently deleted', deletedTodo: result.deletedTodo });
   } catch (error) {
     next(error);
   }

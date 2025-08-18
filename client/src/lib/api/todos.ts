@@ -12,11 +12,6 @@ export const todoApi = {
     return apiCall('/todos/incomplete');
   },
 
-  // Fetch completed todos
-  getCompleted: async (): Promise<TaskData[]> => {
-    return apiCall('/todos/complete');
-  },
-
   // Get a single todo by ID
   get: async (id: string): Promise<TaskData> => {
     return apiCall(`/todos/${id}`);
@@ -35,45 +30,6 @@ export const todoApi = {
     return apiCall(`/todos/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(updates),
-    });
-  },
-
-  // Delete a todo (hard delete for backward compatibility)
-  delete: async (id: string): Promise<{ success: boolean }> => {
-    return apiCall(`/todos/${id}`, {
-      method: 'DELETE',
-    });
-  },
-
-  // Bulk delete todos
-  bulkDelete: async (criteria: any): Promise<{ success: boolean; deletedCount: number }> => {
-    return apiCall('/todos/bulk-delete', {
-      method: 'POST',
-      body: JSON.stringify(criteria),
-    });
-  },
-
-  // Helper methods for specific bulk operations
-  deleteCompleted: async (section: 'daily' | 'today' | 'upcoming'): Promise<{ success: boolean; deletedCount: number }> => {
-    return apiCall('/todos/bulk-delete', {
-      method: 'POST',
-      body: JSON.stringify({ 
-        filter: { 
-          completed: true, 
-          section 
-        } 
-      }),
-    });
-  },
-
-  deleteAll: async (section: 'daily' | 'today' | 'upcoming'): Promise<{ success: boolean; deletedCount: number }> => {
-    return apiCall('/todos/bulk-delete', {
-      method: 'POST',
-      body: JSON.stringify({ 
-        filter: { 
-          section 
-        } 
-      }),
     });
   },
 
@@ -108,11 +64,6 @@ export const todoApi = {
     return apiCall(`/todos/cleanup/old?days=${daysOld}`, {
       method: 'DELETE',
     });
-  },
-
-  // Get completed daily tasks
-  getCompletedDailyTasks: async (): Promise<TaskData[]> => {
-    return apiCall('/todos/daily/completed');
   },
 
   // Reset daily tasks

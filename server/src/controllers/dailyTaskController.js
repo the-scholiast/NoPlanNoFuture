@@ -1,21 +1,6 @@
 import supabase from '../supabaseAdmin.js';
 import { formatDateString, } from '../utils/dateUtils.js';
 
-// Get completed daily tasks (active only)
-export const getCompletedDailyTasks = async (userId) => {
-  const { data, error } = await supabase
-    .from('todos')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('section', 'daily')
-    .eq('completed', true)
-    .is('deleted_at', null) // Exclude deleted tasks
-    .order('completed_at', { ascending: false });
-
-  if (error) throw error;
-  return data || [];
-};
-
 // Reset daily tasks for new day (only active tasks)
 export const resetDailyTasks = async (userId) => {
   const today = formatDateString(new Date());
