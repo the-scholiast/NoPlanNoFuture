@@ -1,6 +1,7 @@
 import { formatDateString, getTodayString } from "@/lib/utils/dateUtils";
 import { TaskData } from "@/types/todoTypes";
 import { TaskFormData } from "..";
+import { DAYS_OF_WEEK } from "@/lib/utils/constants";
 
 export const isRecurringInstance = (task: { id: string; parent_task_id?: string }): boolean => {
   return task.id.includes('_') && !!task.parent_task_id;
@@ -15,43 +16,6 @@ export const getOriginalTaskId = (id: string): string => {
     return id.split('_')[0];
   }
   return id;
-};
-
-// Calculate the date for a recurring task instance (simplified approach -> need to track each specific completion date)
-export const calculateInstanceDate = (task: any, instanceIndex: number): string => {
-  if (task.last_completed_date) {
-    const lastCompleted = new Date(task.last_completed_date);
-    const daysBack = instanceIndex;
-    const instanceDate = new Date(lastCompleted);
-    instanceDate.setDate(lastCompleted.getDate() - daysBack);
-    return formatDateString(instanceDate);
-  }
-
-  const created = new Date(task.created_at);
-  created.setDate(created.getDate() + instanceIndex);
-  return formatDateString(created);
-};
-
-// Create recurring task instances for completed tasks
-export const createRecurringTaskInstances = (task: any, completionCount?: number): any[] => {
-  const instances: any[] = [];
-  const count = completionCount || task.completion_count || 0;
-
-  if (count > 0) {
-    for (let i = 0; i < count; i++) {
-      const instanceDate = calculateInstanceDate(task, i);
-      instances.push({
-        ...task,
-        id: `${task.id}_instance_${i}`,
-        completion_date: instanceDate,
-        is_recurring_instance: true,
-        original_task: task,
-        instance_count: i + 1
-      });
-    }
-  }
-
-  return instances;
 };
 
 // Generate recurring pattern descriptions for UI display
@@ -91,3 +55,28 @@ export const shouldResetDailyTasks = (): boolean => {
 
   return false;
 }
+
+// Check if task should appear on a specific date
+export const shouldTaskAppearOnDate = (task: TaskData, date: Date): boolean => {
+  if (!task.is_recurring || !task.recurring_days || task.recurring_days.length === 0) {
+    return false;
+  }
+
+  const targetDate : string = formatDateString(date)
+
+  // Check if date is within the task's date range
+  if (task.start_date) {
+    if (targetDate < task.start_date) return false;
+  }
+
+  if (task.end_date) {
+    if (targetDate > task.end_date) return false;
+  }
+
+  // Get day of week for the given date
+  const dayIndex = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  const dayName = DAYS_OF_WEEK[dayIndex];
+
+  // Check if this day is included in the recurring_days
+  return task.recurring_days.includes(dayName);
+};
