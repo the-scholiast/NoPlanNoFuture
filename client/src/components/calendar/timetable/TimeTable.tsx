@@ -127,7 +127,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                   return (
                     <TableCell
                       key={`${dayName}-${time}`}
-                      className={`h-12 border-r w-32 relative p-1 cursor-pointer ${shouldHighlightRow(time, weekDates, hoveredTaskId, scheduledTasks, dayNames)
+                      className={`h-9 border-r w-32 relative cursor-pointer ${shouldHighlightRow(time, weekDates, hoveredTaskId, scheduledTasks, dayNames)
                         ? ''
                         : 'hover:bg-muted/50'
                         } ${isToday ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}
