@@ -3,6 +3,7 @@ import { TaskData } from "@/types/todoTypes";
 import { TaskFormData } from "..";
 import { DAYS_OF_WEEK } from "@/lib/utils/constants";
 
+// Identify recurring task instances. Used by TodoBoard/EditTaskModal to distinguish instances from originals
 export const isRecurringInstance = (task: { id: string; parent_task_id?: string }): boolean => {
   return task.id.includes('_') && !!task.parent_task_id;
 };
@@ -35,10 +36,8 @@ export const getRecurringDescription = (task: TaskData | TaskFormData): string =
   return `${days.length} days per week`;
 };
 
-/**
- * Check if daily tasks need to be reset based on last app open
- * Uses sessionStorage instead of localStorage for better cleanup
- */
+
+// Check if daily tasks need to be reset based on last app open. Use sessionStorage instead of localStorage for better cleanup
 export const shouldResetDailyTasks = (): boolean => {
   const lastAppOpen = sessionStorage.getItem('lastAppOpen');
   const today = getTodayString();
