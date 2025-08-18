@@ -1,5 +1,5 @@
 import { parseToLocalDate } from "@/lib/utils/dateUtils";
-import { shouldTaskAppearOnDate } from "@/lib/utils/recurringDatesUtils";
+import { shouldTaskAppearOnDate } from "./recurringTasksUtils"; 
 import { TaskData } from "@/types/todoTypes";
 import { DateRangeFilter } from "../types";
 
