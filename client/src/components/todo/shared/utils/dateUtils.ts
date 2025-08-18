@@ -1,6 +1,7 @@
-import { formatDateString, ensureLocalDate } from "@/lib/utils/dateUtils";
+import { formatDateString } from "@/lib/utils/dateUtils";
 import { TaskData } from "@/types/todoTypes";
 
+// Convert YYYY-MM-DD date string to localized format
 export const formatDate = (dateString?: string): string | null => {
   if (!dateString) return null;
   try {
@@ -15,6 +16,7 @@ export const formatDate = (dateString?: string): string | null => {
   }
 };
 
+// Convert HH:MM time string to 12-hour format with AM/PM
 export const formatTime = (timeString?: string): string | null => {
   if (!timeString) return null;
   try {
@@ -31,6 +33,7 @@ export const formatTime = (timeString?: string): string | null => {
   }
 };
 
+// Get the Monday date of the current week in YYYY-MM-DD format
 export const getCurrentWeekStart = (): string => {
   const now = new Date();
   const dayOfWeek = now.getDay();
@@ -40,6 +43,7 @@ export const getCurrentWeekStart = (): string => {
   return formatDateString(monday);
 };
 
+// Get the Sunday date of the current week in YYYY-MM-DD format
 export const getCurrentWeekEnd = (): string => {
   const now = new Date();
   const dayOfWeek = now.getDay();
@@ -49,49 +53,7 @@ export const getCurrentWeekEnd = (): string => {
   return formatDateString(sunday);
 };
 
-// Format completion timestamp for display
-export const formatCompletionTimestamp = (timestamp: string): string => {
-  try {
-    // Simply extract the date part from ISO timestamp
-    return timestamp.split('T')[0];
-  } catch {
-    return timestamp;
-  }
-};
-
-// Get relative data description (e.g., "Today", "Yesterday", "2 days ago")
-export const getRelativeDateDescription = (dateString: string): string => {
-  try {
-    const date: Date = ensureLocalDate(dateString);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-
-    // Reset time to compare just dates
-    date.setHours(0, 0, 0, 0);
-    today.setHours(0, 0, 0, 0);
-    yesterday.setHours(0, 0, 0, 0);
-
-    if (date.getTime() === today.getTime()) {
-      return 'Today';
-    } else if (date.getTime() === yesterday.getTime()) {
-      return 'Yesterday';
-    } else {
-      const diffTime = today.getTime() - date.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      if (diffDays > 0) {
-        return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
-      } else {
-        return `In ${Math.abs(diffDays)} day${Math.abs(diffDays) === 1 ? '' : 's'}`;
-      }
-    }
-  } catch {
-    return dateString;
-  }
-};
-
-// Formats date range display for a task
+// Format task date range as "Start - End" or single dates
 export const getDateRangeDisplay = (task: TaskData): string | null => {
   const startDate = formatDate(task.start_date);
   const endDate = formatDate(task.end_date);
@@ -105,7 +67,7 @@ export const getDateRangeDisplay = (task: TaskData): string | null => {
   return startDate || endDate;
 };
 
-// Formats time range display for a task
+// Format task time range as "Start - End" or single time
 export const getTimeRangeDisplay = (task: TaskData): string | null => {
   const startTime = formatTime(task.start_time);
   const endTime = formatTime(task.end_time);
@@ -120,24 +82,8 @@ export const getTimeRangeDisplay = (task: TaskData): string | null => {
 };
 
 // Fix timezone issue: avoid using new Date() constructor with date strings for display
-export const formatLocalDate = (dateStr: string) : string => {
+export const formatLocalDate = (dateStr: string): string => {
   const [year, month, day] = dateStr.split('-').map(Number);
   const date = new Date(year, month - 1, day);
   return date.toLocaleDateString();
-};
-
-export const getCurrentMonthStart = () => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const firstDay = new Date(year, month, 1);
-  return `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-${String(firstDay.getDate()).padStart(2, '0')}`;
-};
-
-export const getCurrentMonthEnd = () => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const lastDay = new Date(year, month + 1, 0);
-  return `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
 };
