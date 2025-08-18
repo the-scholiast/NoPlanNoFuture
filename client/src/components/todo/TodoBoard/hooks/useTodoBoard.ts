@@ -5,7 +5,7 @@ import { getTodayString } from '@/lib/utils/dateUtils';
 import { todoApi } from '@/lib/api/todos';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { todoKeys } from '@/lib/queryKeys';
-import { TodoSection, useTodoMutations, useDataRefresh, shouldResetDailyTasks } from '../../shared/';
+import { TodoSection, useTodoMutations, shouldResetDailyTasks } from '../../shared/';
 import { filterDailyTasksByDate, filterTasksByDateRange, sortTasksTimeFirst, getRecurringDescription } from '../../shared';
 import { formatDate, formatTime, getDateRangeDisplay, getTimeRangeDisplay, isRecurringInstance } from '../../shared';
 
@@ -40,8 +40,7 @@ export const useTodoBoard = () => {
     refetchOnWindowFocus: true,
   });
 
-  const { deleteTaskMutation } = useTodoMutations();
-  const { refreshAllData } = useDataRefresh();
+  const { deleteTaskMutation, refreshAllData } = useTodoMutations();
 
   // Reset Daily Tasks' completion status after the day ends
   useEffect(() => {
