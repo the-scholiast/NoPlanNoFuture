@@ -20,6 +20,7 @@ import {
   getCompletedDailyTasks
 } from '../controllers/index.js';
 import supabase from '../supabaseAdmin.js';
+import { formatDateString } from '../utils/dateUtils.js';
 
 const router = express.Router();
 
@@ -144,20 +145,31 @@ router.get('/completions', authenticateUser, async (req, res, next) => {
     }
 
     // Transform to the format expected by CompletedTasks component
-    const result = completions?.map(completion => ({
-      ...completion.todos,
-      task_id: completion.task_id,
-      instance_date: completion.instance_date,
-      completion: {
-        id: completion.id,
-        user_id: completion.user_id,
+    const result = completions?.map(completion => {
+      const task = completion.todos;
+      
+      // Check if this is a recurring task completed on its end date
+      const isRecurringEndDateCompletion = task.is_recurring && 
+        task.end_date && 
+        task.end_date === completion.instance_date;
+
+      return {
+        ...task,
         task_id: completion.task_id,
         instance_date: completion.instance_date,
-        completed_at: completion.completed_at,
-        created_at: completion.created_at,
-      },
-      completion_count: completion.todos.completion_count
-    })) || [];
+        completion: {
+          id: completion.id,
+          user_id: completion.user_id,
+          task_id: completion.task_id,
+          instance_date: completion.instance_date,
+          completed_at: completion.completed_at,
+          created_at: completion.created_at,
+        },
+        completion_count: task.completion_count,
+        // ONLY change the display: show as original task when end date = completion date
+        is_recurring_instance: task.is_recurring && !isRecurringEndDateCompletion
+      };
+    }) || [];
 
     res.json(result);
   } catch (error) {

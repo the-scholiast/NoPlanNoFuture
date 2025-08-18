@@ -36,6 +36,13 @@ export const useTodoMutations = () => {
         updates.completion_count = (task.completion_count || 0) + 1;
         updates.last_completed_date = today;
 
+        // Check if recurring task with end date should be completed
+        if (task.is_recurring && task.end_date && task.end_date === today) {
+          // If the end date equals today's completion date, mark the original task as completed
+          updates.completed = true;
+          updates.completed_at = today;
+        }
+
         return todoApi.update(originalTaskId, updates);
       } else {
         // Uncompleting a task - remove completion record
@@ -213,7 +220,7 @@ export const useTodoMutations = () => {
   // Complete mutation for IncompleteTasks component
   const completeTaskMutation = useMutation({
     mutationFn: async ({ taskId, instanceDate }: {
-      taskId: string; 
+      taskId: string;
       instanceDate?: string; // Optional - defaults to today
     }) => {
       const task = await todoApi.get(taskId);
@@ -235,6 +242,13 @@ export const useTodoMutations = () => {
       // Daily tasks track completion date differently (update completion for every recent instance task completed)
       if (task.section === 'daily') {
         updates.last_completed_date = useDate;
+      }
+
+      // Check if recurring task with end date should be completed
+      if (task.is_recurring && task.end_date && task.end_date === useDate) {
+        // If the end date equals today's completion date, mark the original task as completed
+        updates.completed = true;
+        updates.completed_at = now;
       }
 
       return todoApi.update(taskId, updates);

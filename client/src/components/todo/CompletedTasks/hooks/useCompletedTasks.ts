@@ -26,11 +26,11 @@ export const useCompletedTasks = () => {
 
     return completedTasks.map((item: any): CompletedTaskWithCompletion => ({
       ...item,
-      is_recurring_instance: item.is_recurring || false,
+      is_recurring_instance: item.is_recurring_instance ?? (item.is_recurring || false),
       completion_count: item.completion_count
     }));
   }, [completedTasks]);
-
+  
   // Apply filtering and sorting
   const filteredTasks = useMemo(() => {
     let filtered = processedCompletedTasks;

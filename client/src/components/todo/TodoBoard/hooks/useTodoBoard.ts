@@ -5,7 +5,7 @@ import { getTodayString } from '@/lib/utils/dateUtils';
 import { todoApi } from '@/lib/api/todos';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { todoKeys } from '@/lib/queryKeys';
-import { TodoSection, useTodoMutations, shouldResetDailyTasks } from '../../shared/';
+import { TodoSection, useTodoMutations } from '../../shared/';
 import { filterDailyTasksByDate, filterTasksByDateRange, sortTasksTimeFirst, getRecurringDescription } from '../../shared';
 import { formatDate, formatTime, getDateRangeDisplay, getTimeRangeDisplay, isRecurringInstance } from '../../shared';
 
@@ -45,14 +45,12 @@ export const useTodoBoard = () => {
   // Reset Daily Tasks' completion status after the day ends
   useEffect(() => {
     const checkAndResetDailyTasks = async () => {
-      if (shouldResetDailyTasks()) {
-        try {
-          await todoApi.resetDailyTasks();
-          // Refresh all task queries after reset
-          refreshAllData();
-        } catch (error) {
-          console.error('Failed to reset daily tasks:', error);
-        }
+      try {
+        await todoApi.resetDailyTasks();
+        // Refresh all task queries after reset
+        refreshAllData();
+      } catch (error) {
+        console.error('Failed to reset daily tasks:', error);
       }
     };
     checkAndResetDailyTasks();
