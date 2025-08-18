@@ -4,12 +4,10 @@ import {
   getWorkoutTemplates,
   createWorkoutTemplate as createTemplate,
   updateWorkoutTemplate as updateTemplate,
-  deleteWorkoutTemplate as deleteTemplate
-} from '../lib/api/workoutTemplatesOperations'
-import {
+  deleteWorkoutTemplate as deleteTemplate,
   getCompletedWorkouts,
   saveCompletedWorkout as saveWorkout
-} from '../lib/api/completedWorkoutOperations'
+} from '../lib/api/'
 
 export function useWorkoutApi() {
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([])

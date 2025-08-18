@@ -16,14 +16,10 @@ import {
   searchExercises,
   createCustomExercise,
   getWorkoutStats,
-  getSimpleWorkoutStats
+  getSimpleWorkoutStats,
+  type UserProfile,
 } from '@/lib/api'
-import { 
-  type WorkoutTemplate,
-  type CompletedWorkout,
-  type ExerciseDatabase
-} from '@/types/workoutTypes'
-import { type UserProfile } from '@/lib/api'
+import { type WorkoutTemplate, type CompletedWorkout, type ExerciseDatabase } from '@/types/workoutTypes'
 import { useAuth } from './useAuth'
 
 // =============================================
@@ -130,7 +126,7 @@ export function useWorkoutStats() {
     error,
     refetch: loadStats
   }
-} 
+}
 
 // =============================================
 // USER PROFILE HOOK
