@@ -28,7 +28,9 @@ export const resetDailyTasks = async (userId) => {
     .eq('section', 'daily')
     .eq('completed', true)
     .is('deleted_at', null) // Only reset active tasks
-    .or(`last_completed_date.is.null,last_completed_date.neq.${today}`); // Only get tasks not completed today
+    .neq('end_date', today)
+    .or(`last_completed_date.is.null,last_completed_date.neq.${today}`) // Only get tasks not completed today
+    .or(`end_date.is.null,end_date.gte.${today}`); // Don't reset if end_date is past
 
   if (selectError) throw selectError;
 
