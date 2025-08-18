@@ -109,7 +109,6 @@ interface RecurringSectionProps {
   toggleEveryDay: (checked: boolean) => void;
   isEveryDaySelected: () => boolean;
   isDaySelected: (day: string) => boolean;
-  getRecurringDescription: () => string;
 }
 
 export function RecurringSection({
@@ -123,7 +122,6 @@ export function RecurringSection({
   toggleEveryDay,
   isEveryDaySelected,
   isDaySelected,
-  getRecurringDescription
 }: RecurringSectionProps) {
   if (!shouldShowSection) return null;
 
