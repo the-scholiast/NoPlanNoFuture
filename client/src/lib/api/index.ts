@@ -1,7 +1,12 @@
-// Utility exports
+// API exports
 export { apiCall } from './client'
 export { getAuthHeaders } from './auth'
 export { recurringTodoApi } from './recurringTodosApi'
 export { timetableApi } from './timetableApi'
 export { todoCompletionsApi } from './todoCompletions'
 export { todoApi } from './todos'
+export * from './completedWorkoutOperations'
+export * from './exercisesOperations'
+export * from './userProfileOperations'
+export * from './workoutStats'
+export * from './workoutTemplatesOperations'
