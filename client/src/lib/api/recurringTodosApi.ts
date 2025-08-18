@@ -84,32 +84,4 @@ export const recurringTodoApi = {
 
     return { isValid: errors.length === 0, errors };
   },
-
-  // Get human-readable description of recurring pattern (UI helper)
-  getRecurringDescription: (task: TaskData): string => {
-    if (!task.is_recurring || !task.recurring_days) {
-      return 'Not recurring';
-    }
-
-    const days = task.recurring_days;
-    const dayNames = days.map(day => day.charAt(0).toUpperCase() + day.slice(1));
-
-    if (days.length === 7) {
-      return 'Every day';
-    }
-
-    if (days.length === 5 && !days.includes('saturday') && !days.includes('sunday')) {
-      return 'Weekdays only';
-    }
-
-    if (days.length === 2 && days.includes('saturday') && days.includes('sunday')) {
-      return 'Weekends only';
-    }
-
-    if (days.length <= 3) {
-      return dayNames.join(', ');
-    }
-
-    return `${days.length} days per week`;
-  },
 };
