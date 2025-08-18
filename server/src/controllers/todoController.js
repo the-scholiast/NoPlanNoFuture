@@ -1,6 +1,6 @@
 import supabase from '../supabaseAdmin.js';
 import { ValidationError } from '../utils/errors.js';
-import { ensureLocalDate, formatDateString, } from '../utils/dateUtils.js';
+import { formatDateString, } from '../utils/dateUtils.js';
 
 const DAYS_OF_WEEK = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
@@ -78,13 +78,15 @@ export const createTodo = async (userId, todoData) => {
 
 // Get active incompleted tasks
 export const getIncompletedTodos = async (userId) => {
+  const currentDate = formatDateString(new Date());
   const { data, error } = await supabase
     .from('todos')
     .select('*')
     .eq('user_id', userId)
     .eq('completed', false)
     .or('completion_count.is.null,completion_count.eq.0')
-    .is('deleted_at', null) // Exclude deleted tasks
+    .is('deleted_at', null) 
+    .or(`start_date.lt.${currentDate},end_date.lt.${currentDate}`)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
