@@ -1,17 +1,17 @@
 import { formatDateString } from '@/lib/utils/dateUtils';
-import { convertTo24Hour } from './timeUtils';
+import { convertTimeSlotTo24Hour } from './timeUtils';
 
 // Helper to get tasks for a specific time slot
 export const getTasksForTimeSlot = (
-  dayIndex: number, 
-  timeSlot: string, 
-  weekDates: Date[], 
+  dayIndex: number,
+  timeSlot: string,
+  weekDates: Date[],
   scheduledTasks: any[]
 ) => {
   if (!weekDates || !scheduledTasks) return [];
 
   const dayDate = formatDateString(weekDates[dayIndex]);
-  const slotTime = convertTo24Hour(timeSlot);
+  const slotTime = convertTimeSlotTo24Hour(timeSlot);
 
   return scheduledTasks.filter(task => {
     const taskDate = task.instance_date || task.start_date;
@@ -41,8 +41,8 @@ export const getTasksForTimeSlot = (
 export const getTaskDurationSlots = (task: any, timeSlots: string[]) => {
   if (!task.start_time || !task.end_time) return 1;
 
-  const startTime24 = convertTo24Hour(task.start_time);
-  const endTime24 = convertTo24Hour(task.end_time);
+  const startTime24 = convertTimeSlotTo24Hour(task.start_time);
+  const endTime24 = convertTimeSlotTo24Hour(task.end_time);
 
   const [startHours, startMins] = startTime24.split(':').map(Number);
   const [endHours, endMins] = endTime24.split(':').map(Number);
@@ -56,13 +56,13 @@ export const getTaskDurationSlots = (task: any, timeSlots: string[]) => {
 
 // Helper to check if this is the first slot for a task
 export const isFirstSlotForTask = (
-  task: any, 
-  currentTime: string, 
+  task: any,
+  currentTime: string,
 ) => {
   if (!task.start_time) return true;
 
-  const currentTime24 = convertTo24Hour(currentTime);
-  const taskStartTime24 = convertTo24Hour(task.start_time);
+  const currentTime24 = convertTimeSlotTo24Hour(currentTime);
+  const taskStartTime24 = convertTimeSlotTo24Hour(task.start_time);
 
   const [currentHours, currentMins] = currentTime24.split(':').map(Number);
   const [taskStartHours, taskStartMins] = taskStartTime24.split(':').map(Number);
