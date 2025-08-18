@@ -3,9 +3,11 @@
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import MonthView from '@/components/calendar/monthView'
+import { useCalendarLastVisited } from '../hooks/useCalendarLastVisited'
 
 export default function MonthPage() {
-  const searchParams = useSearchParams()
+  useCalendarLastVisited();
+  const searchParams = useSearchParams();
   const [selectedDate, setSelectedDate] = useState(new Date())
 
   useEffect(() => {

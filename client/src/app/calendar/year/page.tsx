@@ -3,8 +3,10 @@
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import YearView from '@/components/calendar/yearView'
+import { useCalendarLastVisited } from '../hooks/useCalendarLastVisited'
 
 export default function YearPage() {
+    useCalendarLastVisited();
     const searchParams = useSearchParams()
     const [selectedDate, setSelectedDate] = useState(new Date())
 

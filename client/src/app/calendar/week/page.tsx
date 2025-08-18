@@ -3,8 +3,10 @@
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import TimeTable from '@/components/calendar/timetable/TimeTable'
+import { useCalendarLastVisited } from '../hooks/useCalendarLastVisited'
 
 export default function WeekPage() {
+  useCalendarLastVisited()
   const searchParams = useSearchParams()
   const [selectedDate, setSelectedDate] = useState(new Date())
 
