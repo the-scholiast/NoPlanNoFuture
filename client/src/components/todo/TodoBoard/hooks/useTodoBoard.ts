@@ -1,14 +1,13 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { TaskData } from '@/types/todoTypes';
-import { useTodoMutations } from '../../shared/hooks';
 import { getTodayString } from '@/lib/utils/dateUtils';
 import { todoApi } from '@/lib/api/todos';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { todoKeys } from '@/lib/queryKeys';
-import { TodoSection } from '../../shared/types';
+import { TodoSection, useTodoMutations, useDataRefresh, shouldResetDailyTasks } from '../../shared/';
 import { filterDailyTasksByDate, filterTasksByDateRange, sortTasksTimeFirst, getRecurringDescription } from '../../shared';
-import { formatDate, formatTime, getDateRangeDisplay, getTimeRangeDisplay, isRecurringInstance, } from '../../shared';
+import { formatDate, formatTime, getDateRangeDisplay, getTimeRangeDisplay, isRecurringInstance } from '../../shared';
 
 // Business logic for the TodoBoard component
 export const useTodoBoard = () => {
@@ -48,6 +47,23 @@ export const useTodoBoard = () => {
   });
 
   const { deleteTaskMutation } = useTodoMutations();
+  const { refreshAllData } = useDataRefresh();
+
+  // Reset Daily Tasks' completion status after the day ends
+  useEffect(() => {
+    const checkAndResetDailyTasks = async () => {
+      if (shouldResetDailyTasks()) {
+        try {
+          await todoApi.resetDailyTasks();
+          // Refresh all task queries after reset
+          refreshAllData();
+        } catch (error) {
+          console.error('Failed to reset daily tasks:', error);
+        }
+      }
+    };
+    checkAndResetDailyTasks();
+  }, []);
 
   // Computed tasks from direct queries
   const dailyTasks = useMemo(() =>
