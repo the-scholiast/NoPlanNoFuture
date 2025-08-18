@@ -1,4 +1,6 @@
 import { formatDateString } from "@/lib/utils/dateUtils";
+import { TaskData } from "@/types/todoTypes";
+import { TaskFormData } from "..";
 
 export const isRecurringInstance = (task: { id: string; parent_task_id?: string }): boolean => {
   return task.id.includes('_') && !!task.parent_task_id;
@@ -52,3 +54,19 @@ export const createRecurringTaskInstances = (task: any, completionCount?: number
   return instances;
 };
 
+// Generate recurring pattern descriptions for UI display
+export const getRecurringDescription = (task: TaskData | TaskFormData): string => {
+  if (!task.is_recurring || !task.recurring_days || task.recurring_days.length === 0) {
+    return task.hasOwnProperty('id') ? 'Not recurring' : ''; // Different default for API vs form
+  }
+
+  const days = task.recurring_days;
+  const dayNames = days.map(day => day.charAt(0).toUpperCase() + day.slice(1));
+
+  if (days.length === 7) return 'Every day';
+  if (days.length === 5 && !days.includes('saturday') && !days.includes('sunday')) return 'Weekdays only';
+  if (days.length === 2 && days.includes('saturday') && days.includes('sunday')) return 'Weekends only';
+  if (days.length <= 3) return dayNames.join(', ');
+
+  return `${days.length} days per week`;
+};
