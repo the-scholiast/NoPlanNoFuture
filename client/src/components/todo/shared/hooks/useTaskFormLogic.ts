@@ -5,37 +5,41 @@ import { DAYS_OF_WEEK } from '@/lib/utils/constants';
 import { formatDateString, getTodayString } from '@/lib/utils/dateUtils';
 import { TaskFormData } from '../components';
 
-// Shared task validation and update logic
+/**
+ * Core logic for task form management
+ * Handle section-specific rules, date/time validation, and recurring patterns
+ * Used by AddTaskModal, EditTaskModal, and form components throughout the app
+ */
 class TaskLogicHelper {
-  static updateTaskField<T extends TaskFormData>(
-    task: T,
-    field: keyof TaskFormData,
-    value: any
-  ): T {
+  /**
+   * Central update method that applies rules when any task field changes
+   * Ensures data consistency across the entire form (e.g., section changes affect dates/recurring)
+   */
+  static updateTaskField<T extends TaskFormData>(task: T, field: keyof TaskFormData, value: any): T {
     const updatedTask = { ...task, [field]: value };
-
-    // Handle section-specific logic
+    // Apply rules based on which field changed
     if (field === 'section') {
       this.applySectionLogic(updatedTask, value);
     }
-
-    // Handle date validation logic
     if (field === 'start_date' && value) {
       this.validateStartDate(updatedTask, value);
     }
-
     if (field === 'start_time' && value) {
       this.validateStartTime(updatedTask, value);
     }
-
-    // Handle recurring logic
     if (field === 'is_recurring' && value !== true) {
       updatedTask.recurring_days = [];
     }
-
     return updatedTask;
   }
 
+  /**
+   * Implement section-specific rules for the todo board organization:
+   * - daily: Auto-recurring, all days selected 
+   * - today: Single day only, today's date, no recurring  
+   * - upcoming: Future tasks, no recurring by default 
+   * - none: Flexible scheduling, can be recurring 
+   */
   private static applySectionLogic<T extends TaskFormData>(updatedTask: T, section: string): void {
     if (section === 'daily') {
       updatedTask.is_recurring = true;
@@ -57,15 +61,15 @@ class TaskLogicHelper {
     }
   }
 
+  // Date validation: If end date becomes invalid due to start date change, clear it (prevent impossible date ranges in the UI)
   private static validateStartDate<T extends TaskFormData>(updatedTask: T, value: string): void {
-    // If end date exists and is less than or equal to start date, clear it
     if (updatedTask.end_date && updatedTask.end_date <= value) {
       updatedTask.end_date = '';
     }
   }
 
+  // Time validation: If end time becomes invalid due to start time change, clear it (Only applies when both times are on the same date)
   private static validateStartTime<T extends TaskFormData>(updatedTask: T, value: string): void {
-    // If end time exists and start time >= end time on same date, clear end time
     if (
       updatedTask.end_time &&
       updatedTask.start_date === updatedTask.end_date &&
@@ -76,13 +80,22 @@ class TaskLogicHelper {
   }
 }
 
-// Shared helper functions for task operations
+/**
+ * Utility helpers for common task operations
+ * Create reusable functions for day selection and form validation
+ * Used by both single task forms (EditTaskModal) and multi-task forms (AddTaskModal)
+ */
 class TaskHelpers {
+  /**
+ * Create day selection helpers for recurring task management
+ * Handles the complex logic of day toggles, "every day" shortcuts, and descriptions
+ */
   static createDayHelpers<T extends TaskFormData>(
     task: T,
     updateCallback: (field: keyof TaskFormData, value: any) => void
   ) {
     return {
+      // Toggle individual days for recurring tasks
       toggleDay: (day: string) => {
         const currentDays = task.recurring_days || [];
         const newDays = currentDays.includes(day)
@@ -92,79 +105,42 @@ class TaskHelpers {
         updateCallback('recurring_days', newDays);
         updateCallback('is_recurring', newDays.length > 0);
       },
-
+      // Toggle all days at once (used by "Every day" checkbox)
       toggleEveryDay: (checked: boolean) => {
         const newDays = checked ? [...DAYS_OF_WEEK] : [];
         updateCallback('recurring_days', newDays);
         updateCallback('is_recurring', newDays.length > 0);
       },
-
+      // Check if all days are selected (for "Every day" checkbox state)
       isEveryDaySelected: (): boolean => {
         return task.recurring_days?.length === 7 || false;
       },
-
+      // Check if specific day is selected (for individual day checkboxes)
       isDaySelected: (day: string): boolean => {
         return task.recurring_days?.includes(day) || false;
       },
-
-      getRecurringDescription: (): string => {
-        if (!task.is_recurring || !task.recurring_days || task.recurring_days.length === 0) {
-          return '';
-        }
-
-        const days = task.recurring_days;
-        const dayNames = days.map(day => day.charAt(0).toUpperCase() + day.slice(1));
-
-        if (days.length === 7) {
-          return 'Every day';
-        }
-
-        if (days.length === 5 && !days.includes('saturday') && !days.includes('sunday')) {
-          return 'Weekdays only';
-        }
-
-        if (days.length === 2 && days.includes('saturday') && days.includes('sunday')) {
-          return 'Weekends only';
-        }
-
-        if (days.length <= 3) {
-          return dayNames.join(', ');
-        }
-
-        return `${days.length} days per week`;
-      }
     };
   }
 
+
+  // Create validation helpers for date/time constraints and ensure proper date ranges and prevents invalid time combinations
   static createValidationHelpers<T extends TaskFormData>(task: T) {
     return {
-      shouldShowRecurring: (): boolean => {
-        return task.section === 'daily';
-      },
-
+      // Determine when end date field should be disabled based on section rules
       isEndDateDisabled: (): boolean => {
         return task.section === 'today' || task.section === 'upcoming' || (task.section === 'none' && !task.is_recurring);
       },
-
-      isRecurringDisabled: (): boolean => {
-        return task.section === 'today' || task.section === 'upcoming';
-      },
-
+      // Calculate minimum valid end date (day after start date)
       getMinEndDate: (): string => {
         if (!task.start_date) return '';
-
-        // Add one day to start date
         const startDate = new Date(task.start_date);
         startDate.setDate(startDate.getDate() + 1);
         return formatDateString(startDate);
       },
-
+      // Validate end date when user finishes editing
       handleEndDateBlur: (value: string, updateCallback: (field: keyof TaskFormData, value: any) => void) => {
-        if (!task.start_date || !value) {
-          return;
-        }
-
-        // If end date is invalid (less than or equal to start date), clear it
+        if (!task.start_date || !value) return;
+        // Clear invalid end dates (same day or before start date)
         if (value <= task.start_date) {
           updateCallback('end_date', '');
         }
@@ -173,7 +149,11 @@ class TaskHelpers {
   }
 }
 
-// Hook for managing individual task state and logic
+/**
+ * Single task hook - Used by EditTaskModal
+ * Manage individual task state with full logic integration
+ * Provide helpers needed for editing existing tasks
+ */
 export function useTaskFormLogic(initialTask?: Partial<TaskFormData>) {
   const [task, setTask] = useState<TaskFormData>({
     title: '',
@@ -189,17 +169,13 @@ export function useTaskFormLogic(initialTask?: Partial<TaskFormData>) {
     is_schedule: false,
     ...initialTask
   });
-
+  // Central update function that applies all rules
   const updateField = (field: keyof TaskFormData, value: any) => {
     setTask(prev => TaskLogicHelper.updateTaskField(prev, field, value));
   };
-
+  // Create helper functions bound to this specific task
   const dayHelpers = TaskHelpers.createDayHelpers(task, updateField);
   const validationHelpers = TaskHelpers.createValidationHelpers(task);
-
-  const handleEndDateBlur = (value: string) => {
-    validationHelpers.handleEndDateBlur(value, updateField);
-  };
 
   return {
     task,
@@ -207,12 +183,16 @@ export function useTaskFormLogic(initialTask?: Partial<TaskFormData>) {
     updateField,
     ...dayHelpers,
     ...validationHelpers,
-    handleEndDateBlur
   };
 }
 
-// Hook for managing multiple tasks (for add modal)
+/**
+ * Multi-task hook - Used by AddTaskModal  
+ * Manages multiple tasks simultaneously with individual IDs
+ * Allows adding/removing tasks and provides per-task helper functions
+ */
 export function useMultiTaskFormLogic() {
+  // Default task template for new tasks (daily recurring by default)
   const placeholderTask: TaskFormData = {
     title: '',
     section: 'daily',
@@ -227,10 +207,12 @@ export function useMultiTaskFormLogic() {
     is_schedule: false,
   };
 
+  // Array of tasks, each with unique ID for React key prop
   const [tasks, setTasks] = useState<(TaskFormData & { id: string })[]>([
     { ...placeholderTask, id: '1' }
   ]);
 
+  // Add new task to the list (used by "Add Another Task" button)
   const addNewTask = () => {
     const newTask = {
       ...placeholderTask,
@@ -241,12 +223,14 @@ export function useMultiTaskFormLogic() {
     setTasks(prev => [...prev, newTask]);
   };
 
+  // Remove task from list (minimum 1 task required)
   const removeTask = (id: string) => {
     if (tasks.length > 1) {
       setTasks(prev => prev.filter(task => task.id !== id));
     }
   };
 
+  // Update specific task field with logic applied
   const updateTask = (id: string, field: keyof TaskFormData, value: any) => {
     setTasks(prev => prev.map(task => {
       if (task.id === id) {
@@ -256,11 +240,15 @@ export function useMultiTaskFormLogic() {
     }));
   };
 
-  // Task-specific helper functions
+  /**
+   * Get task-specific helper functions for individual tasks in the array
+   * Each task gets its own set of day toggles and validation helpers
+   * Used by AddTaskModal to render multiple task forms
+   */
   const getTaskHelpers = (taskId: string) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) throw new Error(`Task with id ${taskId} not found`);
-
+    // Create update callback bound to this specific task
     const updateCallback = (field: keyof TaskFormData, value: any) => {
       updateTask(taskId, field, value);
     };
@@ -279,6 +267,7 @@ export function useMultiTaskFormLogic() {
     };
   };
 
+  // Reset to single default task (used when modal closes/resets)
   const resetTasks = () => {
     const resetTask = {
       ...placeholderTask,
@@ -289,6 +278,7 @@ export function useMultiTaskFormLogic() {
     setTasks([resetTask]);
   };
 
+  // Initialize with pre-filled data (used when adding scheduled tasks from calendar)
   const initializeWithData = (initialData: Partial<TaskFormData>) => {
     const initialTask = {
       ...placeholderTask,
@@ -300,13 +290,11 @@ export function useMultiTaskFormLogic() {
 
   return {
     tasks,
-    setTasks,
     addNewTask,
     removeTask,
     updateTask,
     getTaskHelpers,
     resetTasks,
-    placeholderTask,
     initializeWithData
   };
 }
