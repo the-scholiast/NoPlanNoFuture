@@ -177,7 +177,7 @@ export const useTodoMutations = () => {
   const deleteTaskMutation = useMutation({
     mutationFn: (taskId: string) => {
       const originalTaskId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
-      return todoApi.delete(originalTaskId);
+      return todoApi.softDelete(originalTaskId);
     },
     onSuccess: refreshAllData,
   });
