@@ -15,16 +15,19 @@ export const useIncompleteTasks = () => {
   const { data: allTasks = [], isLoading: isLoadingAll } = useQuery({
     queryKey: todoKeys.all,
     queryFn: todoApi.getAll,
+    refetchOnWindowFocus: true,
   });
 
   const { data: todayTasksWithRecurring = [], isLoading: isLoadingToday } = useQuery({
     queryKey: todoKeys.today,
     queryFn: recurringTodoApi.getTodayTasks,
+    refetchOnWindowFocus: true,
   });
 
   const { data: upcomingTasksWithRecurring = [], isLoading: isLoadingUpcoming } = useQuery({
     queryKey: todoKeys.upcoming,
     queryFn: recurringTodoApi.getUpcomingTasks,
+    refetchOnWindowFocus: true,
   });
   // Shared functions
   const { dateFilter, updateDateFilter, } = useDateFilter();

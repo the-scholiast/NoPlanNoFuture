@@ -19,9 +19,7 @@ export const useTodoBoard = () => {
   } = useQuery({
     queryKey: todoKeys.all,
     queryFn: todoApi.getAll,
-    staleTime: 0,
     refetchOnWindowFocus: true,
-    refetchOnMount: true,
   });
 
   const {
@@ -30,9 +28,7 @@ export const useTodoBoard = () => {
   } = useQuery({
     queryKey: todoKeys.today,
     queryFn: recurringTodoApi.getTodayTasks,
-    staleTime: 0,
     refetchOnWindowFocus: true,
-    refetchOnMount: true,
   });
 
   const {
@@ -41,9 +37,7 @@ export const useTodoBoard = () => {
   } = useQuery({
     queryKey: todoKeys.upcoming,
     queryFn: recurringTodoApi.getUpcomingTasks,
-    staleTime: 0,
     refetchOnWindowFocus: true,
-    refetchOnMount: true,
   });
 
   const { deleteTaskMutation } = useTodoMutations();

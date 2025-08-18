@@ -12,9 +12,7 @@ export const useCompletedTasks = () => {
   const { data: completedTasks = [], isLoading, error } = useQuery({
     queryKey: todoKeys.completed,
     queryFn: () => todoCompletionsApi.getCompletedTasks(),
-    staleTime: 0,
     refetchOnWindowFocus: true,
-    refetchOnMount: true,
   });
 
   const { deleteTaskMutation, uncompleteTaskMutation } = useTodoMutations();
