@@ -12,26 +12,6 @@ export const recurringTodoApi = {
     return apiCall('/recurring-todos/upcoming-week');
   },
 
-  // Update recurring pattern for a task
-  updateRecurringPattern: async (taskId: string, recurringDays: string[]): Promise<TaskData> => {
-    return apiCall(`/recurring-todos/${taskId}/pattern`, {
-      method: 'PATCH',
-      body: JSON.stringify({ recurringDays }),
-    });
-  },
-
-  // Generate instances for a specific task and date range
-  generateInstances: async (
-    taskId: string, 
-    startDate: string, 
-    endDate: string
-  ): Promise<TaskData[]> => {
-    return apiCall('/recurring-todos/generate-instances', {
-      method: 'POST',
-      body: JSON.stringify({ taskId, startDate, endDate }),
-    });
-  },
-
   // Get statistics for a recurring task
   getTaskStats: async (
     taskId: string, 
@@ -55,33 +35,5 @@ export const recurringTodoApi = {
     
     const query = params.toString() ? `?${params.toString()}` : '';
     return apiCall(`/recurring-todos/stats/${taskId}${query}`);
-  },
-
-  // Validate recurring days (client-side helper)
-  validateRecurringDays: (days: string[]): { isValid: boolean; errors: string[] } => {
-    const validDays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const errors: string[] = [];
-    
-    if (!Array.isArray(days)) {
-      errors.push('Recurring days must be an array');
-      return { isValid: false, errors };
-    }
-
-    for (const day of days) {
-      if (typeof day !== 'string') {
-        errors.push(`Day must be a string: ${day}`);
-        continue;
-      }
-      
-      if (!validDays.includes(day.toLowerCase())) {
-        errors.push(`Invalid day name: ${day}`);
-      }
-    }
-
-    if (days.length === 0) {
-      errors.push('At least one day must be selected for recurring tasks');
-    }
-
-    return { isValid: errors.length === 0, errors };
   },
 };

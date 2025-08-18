@@ -1,86 +1,10 @@
 import express from 'express';
-import { getTodosForDate, getRecurringTaskInstances, updateRecurringDays, getUpcomingWeekTasks } from '../controllers/index.js';
+import { getTodosForDate, getUpcomingWeekTasks } from '../controllers/index.js';
 import { authenticateUser } from '../middleware/auth.js';
 import { ensureLocalDate, formatDateString, getTodayString } from '../utils/dateUtils.js';
 import supabase from '../supabaseAdmin.js';
 
 const router = express.Router();
-
-// Get tasks for a specific date (including recurring instances)
-router.get('/date/:date', authenticateUser, async (req, res, next) => {
-  try {
-    const { date } = req.params;
-
-    // Validate date format (YYYY-MM-DD)
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return res.status(400).json({
-        error: 'Invalid date format. Use YYYY-MM-DD'
-      });
-    }
-
-    const tasks = await getTodosForDate(req.user.id, date);
-    res.json(tasks);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get recurring task instances for a date range
-router.get('/instances', authenticateUser, async (req, res, next) => {
-  try {
-    const { startDate, endDate } = req.query;
-
-    if (!startDate || !endDate) {
-      return res.status(400).json({
-        error: 'Both start date and end date are required'
-      });
-    }
-
-    // Validate date formats
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
-      return res.status(400).json({
-        error: 'Invalid date format. Use YYYY-MM-DD'
-      });
-    }
-
-    const instances = await getRecurringTaskInstances(req.user.id, startDate, endDate);
-    res.json(instances);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Update recurring days for a task
-router.patch('/:id/recurring-days', authenticateUser, async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { recurringDays } = req.body;
-
-    if (!Array.isArray(recurringDays)) {
-      return res.status(400).json({
-        error: 'recurringDays must be an array'
-      });
-    }
-
-    const validDays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-
-    // Validate day names
-    const invalidDays = recurringDays.filter(day =>
-      !validDays.includes(day.toLowerCase())
-    );
-
-    if (invalidDays.length > 0) {
-      return res.status(400).json({
-        error: `Invalid day names: ${invalidDays.join(', ')}. Valid days: ${validDays.join(', ')}`
-      });
-    }
-
-    const updatedTask = await updateRecurringDays(id, req.user.id, recurringDays);
-    res.json(updatedTask);
-  } catch (error) {
-    next(error);
-  }
-});
 
 // Get upcoming week tasks (including recurring instances)
 router.get('/upcoming-week', authenticateUser, async (req, res, next) => {
@@ -98,28 +22,6 @@ router.get('/today', authenticateUser, async (req, res, next) => {
     const today = getTodayString();
     const tasks = await getTodosForDate(req.user.id, today);
     res.json(tasks);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Bulk create recurring task instances
-router.post('/generate-instances', authenticateUser, async (req, res, next) => {
-  try {
-    const { taskId, startDate, endDate } = req.body;
-
-    if (!taskId || !startDate || !endDate) {
-      return res.status(400).json({
-        error: 'taskId, startDate, and endDate are required'
-      });
-    }
-
-    const instances = await getRecurringTaskInstances(req.user.id, startDate, endDate);
-    const taskInstances = instances.filter(instance =>
-      instance.parent_task_id === taskId || instance.id.startsWith(taskId + '_')
-    );
-
-    res.json(taskInstances);
   } catch (error) {
     next(error);
   }
