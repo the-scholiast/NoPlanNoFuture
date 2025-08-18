@@ -1,20 +1,4 @@
-import { TaskData } from "@/types/todoTypes";
-
-// Combines all task arrays into a single array for operations
-export const combineAllTasks = (
-  filteredDailyTasks: TaskData[],
-  todayTasksWithRecurring: TaskData[],
-  upcomingTasks: TaskData[],
-  upcomingTasksWithRecurring: TaskData[]
-): TaskData[] => {
-  return [
-    ...filteredDailyTasks,
-    ...todayTasksWithRecurring,
-    ...upcomingTasks,
-    ...upcomingTasksWithRecurring,
-  ];
-};
-
+// Function to get section labels
 export const getSectionLabel = (section: string): string => {
   switch (section) {
     case 'daily': return 'Daily';
@@ -25,6 +9,7 @@ export const getSectionLabel = (section: string): string => {
   }
 };
 
+// Function to get Tailwind CSS classes for priority badges
 export const getPriorityColor = (priority: string): string => {
   switch (priority) {
     case 'high': return 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300';
@@ -34,7 +19,7 @@ export const getPriorityColor = (priority: string): string => {
   }
 };
 
-// Add this function after getPriorityColor
+// Function to get Tailwind CSS classes for section badges (includes border classes)
 export const getSectionColor = (section: string): string => {
   switch (section) {
     case 'daily': return 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 border-purple-200 dark:border-purple-700';
@@ -45,7 +30,7 @@ export const getSectionColor = (section: string): string => {
   }
 };
 
-// Add this function to combine section and priority colors
+// Function to get combined task colors based on priority and section
 export const getTaskColors = (section: string, priority?: string): string => {
   // Priority takes precedence but we keep section as base for subtle distinction
   if (priority === 'high') {
@@ -56,7 +41,7 @@ export const getTaskColors = (section: string, priority?: string): string => {
       default: return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-300 dark:border-red-700';
     }
   }
-
+  // Medium priority tasks always use yellow styling regardless of section
   if (priority === 'medium') {
     switch (section) {
       case 'daily': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border-yellow-300 dark:border-yellow-700';
@@ -66,6 +51,6 @@ export const getTaskColors = (section: string, priority?: string): string => {
     }
   }
 
-  // Low priority or no priority - use section colors
+  // Low priority or no priority - use section-specific colors for visual distinction
   return getSectionColor(section);
 };
