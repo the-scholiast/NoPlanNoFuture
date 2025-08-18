@@ -10,30 +10,23 @@ export interface CompletedTaskWithDetails extends TaskData {
 }
 
 export const todoCompletionsApi = {
-  // Get all completed tasks with their completion details using your backend API
+  // Get all completed tasks with their completion details
   async getCompletedTasks(dateRange?: { start: string; end: string }): Promise<CompletedTaskWithDetails[]> {
-    console.log('🔍 todoCompletionsApi: Fetching completed tasks', { dateRange });
-
     try {
       let endpoint = '/todos/completions';
       if (dateRange) {
         endpoint += `?startDate=${dateRange.start}&endDate=${dateRange.end}`;
       }
-
       const data = await apiCall(endpoint);
-      console.log('✅ todoCompletionsApi: Received completed tasks:', data?.length || 0);
-
       return Array.isArray(data) ? data : [];
     } catch (error) {
-      console.error('❌ todoCompletionsApi: Error fetching completed tasks:', error);
+      console.error('todoCompletionsApi: Error fetching completed tasks:', error);
       throw error;
     }
   },
 
   // Create a new completion record
   async createCompletion(taskId: string, instanceDate: string): Promise<TodoCompletion> {
-    console.log('🟢 todoCompletionsApi: Creating completion', { taskId, instanceDate });
-
     try {
       const data = await apiCall('/todos/completions', {
         method: 'POST',
@@ -42,40 +35,28 @@ export const todoCompletionsApi = {
           instance_date: instanceDate
         })
       });
-
-      console.log('✅ todoCompletionsApi: Completion created:', data);
       return data;
     } catch (error) {
-      console.error('❌ todoCompletionsApi: Error creating completion:', error);
+      console.error('todoCompletionsApi: Error creating completion:', error);
       throw error;
     }
   },
 
   // Delete a completion by task and date 
   async deleteCompletionByTaskAndDate(taskId: string, instanceDate: string): Promise<void> {
-    console.log('🔴 todoCompletionsApi: Deleting completion by task and date', { taskId, instanceDate });
-
     try {
       await apiCall(`/todos/completions/task/${taskId}/date/${instanceDate}`, {
         method: 'DELETE'
       });
-
-      console.log('✅ todoCompletionsApi: Completion deleted');
+      console.log('todoCompletionsApi: Completion deleted');
     } catch (error) {
-      console.error('❌ todoCompletionsApi: Error deleting completion:', error);
+      console.error('todoCompletionsApi: Error deleting completion:', error);
       throw error;
     }
   },
 
-  // Get completions within a date range
-  async getCompletionsInRange(startDate: string, endDate: string): Promise<CompletedTaskWithDetails[]> {
-    return this.getCompletedTasks({ start: startDate, end: endDate });
-  },
-
   // Helper method to get completions for a specific task and date
   async getCompletionsForTaskAndDate(taskId: string, instanceDate: string): Promise<TodoCompletion[]> {
-    console.log('🔍 todoCompletionsApi: Getting completions for task and date', { taskId, instanceDate });
-
     try {
       // Get completions with proper date filtering
       const data = await apiCall(`/todos/completions?startDate=${instanceDate}&endDate=${instanceDate}`);
@@ -85,15 +66,13 @@ export const todoCompletionsApi = {
 
       return filtered.map(item => item.completion);
     } catch (error) {
-      console.error('❌ todoCompletionsApi: Error getting completions for task and date:', error);
+      console.error('todoCompletionsApi: Error getting completions for task and date:', error);
       return [];
     }
   },
 
   // Delete a specific completion by ID (fallback to task/date method)
   async deleteCompletion(completionId: string): Promise<void> {
-    console.log('🔴 todoCompletionsApi: Deleting completion by ID (using fallback)', { completionId });
-
     try {
       // Get all completed tasks to find the one with this completion ID
       const allCompleted = await this.getCompletedTasks();
@@ -105,10 +84,10 @@ export const todoCompletionsApi = {
           targetCompletion.instance_date
         );
       } else {
-        console.warn('⚠️ todoCompletionsApi: Completion not found for ID:', completionId);
+        console.warn('todoCompletionsApi: Completion not found for ID:', completionId);
       }
     } catch (error) {
-      console.error('❌ todoCompletionsApi: Error deleting completion by ID:', error);
+      console.error('todoCompletionsApi: Error deleting completion by ID:', error);
       throw error;
     }
   },
@@ -120,7 +99,7 @@ export const todoCompletionsApi = {
       const targetCompletion = allCompleted.find(item => item.completion.id === completionId);
       return targetCompletion ? targetCompletion.completion : null;
     } catch (error) {
-      console.error('❌ todoCompletionsApi: Error getting completion by ID:', error);
+      console.error('todoCompletionsApi: Error getting completion by ID:', error);
       return null;
     }
   },
@@ -132,34 +111,8 @@ export const todoCompletionsApi = {
       const filtered = Array.isArray(data) ? data.filter(item => item.task_id === taskId) : [];
       return filtered.map(item => item.completion);
     } catch (error) {
-      console.error('❌ todoCompletionsApi: Error getting task completions:', error);
+      console.error('todoCompletionsApi: Error getting task completions:', error);
       return [];
-    }
-  },
-
-  // Get completion count for a task
-  async getCompletionCount(taskId: string): Promise<number> {
-    try {
-      const completions = await this.getTaskCompletions(taskId);
-      return completions.length;
-    } catch (error) {
-      console.error('❌ todoCompletionsApi: Error getting completion count:', error);
-      return 0;
-    }
-  },
-
-  // Delete all completions for a task (when task is deleted)
-  async deleteAllTaskCompletions(taskId: string): Promise<void> {
-    try {
-      const completions = await this.getTaskCompletions(taskId);
-
-      // Delete each completion
-      for (const completion of completions) {
-        await this.deleteCompletion(completion.id);
-      }
-    } catch (error) {
-      console.error('❌ todoCompletionsApi: Error deleting all task completions:', error);
-      throw error;
     }
   },
 
@@ -193,7 +146,7 @@ export const todoCompletionsApi = {
         completionDates: completions.map(c => c.instance_date)
       };
     } catch (error) {
-      console.error('❌ todoCompletionsApi: Error getting task completion stats:', error);
+      console.error('todoCompletionsApi: Error getting task completion stats:', error);
       return {
         totalCompletions: 0,
         firstCompletion: null,
@@ -202,15 +155,4 @@ export const todoCompletionsApi = {
       };
     }
   },
-
-  // Get today's completion for a specific task
-  async getTodayCompletionForTask(taskId: string, date: string): Promise<TodoCompletion | null> {
-    try {
-      const completions = await this.getCompletionsForTaskAndDate(taskId, date);
-      return completions.length > 0 ? completions[0] : null;
-    } catch (error) {
-      console.error('❌ todoCompletionsApi: Error getting today completion for task:', error);
-      return null;
-    }
-  }
 };
