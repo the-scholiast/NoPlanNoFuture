@@ -1,78 +1,46 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { IncompleteTaskWithOverdue } from '../types';
-import { TaskData } from '@/types/todoTypes';
 import { getTodayString } from '@/lib/utils/dateUtils';
 import { todoApi } from '@/lib/api/todos';
-import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { todoKeys } from '@/lib/queryKeys';
-import { useTodoMutations } from '../../shared';
-import { useDateFilter, useTaskState, useTaskSorting } from '../../shared/hooks/';
-import { applySearchFilter, applyDateFilter } from '../../shared/utils/';
+import { useDateFilter, useTaskState, useTaskSorting } from '../../shared';
+import { applySearchFilter, applyDateFilter, useTodoMutations } from '../../shared';
 
 export const useIncompleteTasks = () => {
-  // Direct queries instead of context
-  const { data: allTasks = [], isLoading: isLoadingAll } = useQuery({
-    queryKey: todoKeys.all,
-    queryFn: todoApi.getAll,
+  const { data: incompleteTasks = [], isLoading } = useQuery({
+    queryKey: todoKeys.incomplete,
+    queryFn: todoApi.getIncomplete,
     refetchOnWindowFocus: true,
   });
 
-  const { data: todayTasksWithRecurring = [], isLoading: isLoadingToday } = useQuery({
-    queryKey: todoKeys.today,
-    queryFn: recurringTodoApi.getTodayTasks,
-    refetchOnWindowFocus: true,
-  });
-
-  const { data: upcomingTasksWithRecurring = [], isLoading: isLoadingUpcoming } = useQuery({
-    queryKey: todoKeys.upcoming,
-    queryFn: recurringTodoApi.getUpcomingTasks,
-    refetchOnWindowFocus: true,
-  });
-  // Shared functions
   const { dateFilter, updateDateFilter, } = useDateFilter();
   const { state, toggleTaskExpansion, toggleTasksExpansion, updateSearchQuery, } = useTaskState<IncompleteTaskWithOverdue>();
   const { setSortConfiguration, applySorting } = useTaskSorting<IncompleteTaskWithOverdue>();
   const { completeTaskMutation, deleteTaskMutation } = useTodoMutations();
 
-  // Process incomplete tasks from all sources
+  // Process incomplete tasks to add overdue calculation
   const processedIncompleteTasks = useMemo((): IncompleteTaskWithOverdue[] => {
     const currentDate = getTodayString();
-    const allTasksData = [...allTasks, ...todayTasksWithRecurring, ...upcomingTasksWithRecurring];
 
-    return allTasksData
-      .filter((task: TaskData) => {
-        if (task.completed) return false;
-        if (task.completion_count && task.completion_count > 0) return false;
-        if (task.is_recurring && !task.id.includes('_')) return false;
+    return incompleteTasks.map((task): IncompleteTaskWithOverdue => {
+      let overdueDays = 0;
+      const relevantDate = task.end_date || task.start_date;
 
-        const startDate = task.start_date;
-        const endDate = task.end_date;
+      if (relevantDate) {
+        const taskDate = new Date(relevantDate);
+        const today = new Date(currentDate);
+        const diffTime = today.getTime() - taskDate.getTime();
+        overdueDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+      }
 
-        if (startDate && !endDate) return startDate < currentDate;
-        if (startDate && endDate) return endDate < currentDate;
-        if (!startDate && endDate) return endDate < currentDate;
-
-        return false;
-      })
-      .map((task: TaskData): IncompleteTaskWithOverdue => {
-        let overdueDays = 0;
-        const relevantDate = task.end_date || task.start_date;
-
-        if (relevantDate) {
-          const taskDate = new Date(relevantDate);
-          const today = new Date(currentDate);
-          const diffTime = today.getTime() - taskDate.getTime();
-          overdueDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
-        }
-
-        return {
-          ...task,
-          overdueDays,
-          is_incomplete: true
-        };
-      });
-  }, [allTasks, todayTasksWithRecurring, upcomingTasksWithRecurring]);
+      return {
+        ...task,
+        overdueDays,
+        is_incomplete: true
+      };
+    });
+  }, [incompleteTasks]);
 
   // Apply filtering and sorting
   const filteredTasks = useMemo(() => {
@@ -89,8 +57,8 @@ export const useIncompleteTasks = () => {
     // Apply sorting
     filtered = applySorting(filtered);
 
-    // Default sort if no custom sorting
-    if (!filtered.length) {
+    // Default sort by overdue days if no custom sorting
+    if (filtered.length > 0) {
       filtered.sort((a, b) => {
         if (a.overdueDays !== b.overdueDays) {
           return b.overdueDays - a.overdueDays;
@@ -118,8 +86,6 @@ export const useIncompleteTasks = () => {
       deleteTaskMutation.mutate(task.id);
     });
   };
-
-  const isLoading = isLoadingAll || isLoadingToday || isLoadingUpcoming;
 
   return {
     // Data
