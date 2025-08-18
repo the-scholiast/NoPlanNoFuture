@@ -36,25 +36,6 @@ export const getRecurringDescription = (task: TaskData | TaskFormData): string =
   return `${days.length} days per week`;
 };
 
-
-// Check if daily tasks need to be reset based on last app open. Use sessionStorage instead of localStorage for better cleanup
-export const shouldResetDailyTasks = (): boolean => {
-  const lastAppOpen = sessionStorage.getItem('lastAppOpen');
-  const today = getTodayString();
-
-  if (!lastAppOpen) {
-    sessionStorage.setItem('lastAppOpen', today);
-    return false;
-  }
-
-  if (lastAppOpen !== today) {
-    sessionStorage.setItem('lastAppOpen', today);
-    return true;
-  }
-
-  return false;
-}
-
 // Check if task should appear on a specific date
 export const shouldTaskAppearOnDate = (task: TaskData, date: Date): boolean => {
   if (!task.is_recurring || !task.recurring_days || task.recurring_days.length === 0) {

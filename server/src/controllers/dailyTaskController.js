@@ -20,22 +20,31 @@ export const getCompletedDailyTasks = async (userId) => {
 export const resetDailyTasks = async (userId) => {
   const today = formatDateString(new Date());
 
-  // First, get tasks that need to be reset
-  const { data: tasksToReset, error: selectError } = await supabase
+  // Build the query step by step for clarity
+  let query = supabase
     .from('todos')
     .select('*')
     .eq('user_id', userId)
     .eq('section', 'daily')
     .eq('completed', true)
-    .is('deleted_at', null) // Only reset active tasks
-    .neq('end_date', today)
-    .or(`last_completed_date.is.null,last_completed_date.neq.${today}`) // Only get tasks not completed today
-    .or(`end_date.is.null,end_date.gte.${today}`); // Don't reset if end_date is past
+    .is('deleted_at', null);
 
-  if (selectError) throw selectError;
+  // Add end_date filter: either no end_date OR end_date >= today (task hasn't ended)
+  query = query.or(`end_date.is.null,end_date.gte.${today}`);
+
+  // Add last_completed_date filter: either no last_completed_date OR last_completed_date != today
+  query = query.or(`last_completed_date.is.null,last_completed_date.neq.${today}`);
+
+  const { data: tasksToReset, error: selectError } = await query;
+
+  if (selectError) {
+    console.error('Query error:', selectError);
+    throw selectError;
+  }
 
   if (!tasksToReset || tasksToReset.length === 0) {
-    return []; // No tasks to reset
+    console.log('ℹNo tasks need resetting');
+    return [];
   }
 
   // Reset the tasks
@@ -48,7 +57,11 @@ export const resetDailyTasks = async (userId) => {
     .in('id', tasksToReset.map(task => task.id))
     .select();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Update error:', error);
+    throw error;
+  }
+
   return data || [];
 };
 
