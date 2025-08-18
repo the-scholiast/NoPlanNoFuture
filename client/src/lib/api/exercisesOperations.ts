@@ -1,9 +1,6 @@
-import { apiCall } from '../api/client'
+import { apiCall } from './client'
 import { transformExerciseDatabase } from '../utils/transformers'
-import {
-  ExerciseDatabase,
-  CreateCustomExerciseRequest
-} from '@/types/workoutTypes'
+import { ExerciseDatabase, CreateCustomExerciseRequest } from '@/types/workoutTypes'
 
 // Get all exercises from the database
 export async function getExerciseDatabase(): Promise<ExerciseDatabase[]> {

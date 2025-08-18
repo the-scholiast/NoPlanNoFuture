@@ -1,4 +1,4 @@
-import { apiCall } from '../api/client'
+import { apiCall } from './client'
 
 export interface WorkoutStats {
   totalWorkouts: number

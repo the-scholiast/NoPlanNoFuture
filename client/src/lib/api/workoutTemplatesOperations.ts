@@ -1,10 +1,6 @@
-import { apiCall } from '../api/client'
+import { apiCall } from './client'
 import { transformWorkoutTemplate } from '../utils/transformers'
-import {
-  WorkoutTemplate,
-  CreateWorkoutTemplateRequest,
-  UpdateWorkoutTemplateRequest
-} from '@/types/workoutTypes'
+import { WorkoutTemplate, CreateWorkoutTemplateRequest, UpdateWorkoutTemplateRequest } from '@/types/workoutTypes'
 
 // Get all workout templates for the authenticated user
 export async function getWorkoutTemplates(): Promise<WorkoutTemplate[]> {

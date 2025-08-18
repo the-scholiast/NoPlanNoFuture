@@ -1,10 +1,6 @@
-import { apiCall } from '../api/client'
+import { apiCall } from './client'
 import { transformCompletedWorkout } from '../utils/transformers'
-import {
-  CompletedWorkout,
-  SaveCompletedWorkoutRequest,
-  UpdateCompletedWorkoutRequest
-} from '@/types/workoutTypes'
+import { CompletedWorkout, SaveCompletedWorkoutRequest, UpdateCompletedWorkoutRequest } from '@/types/workoutTypes'
 
 // Get user's completed workouts with optional limit
 export async function getCompletedWorkouts(limit?: number): Promise<CompletedWorkout[]> {
