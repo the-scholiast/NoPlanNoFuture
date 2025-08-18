@@ -1,16 +1,7 @@
-// Type exports
-export * from '@/types/workoutTypes'
-
-// Service exports
-export * from '../services/workoutTemplatesOperations'
-export * from '../services/completedWorkoutOperations'
-export * from '../services/exercisesOperations'
-export * from '../services/workoutStats'
-export * from '../services/userProfileOperations'
-
-// Hook exports
-export * from '@/hooks/useWorkoutApi'
-
 // Utility exports
 export { apiCall } from './client'
 export { getAuthHeaders } from './auth'
+export { recurringTodoApi } from './recurringTodosApi'
+export { timetableApi } from './timetableApi'
+export { todoCompletionsApi } from './todoCompletions'
+export { todoApi } from './todos'
