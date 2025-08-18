@@ -3,20 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TaskData, EditTaskModalProps } from '@/types/todoTypes';
 import { updateTaskData, transformTaskFormDataBackend } from '@/lib/api/transformers';
-import { useTodoMutations, useTaskFormLogic, validateEditTask } from './shared/';
-import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField } from './shared/';
-import { TaskFormData } from './shared/components'; 
+import { useTodoMutations, useTaskFormLogic, validateEditTask, getRecurringDescription, isRecurringInstance } from './shared/';
+import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField, TaskFormData } from './shared/';
 
 export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated }: EditTaskModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const { updateTaskMutation } = useTodoMutations();
-
-  // Helper function to determine if this is a recurring task instance
-  const isRecurringInstance = (task: TaskData): boolean => {
-    return !!(task.parent_task_id && task.id.includes('_'));
-  };
 
   // Helper function to get original task data for recurring instances
   const getOriginalTaskData = (task: TaskData): TaskFormData => {
@@ -62,7 +56,6 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
     toggleEveryDay,
     isEveryDaySelected,
     isDaySelected,
-    getRecurringDescription
   } = useTaskFormLogic();
 
   // Reset form when task changes or modal opens
@@ -104,19 +97,14 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
 
       // Determine which task ID to update
       const taskIdToUpdate = isRecurringInstance(task) ? task.parent_task_id! : task.id;
-
       // Prepare updates (only send fields that actually have values)
       const updates = updateTaskData(taskDataToUpdate);
-
-      console.log('Updating task ID:', taskIdToUpdate);
-      console.log('Sending updates to backend:', updates);
 
       // Use the shared mutation instead of direct API call
       await updateTaskMutation.mutateAsync({ id: taskIdToUpdate, updates });
 
       // Notify parent component
       onTaskUpdated();
-
       // Close modal
       onOpenChange(false);
 
@@ -157,7 +145,7 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
                 <span className="text-sm font-medium">Edit Task</span>
                 {editableTask.is_recurring && (
                   <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full">
-                    Recurring: {getRecurringDescription()}
+                    Recurring: {getRecurringDescription(editableTask)}
                   </span>
                 )}
               </div>
@@ -183,7 +171,6 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
               toggleEveryDay={toggleEveryDay}
               isEveryDaySelected={isEveryDaySelected}
               isDaySelected={isDaySelected}
-              getRecurringDescription={getRecurringDescription}
             />
 
             {/* Date and Time Fields */}

@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { convertTimeSlotTo24Hour } from '@/components/calendar/timetable/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AddTaskModalProps, TaskData, CreateTaskData } from '@/types/todoTypes';
 import { transformCreateTaskData } from '@/lib/api/transformers';
-import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField, TaskFormData, } from '../shared/';
+import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField, getRecurringDescription } from '../shared/';
 import { useMultiTaskFormLogic, validateMultipleTasks, useTodoMutations } from '../shared/';
 
 export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilledData }: AddTaskModalProps) {
@@ -25,17 +26,6 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilled
   } = useMultiTaskFormLogic();
 
   const { createTaskMutation } = useTodoMutations();
-
-  // Add helper function to convert time slot format
-  const convertTimeSlotTo24Hour = (timeSlot: string): string => {
-    const [time, period] = timeSlot.split(' ');
-    let [hours, minutes] = time.split(':').map(Number);
-
-    if (period === 'AM' && hours === 12) hours = 0;
-    if (period === 'PM' && hours !== 12) hours += 12;
-
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-  };
 
   // Add helper function to calculate end time (30 minutes later)
   const calculateEndTime = (startTime: string): string => {
@@ -150,7 +140,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilled
                     <span className="text-sm font-medium">Task {index + 1}</span>
                     {task.is_recurring && (
                       <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full">
-                        Recurring: {taskHelpers.getRecurringDescription()}
+                        Recurring: {getRecurringDescription(task)}
                       </span>
                     )}
                   </div>
@@ -189,7 +179,6 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilled
                   toggleEveryDay={(checked) => taskHelpers.toggleEveryDay(checked)}
                   isEveryDaySelected={() => taskHelpers.isEveryDaySelected()}
                   isDaySelected={(day) => taskHelpers.isDaySelected(day)}
-                  getRecurringDescription={() => taskHelpers.getRecurringDescription()}
                 />
 
                 {/* Date and Time Fields */}

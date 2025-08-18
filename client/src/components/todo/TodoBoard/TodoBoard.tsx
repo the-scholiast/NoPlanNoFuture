@@ -5,33 +5,31 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTodoBoard } from './hooks/useTodoBoard';
 import EditTaskModal from '../EditTaskModal';
 import UpcomingDateFilter from './components/UpcomingDateFilter';
-import { CompactTaskSorting } from '../shared/components/TaskSortingComponent';
-import { TodoBoardProps } from '../shared/types';
-import { useTodoMutations } from '../shared/hooks/useTodoMutations';
+import { TodoBoardProps, useTodoMutations, CompactTaskSorting } from '../shared/';
 import { DailyTaskToggle } from '@/components/todo/TodoBoard/components/DailyTaskToggle';
 import TaskCard from '../shared/components/TaskCard';
 
 export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
   const {
     sections,
-    showAllDailyTasks,
+    getAllCurrentTasks,
     expandedTask,
     editModalOpen,
     setEditModalOpen,
     taskToEdit,
     setUpcomingFilter,
+    showAllDailyTasks,
     openEditModal,
     handleTasksSort,
+    deleteTask,
     toggleTaskExpansion,
     toggleShowAllDailyTasks,
     formatDate,
     formatTime,
-    isRecurringInstance,
-    getRecurringPatternDisplay,
     getDateRangeDisplay,
     getTimeRangeDisplay,
-    deleteTask,
-    getAllCurrentTasks,
+    isRecurringInstance,
+    getRecurringPatternDisplay,
     isLoading,
     error,
   } = useTodoBoard();
@@ -45,8 +43,6 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
 
   // Simplified toggle function
   const toggleTask = (taskId: string) => {
-    console.log('📋 TodoBoard: Toggling task', taskId);
-
     // Get fresh task data directly from the hook
     const allCurrentTasks = getAllCurrentTasks();
     const task = allCurrentTasks.find(t => t.id === taskId);
@@ -56,9 +52,6 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
       return;
     }
 
-    console.log('📋 Current task state:', task.completed);
-
-    // Call the mutation with fresh data - React Query will handle the rest!
     toggleTaskFunction(taskId, allCurrentTasks, isRecurringInstance);
   };
 

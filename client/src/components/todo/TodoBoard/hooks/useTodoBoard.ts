@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { TaskData } from '@/types/todoTypes';
 import { useTodoMutations } from '../../shared/hooks';
 import { getTodayString } from '@/lib/utils/dateUtils';
@@ -7,19 +7,16 @@ import { todoApi } from '@/lib/api/todos';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { todoKeys } from '@/lib/queryKeys';
 import { TodoSection } from '../../shared/types';
-import { filterDailyTasksByDate, filterTasksByDateRange, sortTasksTimeFirst } from '../../shared';
+import { filterDailyTasksByDate, filterTasksByDateRange, sortTasksTimeFirst, getRecurringDescription } from '../../shared';
 import { formatDate, formatTime, getDateRangeDisplay, getTimeRangeDisplay, isRecurringInstance, } from '../../shared';
 
 // Business logic for the TodoBoard component
 export const useTodoBoard = () => {
-  const queryClient = useQueryClient();
-
   // Direct queries
   const {
     data: allTasks = [],
     isLoading,
     error,
-    refetch
   } = useQuery({
     queryKey: todoKeys.all,
     queryFn: todoApi.getAll,
@@ -31,7 +28,6 @@ export const useTodoBoard = () => {
   const {
     data: todayTasksWithRecurring = [],
     isLoading: isLoadingTodayRecurring,
-    refetch: refetchTodayRecurring
   } = useQuery({
     queryKey: todoKeys.today,
     queryFn: recurringTodoApi.getTodayTasks,
@@ -43,7 +39,6 @@ export const useTodoBoard = () => {
   const {
     data: upcomingTasksWithRecurring = [],
     isLoading: isLoadingUpcomingRecurring,
-    refetch: refetchUpcomingRecurring
   } = useQuery({
     queryKey: todoKeys.upcoming,
     queryFn: recurringTodoApi.getUpcomingTasks,
@@ -73,16 +68,8 @@ export const useTodoBoard = () => {
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<TaskData | null>(null);
-  const [sortedTasks, setSortedTasks] = useState<Record<string, TaskData[]>>({
-    daily: [],
-    today: [],
-    upcoming: []
-  });
-  const [upcomingFilter, setUpcomingFilter] = useState({
-    startDate: '',
-    endDate: '',
-    enabled: true
-  });
+  const [sortedTasks, setSortedTasks] = useState<Record<string, TaskData[]>>({ daily: [], today: [], upcoming: [] });
+  const [upcomingFilter, setUpcomingFilter] = useState({ startDate: '', endDate: '', enabled: true });
   const [showAllDailyTasks, setShowAllDailyTasks] = useState(false);
 
   // Get current date for filtering
@@ -137,11 +124,7 @@ export const useTodoBoard = () => {
   ], [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks, sortedTasks]);
 
   // Reset sorted tasks when task IDs change - use useRef to prevent infinite loops
-  const previousTaskIds = useRef<{
-    daily: string;
-    today: string;
-    upcoming: string;
-  }>({
+  const previousTaskIds = useRef<{ daily: string; today: string; upcoming: string; }>({
     daily: '',
     today: '',
     upcoming: ''
@@ -167,15 +150,12 @@ export const useTodoBoard = () => {
         upcoming: currentUpcomingIds
       };
 
-      setSortedTasks({
-        daily: [],
-        today: [],
-        upcoming: []
-      });
+      setSortedTasks({ daily: [], today: [], upcoming: [] });
     }
   }, [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks]);
+
   const getRecurringPatternDisplay = (task: TaskData) => {
-    return recurringTodoApi.getRecurringDescription(task);
+    return getRecurringDescription(task);
   };
 
   const deleteTask = (taskId: string) => {
@@ -210,20 +190,6 @@ export const useTodoBoard = () => {
     setShowAllDailyTasks(prev => !prev);
   };
 
-  // Invalidate cache functions for mutations
-  const invalidateTimetableCache = () => {
-    queryClient.invalidateQueries({ queryKey: todoKeys.timetable.tasks });
-    queryClient.invalidateQueries({ queryKey: todoKeys.timetable.allWeeks });
-  };
-
-  const refetchTimetable = (weekStartDate?: string) => {
-    if (weekStartDate) {
-      queryClient.invalidateQueries({ queryKey: todoKeys.timetable.week(weekStartDate) });
-    } else {
-      invalidateTimetableCache();
-    }
-  };
-
   // Loading state
   const isAnyLoading = isLoading || isLoadingTodayRecurring || isLoadingUpcomingRecurring;
 
@@ -237,21 +203,13 @@ export const useTodoBoard = () => {
   return {
     // Data
     sections,
-    filteredDailyTasks,
-    todayTasksWithRecurring,
-    upcomingTasksWithRecurring,
-    filteredUpcomingTasks,
-    filteredUpcomingRecurringTasks,
     getAllCurrentTasks,
 
     // State
     expandedTask,
-    setExpandedTask,
     editModalOpen,
     setEditModalOpen,
     taskToEdit,
-    setTaskToEdit,
-    upcomingFilter,
     setUpcomingFilter,
     showAllDailyTasks,
 
@@ -261,11 +219,6 @@ export const useTodoBoard = () => {
     deleteTask,
     toggleTaskExpansion,
     toggleShowAllDailyTasks,
-    refetch,
-    refetchTodayRecurring,
-    refetchUpcomingRecurring,
-    invalidateTimetableCache,
-    refetchTimetable,
 
     // Helper functions
     formatDate,
