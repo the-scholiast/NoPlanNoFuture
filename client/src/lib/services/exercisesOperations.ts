@@ -1,5 +1,5 @@
 import { apiCall } from '../api/client'
-import { transformExerciseDatabase } from '../api/transformers'
+import { transformExerciseDatabase } from '../utils/transformers'
 import {
   ExerciseDatabase,
   CreateCustomExerciseRequest

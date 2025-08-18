@@ -1,9 +1,9 @@
 import { apiCall } from '../api/client'
-import { transformWorkoutTemplate } from '../api/transformers'
-import { 
-  WorkoutTemplate, 
-  CreateWorkoutTemplateRequest, 
-  UpdateWorkoutTemplateRequest 
+import { transformWorkoutTemplate } from '../utils/transformers'
+import {
+  WorkoutTemplate,
+  CreateWorkoutTemplateRequest,
+  UpdateWorkoutTemplateRequest
 } from '@/types/workoutTypes'
 
 // Get all workout templates for the authenticated user

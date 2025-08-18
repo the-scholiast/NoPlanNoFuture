@@ -1,5 +1,5 @@
 import { apiCall } from '../api/client'
-import { transformCompletedWorkout } from '../api/transformers'
+import { transformCompletedWorkout } from '../utils/transformers'
 import {
   CompletedWorkout,
   SaveCompletedWorkoutRequest,

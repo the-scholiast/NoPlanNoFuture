@@ -42,26 +42,27 @@ export function transformExerciseDatabase(data: any): ExerciseDatabase {
 // Transform raw API response to TaskData
 export function transformTaskData(data: any): TaskData {
   return {
-    id: data.id,
-    title: data.title,
-    completed: data.completed === true || data.completed === "TRUE" || data.completed === "true" || data.completed === 1,
-    completed_at: data.completed_at || undefined,
-    created_at: data.created_at || new Date().toISOString(),
-    section: data.section,
-    priority: data.priority,
-    description: data.description || undefined,
-    start_date: data.start_date || undefined,
-    end_date: data.end_date || undefined,
-    start_time: data.start_time || undefined,
-    end_time: data.end_time || undefined,
-    is_recurring: data.is_recurring || false,
-    recurring_days: data.recurring_days || undefined,
-    parent_task_id: data.parent_task_id || undefined,
-    completion_count: data.completion_count || undefined,
-    last_completed_date: data.last_completed_date || undefined,
-    deleted_at: data.deleted_at || undefined,
-    is_schedule: data.is_schedule || false,
-  }
+  id: data.id,
+  title: data.title,
+  completed: data.completed === true || data.completed === "TRUE" || data.completed === "true" || data.completed === 1,
+  completed_at: data.completed_at || undefined,
+  created_at: data.created_at || new Date().toISOString(),
+  section: data.section,
+  priority: data.priority,
+  description: data.description || undefined,
+  start_date: data.start_date || undefined,
+  end_date: data.end_date || undefined,
+  start_time: data.start_time || undefined,
+  end_time: data.end_time || undefined,
+  is_recurring: data.is_recurring || false,
+  recurring_days: data.recurring_days || undefined,
+  parent_task_id: data.parent_task_id || undefined,
+  completion_count: data.completion_count || undefined,
+  last_completed_date: data.last_completed_date || undefined,
+  deleted_at: data.deleted_at || undefined,
+  is_schedule: data.is_schedule || false,
+  updated_at: data.updated_at || undefined,
+}
 }
 
 // Transform TaskFormData to backend format for editing tasks
