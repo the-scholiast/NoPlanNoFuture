@@ -1,4 +1,4 @@
-import { formatDateString } from "@/lib/utils/dateUtils";
+import { formatDateString, getTodayString } from "@/lib/utils/dateUtils";
 import { TaskData } from "@/types/todoTypes";
 import { TaskFormData } from "..";
 
@@ -70,3 +70,24 @@ export const getRecurringDescription = (task: TaskData | TaskFormData): string =
 
   return `${days.length} days per week`;
 };
+
+/**
+ * Check if daily tasks need to be reset based on last app open
+ * Uses sessionStorage instead of localStorage for better cleanup
+ */
+export const shouldResetDailyTasks = (): boolean => {
+  const lastAppOpen = sessionStorage.getItem('lastAppOpen');
+  const today = getTodayString();
+
+  if (!lastAppOpen) {
+    sessionStorage.setItem('lastAppOpen', today);
+    return false;
+  }
+
+  if (lastAppOpen !== today) {
+    sessionStorage.setItem('lastAppOpen', today);
+    return true;
+  }
+
+  return false;
+}
