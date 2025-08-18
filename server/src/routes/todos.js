@@ -87,7 +87,6 @@ router.post('/completions', authenticateUser, async (req, res, next) => {
 
     // Create timestamp in local timezone instead of UTC
     const now = new Date();
-
     const localISOString = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString();
 
     // Create the completion record
@@ -97,7 +96,7 @@ router.post('/completions', authenticateUser, async (req, res, next) => {
         user_id: req.user.id,
         task_id: task_id,
         instance_date: instance_date,
-        completed_at: localISOString, // Use local time instead of UTC
+        completed_at: localISOString,
       })
       .select()
       .single();
