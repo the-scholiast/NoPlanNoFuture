@@ -8,17 +8,17 @@ import {
   createTodo,
   updateTodo,
   deleteTodo,
-  bulkDeleteTodos,
   softDeleteTodo,
   restoreTodo,
   getDeletedTodos,
   permanentlyDeleteOldTodos,
-  deleteCompletedTodos,
-  deleteAllTodos,
+  getTaskById,
   getDailyTaskStats,
   resetDailyTasks,
+  deleteCompletionByDate,
+  getCompletionTasksByOriginalTask,
+  createTodoCompletion
 } from '../controllers/index.js';
-import supabase from '../supabaseAdmin.js';
 
 const router = express.Router();
 
@@ -75,37 +75,22 @@ router.get('/deleted', authenticateUser, async (req, res, next) => {
   }
 });
 
+// Endpoint creates a new todo for the authenticated user
+router.post('/', authenticateUser, async (req, res, next) => {
+  try {
+    const todo = await createTodo(req.user.id, req.body);
+    res.status(201).json(todo);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Create completion record
 router.post('/completions', authenticateUser, async (req, res, next) => {
   try {
     const { task_id, instance_date } = req.body;
-
-    if (!task_id || !instance_date) {
-      return res.status(400).json({ error: 'Task ID and instance date are required' });
-    }
-
-    // Create timestamp in local timezone instead of UTC
-    const now = new Date();
-    const localISOString = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString();
-
-    // Create the completion record
-    const { data, error } = await supabase
-      .from('todo_completions')
-      .insert({
-        user_id: req.user.id,
-        task_id: task_id,
-        instance_date: instance_date,
-        completed_at: localISOString,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating completion:', error);
-      return res.status(500).json({ error: 'Failed to create completion' });
-    }
-
-    res.status(201).json(data);
+    const completion = await createTodoCompletion(req.user.id, task_id, instance_date);
+    res.status(201).json(completion);
   } catch (error) {
     next(error);
   }
@@ -115,59 +100,7 @@ router.post('/completions', authenticateUser, async (req, res, next) => {
 router.get('/completions', authenticateUser, async (req, res, next) => {
   try {
     const { startDate, endDate } = req.query;
-
-    let query = supabase
-      .from('todo_completions')
-      .select(`*,todos!inner (*)`)
-      .eq('user_id', req.user.id)
-      .order('completed_at', { ascending: false });
-
-    // Apply date filter if provided
-    if (startDate && endDate) {
-      const startDateTime = `${startDate}T00:00:00`;
-      const endDate_obj = new Date(endDate);
-      endDate_obj.setDate(endDate_obj.getDate() + 1);
-      const nextDay = endDate_obj.toISOString().split('T')[0];
-      const endDateTime = `${nextDay}T00:00:00`;
-
-      query = query
-        .gte('completed_at', startDateTime)
-        .lt('completed_at', endDateTime);
-    }
-
-    const { data: completions, error } = await query;
-
-    if (error) {
-      console.error('Error fetching completions:', error);
-      throw error;
-    }
-
-    // Transform to the format expected by CompletedTasks component
-    const result = completions?.map(completion => {
-      const task = completion.todos;
-
-      // Check if this is a recurring task completed on its end date
-      const isRecurringEndDateCompletion = task.is_recurring &&
-        task.end_date &&
-        task.end_date === completion.instance_date;
-
-      return {
-        ...task,
-        task_id: completion.task_id,
-        instance_date: completion.instance_date,
-        completion: {
-          id: completion.id,
-          user_id: completion.user_id,
-          task_id: completion.task_id,
-          instance_date: completion.instance_date,
-          completed_at: completion.completed_at,
-          created_at: completion.created_at,
-        },
-        completion_count: task.completion_count,
-        // ONLY change the display: show as original task when end date = completion date
-        is_recurring_instance: task.is_recurring && !isRecurringEndDateCompletion
-      };
-    }) || [];
+    const result = await getCompletionTasksByOriginalTask(req.user.id, startDate, endDate)
 
     res.json(result);
   } catch (error) {
@@ -204,46 +137,6 @@ router.get('/daily/stats', authenticateUser, async (req, res, next) => {
 
 // ===== BULK OPERATIONS =====
 
-// Endpoint allows deletion of multiple todo items in a single request
-router.post('/bulk-delete', authenticateUser, async (req, res, next) => {
-  try {
-    const result = await bulkDeleteTodos(req.user.id, req.body);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Endpoint soft deletes all completed tasks from a specific section
-router.delete('/section/:section/completed', authenticateUser, async (req, res, next) => {
-  try {
-    const section = req.params.section;
-    const todos = await deleteCompletedTodos(req.user.id, section);
-    res.json({
-      message: `Moved ${todos.length} completed ${section} tasks to trash`,
-      deletedCount: todos.length,
-      deletedTodos: todos
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Endpoint soft deletes all tasks from a specific section
-router.delete('/section/:section/all', authenticateUser, async (req, res, next) => {
-  try {
-    const section = req.params.section;
-    const todos = await deleteAllTodos(req.user.id, section);
-    res.json({
-      message: `Moved ${todos.length} ${section} tasks to trash`,
-      deletedCount: todos.length,
-      deletedTodos: todos
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
 // Endpoint cleans up old deleted todos
 router.delete('/cleanup/old', authenticateUser, async (req, res, next) => {
   try {
@@ -259,37 +152,13 @@ router.delete('/cleanup/old', authenticateUser, async (req, res, next) => {
   }
 });
 
-// ===== PARAMETERIZED ROUTES (MUST COME LAST) =====
+// ===== PARAMETERIZED ROUTES =====
 
 // Endpoint gets a single todo by ID
 router.get('/:id', authenticateUser, async (req, res, next) => {
   try {
-    const { data, error } = await supabase
-      .from('todos')
-      .select('*')
-      .eq('id', req.params.id)
-      .eq('user_id', req.user.id)
-      .single();
-
-    if (error) throw error;
-    if (!data) return res.status(404).json({ error: 'Todo not found' });
-
-    // Filter out deleted tasks if column exists
-    if (data.hasOwnProperty('deleted_at') && data.deleted_at !== null) {
-      return res.status(404).json({ error: 'Todo not found' });
-    }
-
+    const data = await getTaskById(req.user.id, req.params.id)
     res.json(data);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Endpoint creates a new todo for the authenticated user
-router.post('/', authenticateUser, async (req, res, next) => {
-  try {
-    const todo = await createTodo(req.user.id, req.body);
-    res.status(201).json(todo);
   } catch (error) {
     next(error);
   }
@@ -350,19 +219,13 @@ router.delete('/completions/task/:taskId/date/:instanceDate', authenticateUser, 
     }
 
     // Delete the completion record for this task and date
-    const { error } = await supabase
-      .from('todo_completions')
-      .delete()
-      .eq('task_id', taskId)
-      .eq('instance_date', instanceDate)
-      .eq('user_id', req.user.id);
+    const { success } = deleteCompletionByDate(req.user.id, taskId, instanceDate);
 
-    if (error) {
-      console.error('Error deleting completion:', error);
-      return res.status(500).json({ error: 'Failed to delete completion' });
+    if (!success) {
+      return res.status(404).json({ error: 'Error deleting instance task' })
     }
 
-    res.status(200).json({ success: true });
+    res.status(200).json({ message: 'Instance task deleted' });
   } catch (error) {
     next(error);
   }
