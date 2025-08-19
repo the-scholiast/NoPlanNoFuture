@@ -9,4 +9,5 @@ export * from './workoutController.js'
 export * from './taskValidation.js'
 
 export * from './profileController.js'
-export * from './statsController.js'
+export * from './statsGymController.js'
+export * from './statsTodoController.js'

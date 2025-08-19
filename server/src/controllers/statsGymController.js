@@ -1,7 +1,7 @@
 import supabase from '../supabaseAdmin.js';
 
 // Retrieves workout statistics for a user
-export const getStats = async (userId) => {
+export const getGymStats = async (userId) => {
   // Get total workouts count for the user
   const { count: totalWorkouts } = await supabase
     .from('workouts')
