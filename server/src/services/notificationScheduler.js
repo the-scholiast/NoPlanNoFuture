@@ -1,106 +1,40 @@
 import cron from 'node-cron';
+import { getActiveNotifications, updateNotificationStatus } from '../controllers/notificationController.js';
 
-// Helper function to check if notification should be sent
+// Helper function to check if notification should be sent based on time
 const shouldSendNotification = (notification, now) => {
-  const { cadence, day_of_week, send_time, active } = notification;
+  const { active, cadence, day_of_week, send_time } = notification;
   
+  // Only check if notification is active
   if (!active) return false;
   
-  // Check if current time matches send_time (HH:MM format)
-  const currentTime = now.toTimeString().slice(0, 5); // Get HH:MM
-  if (currentTime !== send_time) return false;
+  // If no send_time is set, don't send
+  if (!send_time) return false;
   
-  // For daily cadence, always send
-  if (cadence === 'daily') return true;
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  const currentDayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
   
-  // For weekly cadence, check day of week
-  if (cadence === 'weekly') {
-    // Convert JavaScript day (0=Sunday) to our format (1=Monday, 7=Sunday)
-    const currentDay = now.getDay();
-    const adjustedDay = currentDay === 0 ? 7 : currentDay; // Sunday becomes 7
-    return adjustedDay === day_of_week;
+  // Parse send_time (format: "HH:MM")
+  const [targetHour, targetMinute] = send_time.split(':').map(Number);
+  
+  // Check if current time matches send_time (within 5 minutes window)
+  const timeDiff = Math.abs((currentHour * 60 + currentMinute) - (targetHour * 60 + targetMinute));
+  if (timeDiff > 5) return false;
+  
+  // Check cadence
+  if (cadence === 'daily') {
+    return true;
+  } else if (cadence === 'weekly' && day_of_week) {
+    // Convert day_of_week (1-7) to JavaScript day (0-6)
+    const jsDayOfWeek = day_of_week === 7 ? 0 : day_of_week;
+    return currentDayOfWeek === jsDayOfWeek;
   }
   
   return false;
 };
 
-// Helper function to post to Discord (extracted from controller for reuse)
-const postToDiscord = async (webhookUrl, tasks) => {
-  // Group tasks by type
-  const upcoming = tasks.filter(t => t.due_at && !t.is_recurring && !t.is_daily);
-  const recurring = tasks.filter(t => t.is_recurring);
-  const daily = tasks.filter(t => t.is_daily);
-
-  const embeds = [];
-
-  // Upcoming tasks embed
-  if (upcoming.length > 0) {
-    embeds.push({
-      title: '📅 Upcoming Tasks',
-      color: 0x3498db,
-      fields: upcoming.slice(0, 25).map(task => ({
-        name: task.title,
-        value: `${task.due_at ? new Date(task.due_at).toLocaleDateString() : 'No due date'}${task.priority ? ` · ${task.priority}` : ''}`,
-        inline: false
-      })),
-      footer: upcoming.length > 25 ? { text: `+${upcoming.length - 25} more tasks` } : undefined
-    });
-  }
-
-  // Recurring tasks embed
-  if (recurring.length > 0) {
-    embeds.push({
-      title: '🔄 Recurring Tasks',
-      color: 0xe74c3c,
-      fields: recurring.slice(0, 25).map(task => ({
-        name: task.title,
-        value: `${task.recurring_days ? task.recurring_days.join(', ') : 'No schedule'}${task.priority ? ` · ${task.priority}` : ''}`,
-        inline: false
-      })),
-      footer: recurring.length > 25 ? { text: `+${recurring.length - 25} more tasks` } : undefined
-    });
-  }
-
-  // Daily tasks embed
-  if (daily.length > 0) {
-    embeds.push({
-      title: '📝 Daily Tasks',
-      color: 0x2ecc71,
-      fields: daily.slice(0, 25).map(task => ({
-        name: task.title,
-        value: `${task.priority ? `Priority: ${task.priority}` : 'No priority'}`,
-        inline: false
-      })),
-      footer: daily.length > 25 ? { text: `+${daily.length - 25} more tasks` } : undefined
-    });
-  }
-
-  if (embeds.length === 0) {
-    embeds.push({
-      title: '📅 No Tasks Found',
-      description: 'No tasks match your notification criteria.',
-      color: 0x95a5a6
-    });
-  }
-
-  const response = await fetch(webhookUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      content: '📅 **Your Upcoming Tasks**',
-      embeds
-    })
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Discord webhook failed: ${response.status} ${errorText}`);
-  }
-
-  return response;
-};
+import { postToDiscord } from '../utils/discordUtils.js';
 
 // Helper function to get tasks for a notification
 const getTasksForNotification = async (userId, notification) => {
@@ -125,49 +59,80 @@ const getTasksForNotification = async (userId, notification) => {
   // Import supabase here to avoid circular dependency
   const { default: supabase } = await import('../supabaseAdmin.js');
 
-  let query = supabase
-    .from('todos')
-    .select('*')
-    .eq('user_id', userId)
-    .is('deleted_at', null);
-
-  // Build conditions based on what to include
-  const conditions = [];
+  // Build separate queries for each condition and combine results
+  let allTasks = [];
+  
+  const localISOString = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString();
+  const endDateLocalISO = new Date(endDate.getTime() - (endDate.getTimezoneOffset() * 60000)).toISOString();
   
   if (include_upcoming) {
-    conditions.push(`(due_at >= '${now.toISOString()}' AND due_at <= '${endDate.toISOString()}')`);
+    const { data: upcomingTasks, error: upcomingError } = await supabase
+      .from('todos')
+      .select('*')
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .gte('start_date', localISOString.split('T')[0])
+      .lte('start_date', endDateLocalISO.split('T')[0])
+      .order('start_date', { ascending: true });
+    
+    if (upcomingError) throw upcomingError;
+    if (upcomingTasks) allTasks.push(...upcomingTasks);
   }
   
   if (include_recurring) {
-    conditions.push('is_recurring = true');
+    const { data: recurringTasks, error: recurringError } = await supabase
+      .from('todos')
+      .select('*')
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .eq('is_recurring', true)
+      .order('start_date', { ascending: true });
+    
+    if (recurringError) throw recurringError;
+    if (recurringTasks) allTasks.push(...recurringTasks);
   }
   
   if (include_daily) {
-    conditions.push('is_daily = true');
+    const { data: dailyTasks, error: dailyError } = await supabase
+      .from('todos')
+      .select('*')
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .eq('section', 'daily')
+      .order('start_date', { ascending: true });
+    
+    if (dailyError) throw dailyError;
+    if (dailyTasks) allTasks.push(...dailyTasks);
   }
 
-  if (conditions.length > 0) {
-    query = query.or(conditions.join(','));
-  }
+  // Remove duplicates based on task ID
+  const uniqueTasks = allTasks.filter((task, index, self) => 
+    index === self.findIndex(t => t.id === task.id)
+  );
 
-  const { data, error } = await query.order('due_at', { ascending: true });
-
-  if (error) throw error;
-  return data || [];
+  return uniqueTasks;
 };
 
 // Main function to process notifications
 const processNotifications = async () => {
   try {
-    console.log(`[${new Date().toISOString()}] Processing notifications...`);
+    const now = new Date();
+    
+    console.log(`[${now.toISOString()}] Processing notifications...`);
     
     const notifications = await getActiveNotifications();
-    const now = new Date();
     
     for (const notification of notifications) {
       try {
+        // Debug logging
+        console.log(`[${now.toISOString()}] Checking notification ${notification.id}:`);
+        console.log(`  - Active: ${notification.active}`);
+        console.log(`  - Cadence: ${notification.cadence}`);
+        console.log(`  - Day of week: ${notification.day_of_week}`);
+        console.log(`  - Send time: ${notification.send_time}`);
+        
         if (shouldSendNotification(notification, now)) {
-          console.log(`[${new Date().toISOString()}] Sending notification ${notification.id} to user ${notification.user_id}`);
+          console.log(`[${now.toISOString()}] Sending notification ${notification.id} to user ${notification.user_id}`);
           
           // Get tasks for this notification
           const tasks = await getTasksForNotification(notification.user_id, notification);
@@ -178,10 +143,12 @@ const processNotifications = async () => {
           // Update last_sent_at
           await updateNotificationStatus(notification.id, now.toISOString(), null);
           
-          console.log(`[${new Date().toISOString()}] Successfully sent notification ${notification.id}`);
+          console.log(`[${now.toISOString()}] Successfully sent notification ${notification.id}`);
+        } else {
+          console.log(`[${now.toISOString()}] Notification ${notification.id} not ready to send`);
         }
       } catch (error) {
-        console.error(`[${new Date().toISOString()}] Error processing notification ${notification.id}:`, error);
+        console.error(`[${now.toISOString()}] Error processing notification ${notification.id}:`, error);
         
         // Update last_error
         await updateNotificationStatus(notification.id, null, error.message);
@@ -193,7 +160,7 @@ const processNotifications = async () => {
             .from('notifications')
             .update({ active: false })
             .eq('id', notification.id);
-          console.log(`[${new Date().toISOString()}] Marked notification ${notification.id} as inactive due to invalid webhook`);
+          console.log(`[${now.toISOString()}] Marked notification ${notification.id} as inactive due to invalid webhook`);
         }
       }
     }
@@ -202,13 +169,12 @@ const processNotifications = async () => {
   }
 };
 
-// Start the cron job
+// Start the cron job - run every minute to check for notifications
 export const startNotificationScheduler = () => {
-  // Run every minute to check for notifications
-  // This allows us to catch notifications at :00 and :30
+  // Run every minute to check for notifications at specific times
   cron.schedule('* * * * *', processNotifications, {
     scheduled: true,
-    timezone: "UTC" // Use UTC to avoid timezone issues
+    timezone: "UTC"
   });
   
   console.log('Notification scheduler started - checking every minute');
@@ -217,4 +183,73 @@ export const startNotificationScheduler = () => {
 // Manual trigger for testing
 export const triggerNotificationCheck = () => {
   processNotifications();
+};
+
+// Manual send function for a specific notification
+export const sendNotificationManually = async (notificationId) => {
+  try {
+    const { default: supabase } = await import('../supabaseAdmin.js');
+    
+    // Get notification
+    const { data: notification, error: fetchError } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('id', notificationId)
+      .single();
+
+    if (fetchError || !notification) {
+      throw new Error('Notification not found');
+    }
+
+    if (!notification.active) {
+      throw new Error('Notification is not active');
+    }
+
+    console.log(`[${new Date().toISOString()}] Manually sending notification ${notificationId} to user ${notification.user_id}`);
+    
+    // Get tasks for this notification
+    const tasks = await getTasksForNotification(notification.user_id, notification);
+    
+    // Send to Discord
+    await postToDiscord(notification.webhook_url, tasks);
+    
+    // Update last_sent_at
+    await updateNotificationStatus(notificationId, new Date().toISOString(), null);
+    
+    console.log(`[${new Date().toISOString()}] Successfully sent manual notification ${notificationId}`);
+    
+    return { success: true, message: 'Notification sent successfully' };
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Error sending manual notification ${notificationId}:`, error);
+    
+    // Update last_error
+    await updateNotificationStatus(notificationId, null, error.message);
+    
+    throw error;
+  }
+};
+
+// Debug function to check notification status
+export const debugNotificationStatus = async () => {
+  try {
+    const notifications = await getActiveNotifications();
+    const now = new Date();
+    
+    console.log('=== Notification Status Debug ===');
+    console.log(`Current Time: ${now.toISOString()}`);
+    
+    for (const notification of notifications) {
+      const { active, webhook_url } = notification;
+      const shouldSend = shouldSendNotification(notification, now);
+      
+      console.log(`\nNotification ${notification.id}:`);
+      console.log(`  - Active: ${active}`);
+      console.log(`  - Webhook URL: ${webhook_url ? 'Set' : 'Not set'}`);
+      console.log(`  - Should send now: ${shouldSend}`);
+    }
+    
+    console.log('\n=== End Debug ===');
+  } catch (error) {
+    console.error('Debug error:', error);
+  }
 };
