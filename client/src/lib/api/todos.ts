@@ -72,14 +72,4 @@ export const todoApi = {
       method: 'POST',
     });
   },
-
-  // Get daily task statistics
-  getDailyTaskStats: async (startDate?: string, endDate?: string): Promise<any[]> => {
-    const params = new URLSearchParams();
-    if (startDate) params.append('startDate', startDate);
-    if (endDate) params.append('endDate', endDate);
-    
-    const query = params.toString() ? `?${params.toString()}` : '';
-    return apiCall(`/todos/daily/stats${query}`);
-  },
 };

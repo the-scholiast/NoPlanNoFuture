@@ -115,44 +115,4 @@ export const todoCompletionsApi = {
       return [];
     }
   },
-
-  // Get completion statistics for a task
-  async getTaskCompletionStats(taskId: string): Promise<{
-    totalCompletions: number;
-    firstCompletion: string | null;
-    lastCompletion: string | null;
-    completionDates: string[];
-  }> {
-    try {
-      const completions = await this.getTaskCompletions(taskId);
-
-      if (completions.length === 0) {
-        return {
-          totalCompletions: 0,
-          firstCompletion: null,
-          lastCompletion: null,
-          completionDates: []
-        };
-      }
-
-      const sortedCompletions = completions.sort((a, b) =>
-        new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime()
-      );
-
-      return {
-        totalCompletions: completions.length,
-        firstCompletion: sortedCompletions[0].completed_at,
-        lastCompletion: sortedCompletions[sortedCompletions.length - 1].completed_at,
-        completionDates: completions.map(c => c.instance_date)
-      };
-    } catch (error) {
-      console.error('todoCompletionsApi: Error getting task completion stats:', error);
-      return {
-        totalCompletions: 0,
-        firstCompletion: null,
-        lastCompletion: null,
-        completionDates: []
-      };
-    }
-  },
 };
