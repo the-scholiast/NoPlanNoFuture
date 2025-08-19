@@ -141,14 +141,45 @@ const getTimeInfo = (task) => {
   let timeInfo = '';
   
   if (task.start_time) {
-    timeInfo += ` ${task.start_time}`;
+    const formattedStartTime = formatTime(task.start_time);
+    timeInfo += ` ${formattedStartTime}`;
   }
   
   if (task.end_time) {
-    timeInfo += `-${task.end_time}`;
+    const formattedEndTime = formatTime(task.end_time);
+    timeInfo += `-${formattedEndTime}`;
   }
   
   return timeInfo;
+};
+
+// Helper function to format time to show only hours and minutes
+const formatTime = (timeString) => {
+  if (!timeString) return '';
+  
+  // If time is already in HH:MM format, return as is
+  if (/^\d{1,2}:\d{2}$/.test(timeString)) {
+    return timeString;
+  }
+  
+  // If time is in HH:MM:SS format, extract HH:MM
+  if (/^\d{1,2}:\d{2}:\d{2}$/.test(timeString)) {
+    return timeString.substring(0, 5);
+  }
+  
+  // If time is in ISO format or other format, try to parse it
+  try {
+    const date = new Date(`2000-01-01T${timeString}`);
+    if (!isNaN(date.getTime())) {
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${hours}:${minutes}`;
+    }
+  } catch (e) {
+    // If parsing fails, return original string
+  }
+  
+  return timeString;
 };
 
 // Helper function to get type information
