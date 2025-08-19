@@ -1,6 +1,6 @@
 import supabase from '../supabaseAdmin.js';
 import { ValidationError } from '../utils/errors.js';
-import { formatDateString, } from '../utils/dateUtils.js';
+import { formatDateString } from '../utils/dateUtils.js';
 
 const DAYS_OF_WEEK = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
@@ -85,7 +85,7 @@ export const getIncompletedTodos = async (userId) => {
     .eq('user_id', userId)
     .eq('completed', false)
     .or('completion_count.is.null,completion_count.eq.0')
-    .is('deleted_at', null) 
+    .is('deleted_at', null)
     .or(`start_date.lt.${currentDate},end_date.lt.${currentDate}`)
     .order('created_at', { ascending: false });
 
@@ -238,4 +238,110 @@ export const getDeletedTodos = async (userId, limit = 50) => {
 
   if (error) throw error;
   return data || [];
+};
+
+// Delete completion by task and date
+export const deleteCompletionByDate = async (userId, taskId, instanceDate) => {
+  const { error } = await supabase
+    .from('todo_completions')
+    .delete()
+    .eq('task_id', taskId)
+    .eq('instance_date', instanceDate)
+    .eq('user_id', userId);
+
+  if (error) throw error;
+  return { success: true };
+}
+
+// Get a single Todo task by taskId
+export const getTaskById = async (userId, taskId) => {
+  const { data, error } = await supabase
+    .from('todos')
+    .select('*')
+    .eq('id', taskId)
+    .eq('user_id', userId)
+    .single();
+
+  if (error) throw error;
+  return data || '';
+}
+
+// Get completion records with associated task data
+export const getCompletionTasksByOriginalTask = async (userId, startDate, endDate) => {
+  let query = supabase
+    .from('todo_completions')
+    .select(`*,todos!inner (*)`)
+    .eq('user_id', userId)
+    .order('completed_at', { ascending: false });
+
+  // Apply date filter if provided
+  if (startDate && endDate) {
+    const startDateTime = `${startDate}T00:00:00`;
+    const endDate_obj = new Date(endDate);
+    endDate_obj.setDate(endDate_obj.getDate() + 1);
+    const nextDay = formatDateString(endDate_obj);
+    const endDateTime = `${nextDay}T00:00:00`;
+
+    query = query
+      .gte('completed_at', startDateTime)
+      .lt('completed_at', endDateTime);
+  }
+
+  const { data: completions, error } = await query;
+
+  if (error) throw error;
+
+  // Transform to the format expected by CompletedTasks component
+  const result = completions?.map(completion => {
+    const task = completion.todos;
+
+    // Check if this is a recurring task completed on its end date
+    const isRecurringEndDateCompletion = task.is_recurring &&
+      task.end_date &&
+      task.end_date === completion.instance_date;
+
+    return {
+      ...task,
+      task_id: completion.task_id,
+      instance_date: completion.instance_date,
+      completion: {
+        id: completion.id,
+        user_id: completion.user_id,
+        task_id: completion.task_id,
+        instance_date: completion.instance_date,
+        completed_at: completion.completed_at,
+        created_at: completion.created_at,
+      },
+      completion_count: task.completion_count,
+      // ONLY change the display: show as original task when end date = completion date
+      is_recurring_instance: task.is_recurring && !isRecurringEndDateCompletion
+    };
+  }) || [];
+
+  return result;
+}
+
+// Create completion record
+export const createTodoCompletion = async (userId, taskId, instanceDate) => {
+  if (!taskId || !instanceDate) {
+    throw new ValidationError('Task ID and instance date are required');
+  }
+
+  // Create timestamp in local timezone instead of UTC
+  const now = new Date();
+  const localISOString = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString();
+
+  const { data, error } = await supabase
+    .from('todo_completions')
+    .insert({
+      user_id: userId,
+      task_id: taskId,
+      instance_date: instanceDate,
+      completed_at: localISOString,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
 };
