@@ -12,7 +12,7 @@ export interface UserProfile {
 // Get current user's profile
 export async function getUserProfile(): Promise<UserProfile | null> {
   try {
-    const data = await apiCall('/user/profile')
+    const data = await apiCall('/profile')
     return data
   } catch (error) {
     console.error('Error fetching user profile:', error)
@@ -23,7 +23,7 @@ export async function getUserProfile(): Promise<UserProfile | null> {
 // Update user profile
 export async function updateUserProfile(updates: Partial<UserProfile>): Promise<UserProfile | null> {
   try {
-    const data = await apiCall('/user/profile', {
+    const data = await apiCall('/profile', {
       method: 'PATCH',
       body: JSON.stringify(updates)
     })
