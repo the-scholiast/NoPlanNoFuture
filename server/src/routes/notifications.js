@@ -8,6 +8,7 @@ import {
   testNotification,
   getNotificationPreview
 } from '../controllers/notificationController.js';
+import { sendNotificationManually } from '../services/notificationScheduler.js';
 
 const router = express.Router();
 
@@ -101,6 +102,17 @@ router.post('/preview', async (req, res) => {
   } catch (error) {
     console.error('Error getting notification preview:', error);
     res.status(500).json({ error: 'Failed to get preview' });
+  }
+});
+
+// POST /api/notifications/:id/send - Manually send notification
+router.post('/:id/send', async (req, res) => {
+  try {
+    const result = await sendNotificationManually(req.params.id);
+    res.json(result);
+  } catch (error) {
+    console.error('Error manually sending notification:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

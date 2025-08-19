@@ -137,3 +137,24 @@ export const getNotificationPreview = async (data: CreateNotificationData): Prom
 
   return response.json();
 };
+
+// Manually send a notification
+export const sendNotificationManually = async (id: string): Promise<{ success: boolean; message: string }> => {
+  const token = await getAuthToken();
+  if (!token) throw new Error('No authentication token');
+
+  const response = await fetch(`${API_BASE_URL}/notifications/${id}/send`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to send notification');
+  }
+
+  return response.json();
+};
