@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Textarea } from "@/components/ui/textarea"
+import { useAuth } from '@/hooks/useAuth';
+import GoogleAuthButton from '@/components/login/GoogleAuthButton';
 
 interface Sentence {
   id: number;
@@ -14,6 +16,7 @@ interface Sentence {
 }
 
 export default function HomePage() {
+  const { user, loading } = useAuth();
   const [currentSentence, setCurrentSentence] = useState<string>('Blowing solves everything :D');
   const [inputValue, setInputValue] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -21,8 +24,10 @@ export default function HomePage() {
 
   // Fetch a random sentence on component mount
   useEffect(() => {
-    fetchRandomSentence();
-  }, []);
+    if (user) {
+      fetchRandomSentence();
+    }
+  }, [user]);
 
   const fetchRandomSentence = async () => {
     try {
@@ -91,9 +96,46 @@ export default function HomePage() {
     }
   };
 
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div>Loading...</div>
+      </div>
+    );
+  }
+
+  // Show login prompt for non-logged in users
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] bg-background text-foreground -m-6">
+        <h1 className="text-4xl font-bold mb-4">No Meow no meow-meow</h1>
+
+        <Image
+          src="/images/banner.png"
+          alt="Banner"
+          width={300}
+          height={150}
+          priority
+          className="mb-4"
+        />
+
+        <p className="mt-2 text-center text-sm text-gray-600">
+          Stop being lazy, Sign in and get started! 💪
+        </p>
+
+        <div className="mt-8 space-y-6 flex flex-col items-center justify-center">
+          <GoogleAuthButton />
+        </div>
+      </div>
+
+    );
+  }
+
+  // Show main content for logged in users
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] bg-background text-foreground -m-6">
-      <h1 className="text-2xl font-bold mb-4">No Meow no meow-meow</h1>
+      <h1 className="text-4xl font-bold mb-4">No Meow no meow-meow</h1>
 
       <Image
         src="/images/banner.png"
