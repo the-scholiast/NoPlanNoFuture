@@ -1,0 +1,374 @@
+import supabase from '../supabaseAdmin.js';
+import { ValidationError } from '../utils/errors.js';
+
+// Validation functions
+const validateWebhookUrl = (url) => {
+  const webhookPattern = /^https:\/\/discord\.com\/api\/webhooks\/[^\/]+\/[^\/]+$/;
+  if (!webhookPattern.test(url)) {
+    throw new ValidationError('Invalid Discord webhook URL format');
+  }
+};
+
+const validateSendTime = (time) => {
+  const timePattern = /^([01]?[0-9]|2[0-3]):(00|30)$/;
+  if (!timePattern.test(time)) {
+    throw new ValidationError('Send time must be in HH:MM format with minutes as 00 or 30');
+  }
+};
+
+const validateCadence = (cadence) => {
+  if (!['daily', 'weekly'].includes(cadence)) {
+    throw new ValidationError('Cadence must be either "daily" or "weekly"');
+  }
+};
+
+const validateDayOfWeek = (dayOfWeek) => {
+  if (dayOfWeek && (dayOfWeek < 1 || dayOfWeek > 7)) {
+    throw new ValidationError('Day of week must be between 1 (Monday) and 7 (Sunday)');
+  }
+};
+
+const validatePeriod = (period) => {
+  if (!['1d', '1w', '1m'].includes(period)) {
+    throw new ValidationError('Period must be "1d", "1w", or "1m"');
+  }
+};
+
+// Get all notifications for a user
+export const getNotifications = async (userId) => {
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
+// Create a new notification
+export const createNotification = async (userId, notificationData) => {
+  const {
+    webhook_url,
+    cadence = 'weekly',
+    day_of_week,
+    send_time,
+    period = '1w',
+    include_upcoming = true,
+    include_recurring = true,
+    include_daily = true
+  } = notificationData;
+
+  // Validate required fields
+  if (!webhook_url || !send_time) {
+    throw new ValidationError('Webhook URL and send time are required');
+  }
+
+  // Validate fields
+  validateWebhookUrl(webhook_url);
+  validateSendTime(send_time);
+  validateCadence(cadence);
+  validatePeriod(period);
+
+  // Validate day_of_week for weekly cadence
+  if (cadence === 'weekly' && !day_of_week) {
+    throw new ValidationError('Day of week is required for weekly cadence');
+  }
+  if (day_of_week) {
+    validateDayOfWeek(day_of_week);
+  }
+
+  const notificationToInsert = {
+    user_id: userId,
+    webhook_url,
+    cadence,
+    day_of_week: cadence === 'weekly' ? day_of_week : null,
+    send_time,
+    period,
+    include_upcoming,
+    include_recurring,
+    include_daily,
+    active: true
+  };
+
+  const { data, error } = await supabase
+    .from('notifications')
+    .insert(notificationToInsert)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+// Update a notification
+export const updateNotification = async (userId, notificationId, updates) => {
+  // First check if notification exists and belongs to user
+  const { data: existing, error: fetchError } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('id', notificationId)
+    .eq('user_id', userId)
+    .single();
+
+  if (fetchError || !existing) {
+    throw new ValidationError('Notification not found');
+  }
+
+  // Validate fields if provided
+  if (updates.webhook_url) {
+    validateWebhookUrl(updates.webhook_url);
+  }
+  if (updates.send_time) {
+    validateSendTime(updates.send_time);
+  }
+  if (updates.cadence) {
+    validateCadence(updates.cadence);
+  }
+  if (updates.day_of_week) {
+    validateDayOfWeek(updates.day_of_week);
+  }
+  if (updates.period) {
+    validatePeriod(updates.period);
+  }
+
+  // Handle day_of_week logic
+  if (updates.cadence === 'daily') {
+    updates.day_of_week = null;
+  } else if (updates.cadence === 'weekly' && !updates.day_of_week) {
+    throw new ValidationError('Day of week is required for weekly cadence');
+  }
+
+  const { data, error } = await supabase
+    .from('notifications')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', notificationId)
+    .eq('user_id', userId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+// Delete a notification
+export const deleteNotification = async (userId, notificationId) => {
+  const { error } = await supabase
+    .from('notifications')
+    .delete()
+    .eq('id', notificationId)
+    .eq('user_id', userId);
+
+  if (error) throw error;
+  return { success: true };
+};
+
+// Test a notification (send immediately)
+export const testNotification = async (userId, notificationId) => {
+  // Get notification
+  const { data: notification, error: fetchError } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('id', notificationId)
+    .eq('user_id', userId)
+    .single();
+
+  if (fetchError || !notification) {
+    throw new ValidationError('Notification not found');
+  }
+
+  try {
+    // Get tasks for preview
+    const tasks = await getTasksForNotification(userId, notification);
+    
+    // Send to Discord
+    await postToDiscord(notification.webhook_url, tasks);
+    
+    // Update last_sent_at
+    await supabase
+      .from('notifications')
+      .update({ 
+        last_sent_at: new Date().toISOString(),
+        last_error: null 
+      })
+      .eq('id', notificationId);
+
+    return { success: true, message: 'Test notification sent successfully' };
+  } catch (error) {
+    // Update last_error
+    await supabase
+      .from('notifications')
+      .update({ last_error: error.message })
+      .eq('id', notificationId);
+
+    throw error;
+  }
+};
+
+// Get preview of tasks that would be sent
+export const getNotificationPreview = async (userId, notificationData) => {
+  try {
+    const tasks = await getTasksForNotification(userId, notificationData);
+    return { tasks, preview: true };
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Helper function to get tasks for a notification
+const getTasksForNotification = async (userId, notification) => {
+  const { period, include_upcoming, include_recurring, include_daily } = notification;
+  
+  // Calculate date range based on period
+  const now = new Date();
+  let endDate = new Date();
+  
+  switch (period) {
+    case '1d':
+      endDate.setDate(now.getDate() + 1);
+      break;
+    case '1w':
+      endDate.setDate(now.getDate() + 7);
+      break;
+    case '1m':
+      endDate.setMonth(now.getMonth() + 1);
+      break;
+  }
+
+  let query = supabase
+    .from('todos')
+    .select('*')
+    .eq('user_id', userId)
+    .is('deleted_at', null);
+
+  // Build conditions based on what to include
+  const conditions = [];
+  
+  if (include_upcoming) {
+    conditions.push(`(due_at >= '${now.toISOString()}' AND due_at <= '${endDate.toISOString()}')`);
+  }
+  
+  if (include_recurring) {
+    conditions.push('is_recurring = true');
+  }
+  
+  if (include_daily) {
+    conditions.push('is_daily = true');
+  }
+
+  if (conditions.length > 0) {
+    query = query.or(conditions.join(','));
+  }
+
+  const { data, error } = await query.order('due_at', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+};
+
+// Helper function to post to Discord
+const postToDiscord = async (webhookUrl, tasks) => {
+  // Group tasks by type
+  const upcoming = tasks.filter(t => t.due_at && !t.is_recurring && !t.is_daily);
+  const recurring = tasks.filter(t => t.is_recurring);
+  const daily = tasks.filter(t => t.is_daily);
+
+  const embeds = [];
+
+  // Upcoming tasks embed
+  if (upcoming.length > 0) {
+    embeds.push({
+      title: '📅 Upcoming Tasks',
+      color: 0x3498db,
+      fields: upcoming.slice(0, 25).map(task => ({
+        name: task.title,
+        value: `${task.due_at ? new Date(task.due_at).toLocaleDateString() : 'No due date'}${task.priority ? ` · ${task.priority}` : ''}`,
+        inline: false
+      })),
+      footer: upcoming.length > 25 ? { text: `+${upcoming.length - 25} more tasks` } : undefined
+    });
+  }
+
+  // Recurring tasks embed
+  if (recurring.length > 0) {
+    embeds.push({
+      title: '🔄 Recurring Tasks',
+      color: 0xe74c3c,
+      fields: recurring.slice(0, 25).map(task => ({
+        name: task.title,
+        value: `${task.recurring_days ? task.recurring_days.join(', ') : 'No schedule'}${task.priority ? ` · ${task.priority}` : ''}`,
+        inline: false
+      })),
+      footer: recurring.length > 25 ? { text: `+${recurring.length - 25} more tasks` } : undefined
+    });
+  }
+
+  // Daily tasks embed
+  if (daily.length > 0) {
+    embeds.push({
+      title: '📝 Daily Tasks',
+      color: 0x2ecc71,
+      fields: daily.slice(0, 25).map(task => ({
+        name: task.title,
+        value: `${task.priority ? `Priority: ${task.priority}` : 'No priority'}`,
+        inline: false
+      })),
+      footer: daily.length > 25 ? { text: `+${daily.length - 25} more tasks` } : undefined
+    });
+  }
+
+  if (embeds.length === 0) {
+    embeds.push({
+      title: '📅 No Tasks Found',
+      description: 'No tasks match your notification criteria.',
+      color: 0x95a5a6
+    });
+  }
+
+  const response = await fetch(webhookUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      content: '📅 **Your Upcoming Tasks**',
+      embeds
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Discord webhook failed: ${response.status} ${errorText}`);
+  }
+
+  return response;
+};
+
+// Get all active notifications (for cron job)
+export const getActiveNotifications = async () => {
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('active', true);
+
+  if (error) throw error;
+  return data || [];
+};
+
+// Update notification last_sent_at and last_error
+export const updateNotificationStatus = async (notificationId, lastSentAt, lastError = null) => {
+  const { error } = await supabase
+    .from('notifications')
+    .update({
+      last_sent_at: lastSentAt,
+      last_error: lastError,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', notificationId);
+
+  if (error) throw error;
+  return { success: true };
+};
