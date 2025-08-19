@@ -10,10 +10,17 @@ const validateWebhookUrl = (url) => {
 };
 
 const validateSendTime = (time) => {
-  const timePattern = /^([01]?[0-9]|2[0-3]):(00|30)$/;
-  if (!timePattern.test(time)) {
-    throw new ValidationError('Send time must be in HH:MM format with minutes as 00 or 30');
+  if (!time) {
+    throw new ValidationError('Send time is required');
   }
+  
+  // Validate time format (HH:MM)
+  const timePattern = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+  if (!timePattern.test(time)) {
+    throw new ValidationError('Send time must be in HH:MM format (e.g., "09:30")');
+  }
+  
+  return true;
 };
 
 const validateCadence = (cadence) => {
@@ -60,13 +67,12 @@ export const createNotification = async (userId, notificationData) => {
   } = notificationData;
 
   // Validate required fields
-  if (!webhook_url || !send_time) {
-    throw new ValidationError('Webhook URL and send time are required');
+  if (!webhook_url) {
+    throw new ValidationError('Webhook URL is required');
   }
 
   // Validate fields
   validateWebhookUrl(webhook_url);
-  validateSendTime(send_time);
   validateCadence(cadence);
   validatePeriod(period);
 
@@ -222,10 +228,11 @@ export const getNotificationPreview = async (userId, notificationData) => {
 const getTasksForNotification = async (userId, notification) => {
   const { period, include_upcoming, include_recurring, include_daily } = notification;
   
-  // Calculate date range based on period
+  // Calculate date range based on period using local time
   const now = new Date();
-  let endDate = new Date();
+  const localISOString = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString();
   
+  let endDate = new Date();
   switch (period) {
     case '1d':
       endDate.setDate(now.getDate() + 1);
@@ -237,115 +244,60 @@ const getTasksForNotification = async (userId, notification) => {
       endDate.setMonth(now.getMonth() + 1);
       break;
   }
+  const endDateLocalISO = new Date(endDate.getTime() - (endDate.getTimezoneOffset() * 60000)).toISOString();
 
-  let query = supabase
-    .from('todos')
-    .select('*')
-    .eq('user_id', userId)
-    .is('deleted_at', null);
-
-  // Build conditions based on what to include
-  const conditions = [];
+  // Build separate queries for each condition and combine results
+  let allTasks = [];
   
   if (include_upcoming) {
-    conditions.push(`(due_at >= '${now.toISOString()}' AND due_at <= '${endDate.toISOString()}')`);
+    const { data: upcomingTasks, error: upcomingError } = await supabase
+      .from('todos')
+      .select('*')
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .gte('start_date', localISOString.split('T')[0])
+      .lte('start_date', endDateLocalISO.split('T')[0])
+      .order('start_date', { ascending: true });
+    
+    if (upcomingError) throw upcomingError;
+    if (upcomingTasks) allTasks.push(...upcomingTasks);
   }
   
   if (include_recurring) {
-    conditions.push('is_recurring = true');
+    const { data: recurringTasks, error: recurringError } = await supabase
+      .from('todos')
+      .select('*')
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .eq('is_recurring', true)
+      .order('start_date', { ascending: true });
+    
+    if (recurringError) throw recurringError;
+    if (recurringTasks) allTasks.push(...recurringTasks);
   }
   
   if (include_daily) {
-    conditions.push('is_daily = true');
+    const { data: dailyTasks, error: dailyError } = await supabase
+      .from('todos')
+      .select('*')
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .eq('section', 'daily')
+      .order('start_date', { ascending: true });
+    
+    if (dailyError) throw dailyError;
+    if (dailyTasks) allTasks.push(...dailyTasks);
   }
 
-  if (conditions.length > 0) {
-    query = query.or(conditions.join(','));
-  }
+  // Remove duplicates based on task ID
+  const uniqueTasks = allTasks.filter((task, index, self) => 
+    index === self.findIndex(t => t.id === task.id)
+  );
 
-  const { data, error } = await query.order('due_at', { ascending: true });
-
-  if (error) throw error;
-  return data || [];
+  return uniqueTasks;
 };
 
-// Helper function to post to Discord
-const postToDiscord = async (webhookUrl, tasks) => {
-  // Group tasks by type
-  const upcoming = tasks.filter(t => t.due_at && !t.is_recurring && !t.is_daily);
-  const recurring = tasks.filter(t => t.is_recurring);
-  const daily = tasks.filter(t => t.is_daily);
-
-  const embeds = [];
-
-  // Upcoming tasks embed
-  if (upcoming.length > 0) {
-    embeds.push({
-      title: '📅 Upcoming Tasks',
-      color: 0x3498db,
-      fields: upcoming.slice(0, 25).map(task => ({
-        name: task.title,
-        value: `${task.due_at ? new Date(task.due_at).toLocaleDateString() : 'No due date'}${task.priority ? ` · ${task.priority}` : ''}`,
-        inline: false
-      })),
-      footer: upcoming.length > 25 ? { text: `+${upcoming.length - 25} more tasks` } : undefined
-    });
-  }
-
-  // Recurring tasks embed
-  if (recurring.length > 0) {
-    embeds.push({
-      title: '🔄 Recurring Tasks',
-      color: 0xe74c3c,
-      fields: recurring.slice(0, 25).map(task => ({
-        name: task.title,
-        value: `${task.recurring_days ? task.recurring_days.join(', ') : 'No schedule'}${task.priority ? ` · ${task.priority}` : ''}`,
-        inline: false
-      })),
-      footer: recurring.length > 25 ? { text: `+${recurring.length - 25} more tasks` } : undefined
-    });
-  }
-
-  // Daily tasks embed
-  if (daily.length > 0) {
-    embeds.push({
-      title: '📝 Daily Tasks',
-      color: 0x2ecc71,
-      fields: daily.slice(0, 25).map(task => ({
-        name: task.title,
-        value: `${task.priority ? `Priority: ${task.priority}` : 'No priority'}`,
-        inline: false
-      })),
-      footer: daily.length > 25 ? { text: `+${daily.length - 25} more tasks` } : undefined
-    });
-  }
-
-  if (embeds.length === 0) {
-    embeds.push({
-      title: '📅 No Tasks Found',
-      description: 'No tasks match your notification criteria.',
-      color: 0x95a5a6
-    });
-  }
-
-  const response = await fetch(webhookUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      content: '📅 **Your Upcoming Tasks**',
-      embeds
-    })
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Discord webhook failed: ${response.status} ${errorText}`);
-  }
-
-  return response;
-};
+import { postToDiscord } from '../utils/discordUtils.js';
 
 // Get all active notifications (for cron job)
 export const getActiveNotifications = async () => {
