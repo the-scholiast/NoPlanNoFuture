@@ -3,6 +3,7 @@ import express from 'express'
 import cors from 'cors'
 import 'dotenv/config'
 import apiRoutes from './routes/index.js'
+import { startNotificationScheduler } from './services/notificationScheduler.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -136,6 +137,9 @@ app.listen(PORT, () => {
   } else {
     console.log(' Environment variables loaded')
   }
+
+  // Start notification scheduler
+  startNotificationScheduler()
 })
 
 // Graceful shutdown handlers
