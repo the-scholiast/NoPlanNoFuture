@@ -151,15 +151,15 @@ export function NavSidebar() {
           ) : user ? (
             <div className="space-y-2">
               {/* User Info */}
-              <div className="flex items-center gap-2 text-sm">
+              <Link href="/profile" className="flex items-center gap-2 text-sm transition-colors py-2 rounded-md hover:bg-accent">
                 <User className="h-4 w-4" />
                 <span className="truncate">{user.email}</span>
-              </div>
+              </Link>
 
               {/* Sign Out Button */}
               <button
                 onClick={handleSignOut}
-                className="flex items-center gap-2 w-full text-sm text-red-600 hover:text-red-700 py-1"
+                className="flex items-center gap-2 w-full text-sm text-red-600 hover:text-red-700 py-2"
               >
                 <LogOut className="h-4 w-4" />
                 Sign Out
