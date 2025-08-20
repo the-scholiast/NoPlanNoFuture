@@ -25,7 +25,7 @@ import { useState, useEffect } from 'react'
 import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils/tailwindUtils"
 
 type NavigationMode = 'day' | 'week' | 'month' | 'year'
 
