@@ -42,15 +42,20 @@ export const useTimetableScrolling = () => {
     return table.parentElement;
   };
 
-  const scrollTo7AM = () => {
+  const scrollToDefaultTime = () => {
+    // Try to find a suitable time to scroll to (7 AM, 8 AM, or first visible time)
     const sevenAmRow = document.getElementById('seven-am-row');
+    const eightAmRow = document.getElementById('eight-am-row');
+    const firstRow = document.querySelector('tbody tr') as HTMLElement;
+    
+    const targetRow = sevenAmRow || eightAmRow || firstRow;
     const scrollContainer = getScrollContainer();
 
-    if (!sevenAmRow || !scrollContainer) return;
+    if (!targetRow || !scrollContainer) return;
 
     const tableHeader = tableRef.current?.querySelector('thead');
     const headerHeight = tableHeader?.offsetHeight || 0;
-    const rowTop = sevenAmRow.offsetTop;
+    const rowTop = targetRow.offsetTop;
     const scrollPosition = rowTop - headerHeight;
 
     scrollContainer.scrollTop = scrollPosition;
@@ -92,7 +97,7 @@ export const useTimetableScrolling = () => {
       if (storedPosition !== null && storedPosition > 0) {
         restoreScrollPosition(storedPosition);
       } else {
-        scrollTo7AM();
+        scrollToDefaultTime();
       }
       setHasInitialized(true);
     };
