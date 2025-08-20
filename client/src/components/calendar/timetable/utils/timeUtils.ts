@@ -36,3 +36,47 @@ export const convertTimeSlotTo24Hour = (timeSlot: string): string => {
 
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 };
+
+// Helper function to convert 24-hour format to minutes for comparison
+const timeToMinutes = (time: string): number => {
+  const [hours, minutes] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+};
+
+// Filter time slots based on hidden time ranges
+export const filterHiddenTimeSlots = (timeSlots: string[], hiddenRanges: Array<{start: string, end: string, enabled: boolean}>): string[] => {
+  if (!hiddenRanges || hiddenRanges.length === 0) {
+    return timeSlots;
+  }
+
+  const enabledRanges = hiddenRanges.filter(range => range.enabled);
+  if (enabledRanges.length === 0) {
+    return timeSlots;
+  }
+
+  return timeSlots.filter(timeSlot => {
+    const time24Hour = convertTimeSlotTo24Hour(timeSlot);
+    const slotMinutes = timeToMinutes(time24Hour);
+
+    // Check if this time slot falls within any hidden range
+    for (const range of enabledRanges) {
+      const startMinutes = timeToMinutes(range.start);
+      const endMinutes = timeToMinutes(range.end);
+
+      // Handle ranges that cross midnight
+      if (startMinutes > endMinutes) {
+        // Range crosses midnight (e.g., 22:00 to 06:00)
+        if (slotMinutes >= startMinutes || slotMinutes < endMinutes) {
+          return false; // Hide this slot
+        }
+      } else {
+        // Normal range within same day
+        if (slotMinutes >= startMinutes && slotMinutes < endMinutes) {
+          return false; // Hide this slot
+        }
+      }
+    }
+
+    return true; // Show this slot
+  });
+};
