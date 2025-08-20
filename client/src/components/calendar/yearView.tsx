@@ -5,6 +5,10 @@ import { Card } from '../ui/card';
 import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../ui/button';
+import { useQuery } from '@tanstack/react-query';
+import { todoApi } from '@/lib/api/todos';
+import { TaskData } from '@/types/todoTypes';
+import { getPriorityColor } from '@/components/todo/shared/utils/sectionUtils';
 
 interface YearViewProps {
     selectedDate?: Date;
@@ -36,6 +40,40 @@ export default function YearView({ selectedDate }: YearViewProps) {
         }
     }, [searchParams, selectedDate]);
 
+    // Fetch all todos
+    const currentYear = currentDate.getFullYear();
+    const { data: allTodos = [] } = useQuery({
+        queryKey: ['todos', 'all'],
+        queryFn: () => todoApi.getAll(),
+        enabled: isMounted,
+    });
+
+    // Group todos by date for quick lookup
+    const todosByDate = allTodos.reduce((acc: Record<string, TaskData[]>, todo: TaskData) => {
+        // For daily tasks, they appear every day
+        if (todo.section === 'daily') {
+            // Add to all days in the year
+            for (let month = 0; month < 12; month++) {
+                const daysInMonth = new Date(currentYear, month + 1, 0).getDate();
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dateKey = `${currentYear}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    if (!acc[dateKey]) {
+                        acc[dateKey] = [];
+                    }
+                    acc[dateKey].push(todo);
+                }
+            }
+        } else if (todo.start_date) {
+            // For tasks with specific dates
+            const dateKey = new Date(todo.start_date).toISOString().split('T')[0];
+            if (!acc[dateKey]) {
+                acc[dateKey] = [];
+            }
+            acc[dateKey].push(todo);
+        }
+        return acc;
+    }, {} as Record<string, TaskData[]>);
+
     // build a mini calendar for a month
     const getMiniMonthCalendar = (year: number, month: number) => {
         const firstDay = new Date(year, month, 1);
@@ -50,6 +88,103 @@ export default function YearView({ selectedDate }: YearViewProps) {
         return cells;
     };
 
+    // Get priority circles for a date
+    const getPriorityCircles = (date: Date) => {
+        const dateKey = date.toISOString().split('T')[0];
+        const todos = todosByDate[dateKey] || [];
+        
+        // Filter out tasks with section 'none' - these only show in timetable view
+        const visibleTodos = todos.filter((t: TaskData) => t.section !== 'none');
+        
+        // Debug: log today's todos
+        if (dateKey === new Date().toISOString().split('T')[0]) {
+            console.log('Today todos:', visibleTodos);
+        }
+        
+        if (visibleTodos.length === 0) return null;
+
+        // Group by priority
+        const highPriority = visibleTodos.filter((t: TaskData) => t.priority === 'high');
+        const mediumPriority = visibleTodos.filter((t: TaskData) => t.priority === 'medium');
+        const lowPriority = visibleTodos.filter((t: TaskData) => t.priority === 'low');
+        const noPriority = visibleTodos.filter((t: TaskData) => !t.priority);
+
+        const circles = [];
+
+        // Create target ring effect - outer to inner
+        // High priority - outer ring (largest)
+        if (highPriority.length > 0) {
+            circles.push(
+                <div
+                    key="high"
+                    className="absolute inset-0 rounded-full border-4 border-red-500"
+                    style={{ 
+                        width: '100%', 
+                        height: '100%',
+                        backgroundColor: 'transparent',
+                        opacity: 0.5
+                    }}
+                />
+            );
+        }
+
+        // Medium priority - middle ring
+        if (mediumPriority.length > 0) {
+            circles.push(
+                <div
+                    key="medium"
+                    className="absolute inset-0 rounded-full border-4 border-yellow-500"
+                    style={{ 
+                        width: '75%', 
+                        height: '75%', 
+                        top: '12.5%', 
+                        left: '12.5%',
+                        backgroundColor: 'transparent',
+                        opacity: 0.5
+                    }}
+                />
+            );
+        }
+
+        // Low priority - inner ring (bigger green border)
+        if (lowPriority.length > 0) {
+            circles.push(
+                <div
+                    key="low"
+                    className="absolute inset-0 rounded-full border-4 border-green-500"
+                    style={{ 
+                        width: '55%', 
+                        height: '55%', 
+                        top: '22.5%', 
+                        left: '22.5%',
+                        backgroundColor: 'transparent',
+                        opacity: 0.5
+                    }}
+                />
+            );
+        }
+
+        // No priority - inner ring (smallest)
+        if (noPriority.length > 0) {
+            circles.push(
+                <div
+                    key="none"
+                    className="absolute inset-0 rounded-full border-4 border-gray-500"
+                    style={{ 
+                        width: '35%', 
+                        height: '35%', 
+                        top: '32.5%', 
+                        left: '32.5%',
+                        backgroundColor: 'transparent',
+                        opacity: 0.5
+                    }}
+                />
+            );
+        }
+
+        return circles;
+    };
+
     // nav
     const goToPrevYear = () => setCurrentDate(d => new Date(d.getFullYear() - 1, d.getMonth(), d.getDate()));
     const goToNextYear = () => setCurrentDate(d => new Date(d.getFullYear() + 1, d.getMonth(), d.getDate()));
@@ -60,8 +195,6 @@ export default function YearView({ selectedDate }: YearViewProps) {
 
     const isSelected = (date: Date | null) =>
         !!date && date.toDateString() === currentDate.toDateString();
-
-    const currentYear = currentDate.getFullYear();
 
     return (
         <div className="w-full flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
@@ -77,17 +210,17 @@ export default function YearView({ selectedDate }: YearViewProps) {
                 </div>
             </div>
 
-            {/* Grid 12 months */}
+            {/* Grid 12 months - 6 per row */}
             <Card className="flex-1 overflow-auto">
-                <div className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="p-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                         {Array.from({ length: 12 }, (_, monthIndex) => {
                             const cells = isMounted ? getMiniMonthCalendar(currentYear, monthIndex) : [];
                             const weeks: (Date | null)[][] = [];
                             for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
 
                             return (
-                                <div key={monthIndex} className="border rounded-lg p-3 hover:bg-muted/30 transition-colors">
+                                <div key={monthIndex} className="border rounded-lg p-2 hover:bg-muted/30 transition-colors">
                                     {/* Month header → click to month view */}
                                     <button
                                         className="w-full text-center font-semibold mb-2 text-sm hover:underline"
@@ -98,32 +231,41 @@ export default function YearView({ selectedDate }: YearViewProps) {
 
                                     {/* Mini calendar */}
                                     <div className="space-y-1">
-                                        <div className="grid grid-cols-7 gap-1">
+                                        <div className="grid grid-cols-7 gap-0.5">
                                             {dayNames.map((d, i) => (
-                                                <div key={i } className="text-center text-xs font-medium text-muted-foreground p-1">{d}</div>
+                                                <div key={i} className="text-center text-xs font-medium text-muted-foreground p-0.5">{d}</div>
                                             ))}
                                         </div>
 
                                         {weeks.map((week, wi) => (
-                                            <div key={wi} className="grid grid-cols-7 gap-1">
-                                                {week.map((date, di) => (
-                                                    <button
-                                                        key={di}
-                                                        className={`
-                              aspect-square flex items-center justify-center text-xs rounded
-                              ${date ? 'cursor-pointer hover:bg-muted/50 transition-colors' : 'opacity-0 cursor-default'}
-                              ${isToday(date) ? 'bg-blue-500 text-white font-bold' : ''}
-                              ${isSelected(date) ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' : ''}
-                            `}
-                                                        onClick={() => {
-                                                            if (!date) return;
-                                                            // click on a day → go to week view
-                                                            router.push(`/calendar/week?year=${date.getFullYear()}&month=${date.getMonth() + 1}&day=${date.getDate()}`);
-                                                        }}
-                                                    >
-                                                        {date ? date.getDate() : ''}
-                                                    </button>
-                                                ))}
+                                            <div key={wi} className="grid grid-cols-7 gap-0.5">
+                                                {week.map((date, di) => {
+                                                    const priorityCircles = date ? getPriorityCircles(date) : null;
+                                                    
+                                                    return (
+                                                        <button
+                                                            key={di}
+                                                                                                                         className={`
+                                                                 aspect-square flex items-center justify-center text-xs rounded relative
+                                                                 ${date ? 'cursor-pointer hover:bg-muted/50 transition-colors' : 'opacity-0 cursor-default'}
+                                                                 ${isToday(date) ? 'font-bold underline underline-offset-2' : ''}
+                                                                 ${isSelected(date) ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' : ''}
+                                                             `}
+                                                            onClick={() => {
+                                                                if (!date) return;
+                                                                // click on a day → go to week view
+                                                                router.push(`/calendar/week?year=${date.getFullYear()}&month=${date.getMonth() + 1}&day=${date.getDate()}`);
+                                                            }}
+                                                        >
+                                                            {date ? date.getDate() : ''}
+                                                            {priorityCircles && (
+                                                                <div className="absolute inset-0 pointer-events-none">
+                                                                    {priorityCircles}
+                                                                </div>
+                                                            )}
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
                                         ))}
                                     </div>
