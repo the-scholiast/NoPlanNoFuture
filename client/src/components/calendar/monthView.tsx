@@ -5,6 +5,10 @@ import { Card } from '../ui/card';
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../ui/button';
+import { useQuery } from '@tanstack/react-query';
+import { todoApi } from '@/lib/api/todos';
+import { TaskData } from '@/types/todoTypes';
+import { getPriorityColor } from '@/components/todo/shared/utils/sectionUtils';
 
 interface MonthViewProps {
     selectedDate?: Date;
@@ -27,6 +31,60 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
     const dayNames = weekStartsOn === 'mon' ? dayNamesMonFirst : dayNamesSunFirst;
 
     useEffect(() => setIsMounted(true), []);
+
+    // Fetch all todos
+    const { data: allTodos = [] } = useQuery({
+        queryKey: ['todos', 'all'],
+        queryFn: () => todoApi.getAll(),
+        enabled: isMounted,
+    });
+
+    // Group todos by date for quick lookup
+    const todosByDate = useMemo(() => {
+        return allTodos.reduce((acc: Record<string, TaskData[]>, todo: TaskData) => {
+            // For daily tasks, they appear every day
+            if (todo.section === 'daily') {
+                const currentYear = currentDate.getFullYear();
+                const currentMonth = currentDate.getMonth();
+                const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+                
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    if (!acc[dateKey]) {
+                        acc[dateKey] = [];
+                    }
+                    acc[dateKey].push(todo);
+                }
+            } else if (todo.start_date) {
+                // For tasks with specific dates
+                const dateKey = new Date(todo.start_date).toISOString().split('T')[0];
+                if (!acc[dateKey]) {
+                    acc[dateKey] = [];
+                }
+                acc[dateKey].push(todo);
+            }
+            return acc;
+        }, {} as Record<string, TaskData[]>);
+    }, [allTodos, currentDate]);
+
+    // Get tasks for a specific date
+    const getTasksForDate = (date: Date) => {
+        const dateKey = date.toISOString().split('T')[0];
+        const todos = todosByDate[dateKey] || [];
+        
+        // Filter out tasks with section 'none' - these only show in timetable view
+        return todos.filter((t: TaskData) => t.section !== 'none');
+    };
+
+    // Get priority dot color
+    const getPriorityDotColor = (priority?: string) => {
+        switch (priority) {
+            case 'high': return 'bg-red-500';
+            case 'medium': return 'bg-yellow-500';
+            case 'low': return 'bg-green-500';
+            default: return 'bg-gray-500';
+        }
+    };
 
     // Sync from URL: /calendar/month?year=YYYY&month=MM[&day=DD]
     useEffect(() => {
@@ -170,7 +228,7 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
                                         <button
                                             key={date.toISOString()}
                                             className={`
-                        min-h-[110px] p-2 border rounded-lg text-left transition-colors
+                        min-h-[110px] p-2 border rounded-lg text-left transition-colors flex flex-col
                         ${overlay ? 'bg-muted/20 text-muted-foreground' : 'bg-background'}
                         ${isToday ? 'ring-2 ring-blue-500' : ''}
                         ${isSelected ? 'bg-blue-50 dark:bg-blue-950/30' : ''}
@@ -183,10 +241,24 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
                                                 );
                                             }}
                                         >
-                                            <div className="text-sm font-medium mb-1">
+                                            <div className="text-sm font-medium mb-1 flex-shrink-0 text-center">
                                                 {date.getDate()}
                                             </div>
-                                            {/* Place your day’s events here if needed */}
+                                            <div className="flex-1 space-y-1">
+                                                {getTasksForDate(date).slice(0, 3).map((task) => (
+                                                    <div key={task.id} className="flex items-center gap-1 text-xs">
+                                                        <div 
+                                                            className={`w-2 h-2 rounded-full opacity-50 ${getPriorityDotColor(task.priority)}`}
+                                                        />
+                                                        <span className="truncate">{task.title}</span>
+                                                    </div>
+                                                ))}
+                                                {getTasksForDate(date).length > 3 && (
+                                                    <div className="text-xs text-muted-foreground text-center">
+                                                        +{getTasksForDate(date).length - 3} more
+                                                    </div>
+                                                )}
+                                            </div>
                                         </button>
                                     );
                                 })}
