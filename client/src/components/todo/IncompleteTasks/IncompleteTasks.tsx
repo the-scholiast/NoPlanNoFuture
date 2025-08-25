@@ -6,12 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { CompactTaskSorting } from '@/components/todo/shared/components/TaskSortingComponent';
 import { useIncompleteTasks } from './hooks/useIncompleteTasks';
 import { IncompleteTasksProps } from './types';
 import { IncompleteTaskItem } from './IncompleteTaskItemProps';
 import { DateFilter } from '../shared/components/DateFilter';
-import { formatDate, formatTime, getPriorityColor, getSectionLabel } from '../shared/utils';
+import { formatDate, formatTime, getPriorityColor, getSectionLabel } from '../shared';
 
 export default function IncompleteTasks({ className }: IncompleteTasksProps) {
   const {
@@ -27,7 +26,6 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
     toggleTasksExpansion,
     updateSearchQuery,
     updateDateFilter,
-    setSortConfiguration,
     handleCompleteTask,
     handleDeleteTask,
     handleClearAllTasks,
@@ -85,17 +83,6 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
               </Button>
             )}
           </div>
-
-          {/* Compact Task Sorting */}
-          {totalIncompleteTasks > 0 && (
-            <CompactTaskSorting
-              tasks={incompleteTasks}
-              onTasksChange={() => { }} // Empty function - not used anymore
-              onSortChange={setSortConfiguration} 
-              defaultSort={{ field: 'start_date', order: 'asc' }}
-              className="flex-shrink-0"
-            />
-          )}
 
           {/* Date Filter */}
           <DateFilter

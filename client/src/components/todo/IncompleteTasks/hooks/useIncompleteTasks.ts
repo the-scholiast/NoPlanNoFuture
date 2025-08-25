@@ -4,7 +4,7 @@ import { IncompleteTaskWithOverdue } from '../types';
 import { getTodayString } from '@/lib/utils/dateUtils';
 import { todoApi } from '@/lib/api/todos';
 import { todoKeys } from '@/lib/queryKeys';
-import { useDateFilterLast7Days, useTaskState, useTaskSorting } from '../../shared';
+import { useDateFilterLast7Days, useTaskState, } from '../../shared';
 import { applySearchFilter, applyDateFilter, useTodoMutations } from '../../shared';
 
 export const useIncompleteTasks = () => {
@@ -16,7 +16,6 @@ export const useIncompleteTasks = () => {
 
   const { dateFilter, updateDateFilter, } = useDateFilterLast7Days();
   const { state, toggleTaskExpansion, toggleTasksExpansion, updateSearchQuery, } = useTaskState<IncompleteTaskWithOverdue>();
-  const { setSortConfiguration, applySorting } = useTaskSorting<IncompleteTaskWithOverdue>();
   const { completeTaskMutation, deleteTaskMutation } = useTodoMutations();
 
   // Process incomplete tasks to add overdue calculation
@@ -54,23 +53,19 @@ export const useIncompleteTasks = () => {
       task.end_date || task.start_date
     );
 
-    // Apply sorting
-    filtered = applySorting(filtered);
+    // Default sort by overdue days
+    filtered.sort((a, b) => {
+      if (a.overdueDays !== b.overdueDays) {
+        return b.overdueDays - a.overdueDays;
+      }
+      const dateA = a.end_date || a.start_date || '';
+      const dateB = b.end_date || b.start_date || '';
+      return dateA.localeCompare(dateB);
+    });
 
-    // Default sort by overdue days if no custom sorting
-    if (filtered.length > 0) {
-      filtered.sort((a, b) => {
-        if (a.overdueDays !== b.overdueDays) {
-          return b.overdueDays - a.overdueDays;
-        }
-        const dateA = a.end_date || a.start_date || '';
-        const dateB = b.end_date || b.start_date || '';
-        return dateA.localeCompare(dateB);
-      });
-    }
 
     return filtered;
-  }, [processedIncompleteTasks, state.searchQuery, dateFilter, applySorting]);
+  }, [processedIncompleteTasks, state.searchQuery, dateFilter]);
 
   // Action handlers
   const handleCompleteTask = (taskId: string) => {
@@ -107,7 +102,6 @@ export const useIncompleteTasks = () => {
     toggleTasksExpansion,
     updateSearchQuery,
     updateDateFilter,
-    setSortConfiguration,
     handleCompleteTask,
     handleDeleteTask,
     handleClearAllTasks,
