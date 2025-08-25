@@ -7,7 +7,7 @@ import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { todoKeys } from '@/lib/queryKeys';
 import { TodoSection, useTodoMutations } from '../../shared/';
 import { filterDailyTasksByDate, filterTasksByDateRange, sortTasksTimeFirst, getRecurringDescription } from '../../shared';
-import { formatDate, formatTime, getDateRangeDisplay, getTimeRangeDisplay, isRecurringInstance } from '../../shared';
+import { formatDate, formatTime, getDateRangeDisplay, getTimeRangeDisplay, isRecurringInstance, sortTasksByField } from '../../shared';
 
 // Business logic for the TodoBoard component
 export const useTodoBoard = () => {
@@ -89,15 +89,16 @@ export const useTodoBoard = () => {
     return dayNames[today.getDay()];
   }, []);
 
-  // Filtered daily tasks logic
+  // Filtered daily tasks logic - filter by start time default
   const filteredDailyTasks = useMemo(() => {
     const filtered = filterDailyTasksByDate(dailyTasks, currentDate, showAllDailyTasks);
     return sortTasksTimeFirst(filtered);
   }, [dailyTasks, currentDate, currentDayOfWeek, showAllDailyTasks]);
 
+  // Filter upcoming tasks logic - filter by start date default
   const filteredUpcomingTasks = useMemo(() => {
     const filtered = filterTasksByDateRange(upcomingTasks, upcomingFilter);
-    return sortTasksTimeFirst(filtered);
+    return sortTasksByField(filtered, 'start_date', 'asc');
   }, [upcomingTasks, upcomingFilter]);
 
   const filteredUpcomingRecurringTasks = useMemo(() => {

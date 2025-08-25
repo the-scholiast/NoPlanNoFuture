@@ -94,6 +94,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                       tasks={section.tasks}
                       onTasksChange={(tasks) => handleTasksSort(section.sectionKey, tasks)}
                       className="mr-2"
+                      defaultSort={section.sectionKey === 'upcoming' ? { field: 'start_date', order: 'asc' } : { field: 'start_time', order: 'asc' }}
                     />
 
                     {section.sectionKey === 'daily' && (
