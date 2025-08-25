@@ -92,19 +92,17 @@ export default function UniversalDateNavigation({ className }: UniversalDateNavi
   const searchParams = useSearchParams()
   const router = useRouter()
 
-  const [currentDate, setCurrentDate] = useState<Date | null>(null)
   const [isMounted, setIsMounted] = useState(false)
 
   // Get mode and base path from current route
   const mode = getModeFromPath(pathname)
-  const basePath = getBasePath(pathname)
 
-  // Initialize date from URL params or current date
+  // Prevent hydration issues
   useEffect(() => {
-    const dateFromParams = createDateFromParams(searchParams)
-    setCurrentDate(dateFromParams)
     setIsMounted(true)
   }, [searchParams])
+
+  const currentDate = isMounted ? createDateFromParams(searchParams) : null;
 
   // Don't render if we can't determine the mode
   if (!mode || !isMounted || !currentDate) {
@@ -185,7 +183,6 @@ export default function UniversalDateNavigation({ className }: UniversalDateNavi
 
     // Navigate to the same page with updated params
     router.push(`${pathname}?${params.toString()}`)
-    setCurrentDate(date)
   }
 
   /**
