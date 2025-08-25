@@ -219,13 +219,9 @@ router.delete('/completions/task/:taskId/date/:instanceDate', authenticateUser, 
     }
 
     // Delete the completion record for this task and date
-    const { success } = deleteCompletionByDate(req.user.id, taskId, instanceDate);
+    const result = await deleteCompletionByDate(req.user.id, taskId, instanceDate);
 
-    if (!success) {
-      return res.status(404).json({ error: 'Error deleting instance task' })
-    }
-
-    res.status(200).json({ message: 'Instance task deleted' });
+    res.status(200).json({ success: true, message: 'Completion deleted' });
   } catch (error) {
     next(error);
   }

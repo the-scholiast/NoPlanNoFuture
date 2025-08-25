@@ -47,10 +47,7 @@ export const useTodoMutations = () => {
       } else {
         // Uncompleting a task - remove completion record
         try {
-          const todayCompletions = await todoCompletionsApi.getCompletionsForTaskAndDate(originalTaskId, today);
-          if (todayCompletions.length > 0) {
-            await todoCompletionsApi.deleteCompletion(todayCompletions[0].id);
-          }
+          await todoCompletionsApi.deleteCompletionByTaskAndDate(originalTaskId, today);
         } catch (completionError) {
           console.error('Failed to delete completion record:', completionError);
           // Continue with task update even if completion deletion fails
@@ -81,6 +78,7 @@ export const useTodoMutations = () => {
       const currentTodos = queryClient.getQueryData<TaskData[]>(todoKeys.all);
       const currentTodayRecurring = queryClient.getQueryData<TaskData[]>(todoKeys.today);
       const currentUpcomingRecurring = queryClient.getQueryData<TaskData[]>(todoKeys.upcoming);
+      const currentCompletedTasks = queryClient.getQueryData<any[]>(todoKeys.completed);
 
       // Find the task to toggle
       const task = allTasks.find(t => t.id === taskId) || allTasks.find(t => t.id === taskId.split('_')[0]);
@@ -90,6 +88,8 @@ export const useTodoMutations = () => {
       }
 
       const newCompleted = !task.completed;
+      const today = getTodayString();
+      const originalTaskId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
 
       // Helper function to update task in an array
       const updateTaskInArray = (tasks: TaskData[]) => {
@@ -127,11 +127,20 @@ export const useTodoMutations = () => {
       if (currentUpcomingRecurring) {
         queryClient.setQueryData(todoKeys.upcoming, updateTaskInArray(currentUpcomingRecurring));
       }
+      // Handle CompletedTasks optimistic update
+      if (currentCompletedTasks && !newCompleted) {
+        // When unchecking (newCompleted = false), remove completion records for today
+        const updatedCompletedTasks = currentCompletedTasks.filter(completedTask =>
+          !(completedTask.task_id === originalTaskId && completedTask.instance_date === today)
+        );
+        queryClient.setQueryData(todoKeys.completed, updatedCompletedTasks);
+      }
 
       return {
         previousTodos: currentTodos,
         previousTodayRecurring: currentTodayRecurring,
-        previousUpcomingRecurring: currentUpcomingRecurring
+        previousUpcomingRecurring: currentUpcomingRecurring,
+        previousCompletedTasks: currentCompletedTasks
       };
     },
 
@@ -146,6 +155,9 @@ export const useTodoMutations = () => {
       }
       if (context?.previousUpcomingRecurring) {
         queryClient.setQueryData(todoKeys.upcoming, context.previousUpcomingRecurring);
+      }
+      if (context?.previousCompletedTasks) {
+        queryClient.setQueryData(todoKeys.completed, context.previousCompletedTasks);
       }
     },
 

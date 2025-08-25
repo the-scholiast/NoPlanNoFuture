@@ -85,6 +85,7 @@ export const todoCompletionsApi = {
         );
       } else {
         console.warn('todoCompletionsApi: Completion not found for ID:', completionId);
+        throw new Error(`Completion with ID ${completionId} not found`);
       }
     } catch (error) {
       console.error('todoCompletionsApi: Error deleting completion by ID:', error);
