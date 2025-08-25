@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { CompactTaskSorting } from '@/components/todo/shared/components/TaskSortingComponent';
 import { CompletedTaskItem } from './CompletedTaskItem';
 import { useCompletedTasks } from './hooks/useCompletedTasks';
 import { CompletedTasksProps } from './types';
@@ -27,7 +26,6 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
     toggleTasksExpansion,
     updateSearchQuery,
     updateDateFilter,
-    setSortConfiguration,
     handleUncompleteTask,
     handleDeleteTask,
     handleClearAllTasks,
@@ -85,17 +83,6 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
               </Button>
             )}
           </div>
-
-          {/* Compact Task Sorting */}
-          {totalCompletedTasks > 0 && (
-            <CompactTaskSorting
-              tasks={completedTasks}
-              onTasksChange={() => { }} // Empty function - not used anymore
-              onSortChange={setSortConfiguration} // ADD this
-              defaultSort={{ field: 'start_date', order: 'desc' }}
-              className="flex-shrink-0"
-            />
-          )}
 
           {/* Date Filter */}
           <DateFilter
