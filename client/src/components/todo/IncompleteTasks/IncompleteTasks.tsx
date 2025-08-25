@@ -91,7 +91,7 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
             <CompactTaskSorting
               tasks={incompleteTasks}
               onTasksChange={() => { }} // Empty function - not used anymore
-              onSortChange={setSortConfiguration} // ADD this
+              onSortChange={setSortConfiguration} 
               defaultSort={{ field: 'start_date', order: 'asc' }}
               className="flex-shrink-0"
             />

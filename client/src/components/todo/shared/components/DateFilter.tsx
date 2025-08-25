@@ -8,8 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { getTodayString, formatDateString } from '@/lib/utils/dateUtils';
-import { formatLocalDate } from '../utils';
-import { DateRangeFilter } from '../types';
+import { formatLocalDate, DateRangeFilter } from '../';
 
 interface DateFilterProps {
   dateFilter: DateRangeFilter;
@@ -108,6 +107,21 @@ export function DateFilter({ dateFilter, onFilterChange, className }: DateFilter
                   }}
                 >
                   This Week
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const now = new Date();
+                    const sevenDaysAgo = new Date(now);
+                    sevenDaysAgo.setDate(now.getDate() - 6);
+                    onFilterChange({
+                      startDate: formatDateString(sevenDaysAgo),
+                      endDate: formatDateString(now)
+                    });
+                  }}
+                >
+                  Last 7 Days
                 </Button>
                 <Button
                   variant="outline"

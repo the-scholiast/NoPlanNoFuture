@@ -4,7 +4,7 @@ import { IncompleteTaskWithOverdue } from '../types';
 import { getTodayString } from '@/lib/utils/dateUtils';
 import { todoApi } from '@/lib/api/todos';
 import { todoKeys } from '@/lib/queryKeys';
-import { useDateFilter, useTaskState, useTaskSorting } from '../../shared';
+import { useDateFilterLast7Days, useTaskState, useTaskSorting } from '../../shared';
 import { applySearchFilter, applyDateFilter, useTodoMutations } from '../../shared';
 
 export const useIncompleteTasks = () => {
@@ -14,7 +14,7 @@ export const useIncompleteTasks = () => {
     refetchOnWindowFocus: true,
   });
 
-  const { dateFilter, updateDateFilter, } = useDateFilter();
+  const { dateFilter, updateDateFilter, } = useDateFilterLast7Days();
   const { state, toggleTaskExpansion, toggleTasksExpansion, updateSearchQuery, } = useTaskState<IncompleteTaskWithOverdue>();
   const { setSortConfiguration, applySorting } = useTaskSorting<IncompleteTaskWithOverdue>();
   const { completeTaskMutation, deleteTaskMutation } = useTodoMutations();

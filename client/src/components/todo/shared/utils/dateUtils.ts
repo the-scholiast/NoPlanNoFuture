@@ -53,6 +53,22 @@ export const getCurrentWeekEnd = (): string => {
   return formatDateString(sunday);
 };
 
+// Get the date 7 days ago from yesterday in YYYY-MM-DD format
+export const getLast7DaysStart = (): string => {
+  const now = new Date();
+  const sevenDaysAgo = new Date(now);
+  sevenDaysAgo.setDate(now.getDate() - 7) 
+  return formatDateString(sevenDaysAgo);
+}
+
+// Get yesterday's date in YYYY-MM-DD format (for last 7 days end range)
+export const getLast7DaysEnd = (): string => {
+  const now = new Date();
+  const yesterday = new Date(now)
+  yesterday.setDate(now.getDate() - 1)
+  return formatDateString(yesterday);
+}
+
 // Format task date range as "Start - End" or single dates
 export const getDateRangeDisplay = (task: TaskData): string | null => {
   const startDate = formatDate(task.start_date);
