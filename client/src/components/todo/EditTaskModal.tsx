@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TaskData, EditTaskModalProps } from '@/types/todoTypes';
@@ -59,13 +59,12 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
   } = useTaskFormLogic();
 
   // Reset form when task changes or modal opens
-  useEffect(() => {
-    if (task && open) {
-      const taskData = getOriginalTaskData(task);
-      setEditableTask(taskData);
-      setError(null);
-    }
-  }, [task, open, setEditableTask]);
+  const shouldResetForm = task && open;
+  if (shouldResetForm && (!editableTask.title || editableTask.title !== task.title)) {
+    const taskData = getOriginalTaskData(task);
+    setEditableTask(taskData);
+    setError(null);
+  }
 
   const handleSave = async () => {
     if (!task?.id) return;
