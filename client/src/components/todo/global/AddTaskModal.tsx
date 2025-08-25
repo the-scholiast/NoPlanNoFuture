@@ -85,33 +85,31 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilled
     onOpenChange(false);
   };
 
-  // Initialize with pre-filled data
+  // Initialize task form data
   useEffect(() => {
-    if (!open || !preFilledData) return;
+    if (!open) return;
 
-    const initialTaskData = {
-      title: '',
-      section: 'none' as const,
-      priority: 'low' as const,
-      description: '',
-      start_date: preFilledData.selectedDate || '',
-      end_date: '',
-      start_time: preFilledData.selectedTime ? convertTimeSlotTo24Hour(preFilledData.selectedTime) : '',
-      end_time: preFilledData.selectedTime ? calculateEndTime(preFilledData.selectedTime) : '',
-      is_recurring: false,
-      recurring_days: [],
-      is_schedule: true,
-    };
-
-    initializeWithData(initialTaskData);
+    if (preFilledData) {
+      // Initialize with pre-filled data when modal opens with data
+      const initialTaskData = {
+        title: '',
+        section: 'none' as const,
+        priority: 'low' as const,
+        description: '',
+        start_date: preFilledData.selectedDate || '',
+        end_date: '',
+        start_time: preFilledData.selectedTime ? convertTimeSlotTo24Hour(preFilledData.selectedTime) : '',
+        end_time: preFilledData.selectedTime ? calculateEndTime(preFilledData.selectedTime) : '',
+        is_recurring: false,
+        recurring_days: [],
+        is_schedule: true,
+      };
+      initializeWithData(initialTaskData);
+    } else {
+      // Reset when opening without pre-filled data
+      resetTasks();
+    }
   }, [open, preFilledData?.selectedDate, preFilledData?.selectedTime]);
-
-  // Reset when opening without pre-filled data  
-  useEffect(() => {
-    if (!open || preFilledData) return;
-
-    resetTasks();
-  }, [open, preFilledData]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
