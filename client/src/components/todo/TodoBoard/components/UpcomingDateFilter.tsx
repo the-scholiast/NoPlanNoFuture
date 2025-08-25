@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Filter, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,9 +72,9 @@ export default function UpcomingDateFilter({ onFilterChange, className = '' }: U
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // Notify parent component of filter changes
-  React.useEffect(() => {
+  useEffect(() => {
     onFilterChange(dateFilter);
-  }, [dateFilter, onFilterChange]);
+  }, [dateFilter]);
 
   const handleDateFilterChange = (field: 'startDate' | 'endDate', value: string) => {
     // Ensure the date is not before tomorrow
