@@ -86,18 +86,11 @@ export const useTodoBoard = () => {
   // Get current date for filtering
   const currentDate: string = useMemo(() => getTodayString(), []);
 
-  // Get current day of week for recurring task filtering
-  const currentDayOfWeek = useMemo(() => {
-    const today = new Date();
-    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    return dayNames[today.getDay()];
-  }, []);
-
   // Filtered daily tasks logic - filter by start time default
   const filteredDailyTasks = useMemo(() => {
     const filtered = filterDailyTasksByDate(dailyTasks, currentDate, showAllDailyTasks);
     return sortTasksByField(filtered, 'start_time', 'asc');
-  }, [dailyTasks, currentDate, currentDayOfWeek, showAllDailyTasks]);
+  }, [dailyTasks, currentDate, showAllDailyTasks]);
 
   // Filter upcoming tasks logic - filter by start date default
   const filteredUpcomingTasks = useMemo(() => {
@@ -111,14 +104,16 @@ export const useTodoBoard = () => {
     return sortTasksByField(filtered, 'start_date', 'asc');
   }, [upcomingTasksWithRecurring, upcomingFilter]);
 
+  const filteredTodayTasks = useMemo(() => 
+  todayTasksWithRecurring.filter(task => task.section !== 'daily' && task.section !== 'none'),
+  [todayTasksWithRecurring]
+);
+
   // Sections configuration
   const sections: TodoSection[] = useMemo(() => {
     const getSortedTasks = (tasks: TaskData[], sectionKey: string) => {
       const config = sortConfigs[sectionKey];
-      if (!config) {
-        const defaultField = sectionKey === 'upcoming' ? 'start_date' : 'start_time';
-        return sortTasksByField(tasks, defaultField, 'asc');
-      }
+      if (!config) return tasks;
 
       return sortTasksByField(tasks, config.field, config.order);
     };
@@ -133,7 +128,7 @@ export const useTodoBoard = () => {
         title: "Today",
         sectionKey: 'today',
         tasks: getSortedTasks(
-          todayTasksWithRecurring.filter(task => task.section !== 'daily' && task.section !== 'none'),
+          filteredTodayTasks,
           'today'
         ),
       },
@@ -141,12 +136,12 @@ export const useTodoBoard = () => {
         title: "Upcoming",
         sectionKey: 'upcoming',
         tasks: getSortedTasks([
-          ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
+          ...filteredUpcomingTasks,
           ...filteredUpcomingRecurringTasks
         ], 'upcoming'),
       }
     ];
-  }, [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks, sortConfigs]);
+  }, [filteredDailyTasks, filteredTodayTasks, filteredUpcomingTasks, filteredUpcomingRecurringTasks, sortConfigs]);
 
 
   const getRecurringPatternDisplay = (task: TaskData) => {

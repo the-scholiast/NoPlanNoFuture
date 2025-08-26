@@ -11,7 +11,7 @@ import { todoKeys } from '@/lib/queryKeys';
 import { useTodoMutations } from '@/components/todo/';
 import { getTodayString } from '@/lib/utils/dateUtils';
 import { getSectionLabel, isRecurringInstance, getDateRangeDisplay, getTimeRangeDisplay, } from '@/components/todo/shared';
-import { filterDailyTasksByDate, hasDateTime, sortTasksByField } from '@/components/todo/shared/utils';
+import { filterDailyTasksByDate, sortTasksByField } from '@/components/todo/shared/utils';
 
 export default function TodoModalButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -53,54 +53,25 @@ export default function TodoModalButton() {
   // Get current date for filtering
   const currentDate = useMemo(() => getTodayString(), []);
 
-  // Apply date filtering and time-first sorting using existing utilities
+  // Apply sorting 
   const filteredDailyTasks = useMemo(() => {
     const filtered = filterDailyTasksByDate(dailyTasks, currentDate, false);
     return sortTasksByField(filtered, 'start_time');
   }, [dailyTasks, currentDate]);
 
-  // Apply sorting using existing utility
   const filteredUpcomingTasks = useMemo(() => {
-    return sortTasksByField(upcomingTasks, 'start_date');
+    const filtered = upcomingTasks.filter(task => task.section !== 'daily' && task.section !== 'none');
+    return sortTasksByField(filtered, 'start_date');
   }, [upcomingTasks]);
 
-  // Apply sorting to upcoming recurring tasks using existing utility
+  const filteredTodayTasks = useMemo(() => {
+    return todayTasksWithRecurring.filter(task => task.section !== 'daily' && task.section !== 'none');
+  }, [todayTasksWithRecurring]);
+
   const filteredUpcomingRecurringTasks = useMemo(() => {
     const filtered = upcomingTasksWithRecurring.filter(task => task.section !== 'daily');
     return sortTasksByField(filtered, 'start_date');
   }, [upcomingTasksWithRecurring]);
-
-  // Group tasks by section with proper filtering and sorting
-  const groupedTasks = useMemo(() => {
-    // Apply sorting to today tasks using existing utility
-    const todayTasks = todayTasksWithRecurring
-      .filter(task => task.section !== 'daily' && task.section !== 'none')
-      .sort((a, b) => {
-        // Custom sorting for today tasks (prioritize tasks without dates/times)
-        if (a.completed !== b.completed) {
-          return a.completed ? 1 : -1;
-        }
-
-        const aHasDateTime = hasDateTime(a);
-        const bHasDateTime = hasDateTime(b);
-
-        if (aHasDateTime !== bHasDateTime) {
-          return bHasDateTime ? -1 : 1; // Tasks without date/time first
-        }
-
-        // Use existing sorting for the rest
-        return sortTasksByField([a, b], 'start_time')[0] === a ? -1 : 1;
-      });
-
-    return {
-      daily: filteredDailyTasks,
-      today: todayTasks,
-      upcoming: [
-        ...filteredUpcomingTasks.filter(task => task.section !== 'daily' && task.section !== 'none'),
-        ...filteredUpcomingRecurringTasks
-      ]
-    };
-  }, [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks]);
 
   // Handle task toggle
   const handleToggle = (taskId: string) => {
@@ -124,11 +95,17 @@ export default function TodoModalButton() {
     );
   }
 
+  const taskSections = {
+    daily: filteredDailyTasks,
+    today: filteredTodayTasks,
+    upcoming: [...filteredUpcomingTasks, ...filteredUpcomingRecurringTasks]
+  };
+
   // Count incomplete tasks
   const incompleteCounts = {
-    daily: groupedTasks.daily.filter(task => !task.completed).length,
-    today: groupedTasks.today.filter(task => !task.completed).length,
-    upcoming: groupedTasks.upcoming.filter(task => !task.completed).length
+    daily: taskSections.daily.filter(task => !task.completed).length,
+    today: taskSections.today.filter(task => !task.completed).length,
+    upcoming: taskSections.upcoming.filter(task => !task.completed).length
   };
 
   const totalIncomplete = incompleteCounts.daily + incompleteCounts.today + incompleteCounts.upcoming;
@@ -174,7 +151,7 @@ export default function TodoModalButton() {
                 </div>
 
                 <div className="p-2 space-y-1">
-                  {groupedTasks[section as keyof typeof groupedTasks]
+                  {taskSections[section as keyof typeof taskSections]
                     .filter(task => !task.completed)
                     .map(task => (
                       <div
@@ -213,7 +190,7 @@ export default function TodoModalButton() {
                       </div>
                     ))}
 
-                  {groupedTasks[section as keyof typeof groupedTasks].filter(task => !task.completed).length === 0 && (
+                  {taskSections[section as keyof typeof taskSections].filter(task => !task.completed).length === 0 && (
                     <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-2">
                       No incomplete tasks
                     </div>
