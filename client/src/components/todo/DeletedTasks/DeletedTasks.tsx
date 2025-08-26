@@ -109,7 +109,7 @@ export default function DeletedTasks({ className }: DeletedTasksProps) {
               className="text-muted-foreground hover:text-white"
             >
               <Trash2 className="w-4 h-4 mr-2" />
-              Clear All
+              Delete All
             </Button>
           )}
         </div>

@@ -272,6 +272,7 @@ export const getCompletionTasksByOriginalTask = async (userId, startDate, endDat
     .from('todo_completions')
     .select(`*,todos!inner (*)`)
     .eq('user_id', userId)
+    .is('todos.deleted_at', null)
     .order('completed_at', { ascending: false });
 
   // Apply date filter if provided
