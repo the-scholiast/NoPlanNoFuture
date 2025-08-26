@@ -120,7 +120,7 @@ export const useTodoBoard = () => {
 
     return [
       {
-        title: "Daily Tasks",
+        title: "Daily",
         sectionKey: 'daily',
         tasks: getSortedTasks(filteredDailyTasks, 'daily'),
       },

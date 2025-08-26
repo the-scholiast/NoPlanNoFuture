@@ -57,7 +57,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
 
   if (isLoading) {
     return (
-      <div className="w-full h-full p-6 bg-background flex items-center justify-center">
+      <div className="w-full h-full bg-background flex items-center justify-center">
         <div className="text-muted-foreground">Loading tasks...</div>
       </div>
     );
@@ -65,7 +65,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
 
   if (error) {
     return (
-      <div className="w-full h-full p-6 bg-background flex items-center justify-center">
+      <div className="w-full h-full bg-background flex items-center justify-center">
         <div className="text-destructive">
           Error loading tasks: {error instanceof Error ? error.message : 'Unknown error'}
         </div>
@@ -75,25 +75,25 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
 
   return (
     <>
-      <div className="w-full h-full p-6 bg-background">
+      <div className="w-full h-full bg-background">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full">
           {sections.map((section) => (
             <Card key={section.title} className="flex flex-col h-fit min-h-[400px]">
               <CardHeader className="pb-4 border-b">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg font-semibold">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <CardTitle className="text-lg font-semibold flex-shrink-0">
                     {section.title}
                     <span className="ml-2 text-sm text-muted-foreground">
                       ({section.tasks.length})
                     </span>
                   </CardTitle>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                     <CompactTaskSorting
                       key={section.sectionKey}
                       tasks={section.tasks}
                       onSortChange={(field, order) => handleTasksSort(section.sectionKey, { field, order })}
-                      className="mr-2"
+                      className="flex-shrink-0"
                       defaultSort={section.sectionKey === 'upcoming' ? { field: 'start_date', order: 'asc' } : { field: 'start_time', order: 'asc' }}
                     />
 
@@ -101,14 +101,14 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                       <DailyTaskToggle
                         showAllTasks={showAllDailyTasks}
                         onToggle={toggleShowAllDailyTasks}
-                        className="mr-2"
+                        className="flex-shrink-0"
                       />
                     )}
 
                     {section.sectionKey === 'upcoming' && (
                       <UpcomingDateFilter
                         onFilterChange={setUpcomingFilter}
-                        className=""
+                        className="flex-shrink-0"
                       />
                     )}
                   </div>
@@ -123,7 +123,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                         <div>
                           <p className="mb-2">No tasks scheduled for today</p>
                           <p className="text-sm">
-                            Toggle "Show All" to see all daily tasks regardless of recurring schedule
+                            Toggle "All" to see all daily tasks regardless of recurring schedule
                           </p>
                         </div>
                       ) : (

@@ -235,7 +235,7 @@ export default function UpcomingDateFilter({ onFilterChange, className = '' }: U
                       onClick={clearDateFilter}
                       className="text-xs col-span-2"
                     >
-                      Show All
+                      All
                     </Button>
                   </div>
                 </>

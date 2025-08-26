@@ -24,7 +24,7 @@ export const DailyTaskToggle: React.FC<DailyTaskToggleProps> = ({
         className="rounded-r-none border-r h-8 px-2"
       >
         <Calendar className="h-3 w-3 mr-1" />
-        Today Only
+        Today
       </Button>
       <Button
         variant={showAllTasks ? "default" : "ghost"}
@@ -33,7 +33,7 @@ export const DailyTaskToggle: React.FC<DailyTaskToggleProps> = ({
         className="rounded-l-none h-8 px-2"
       >
         <CalendarDays className="h-3 w-3 mr-1" />
-        Show All
+        All
       </Button>
     </div>
   );

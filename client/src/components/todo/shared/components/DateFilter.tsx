@@ -23,7 +23,7 @@ export function DateFilter({ dateFilter, onFilterChange, className }: DateFilter
     const today = getTodayString();
 
     if (dateFilter.startDate === dateFilter.endDate && dateFilter.startDate === today) {
-      return 'Today only';
+      return 'Today';
     }
 
     if (dateFilter.startDate === dateFilter.endDate) {
