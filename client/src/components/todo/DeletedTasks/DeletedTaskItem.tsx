@@ -3,6 +3,7 @@ import { Calendar, Clock, RotateCcw, Trash2, Archive, Repeat } from 'lucide-reac
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DeletedTaskItemProps } from './types';
+import { formatDate } from '../shared/utils';
 
 export const DeletedTaskItem: React.FC<DeletedTaskItemProps> = ({
   task,
@@ -10,7 +11,6 @@ export const DeletedTaskItem: React.FC<DeletedTaskItemProps> = ({
   onToggleExpansion,
   onRestoreTask,
   onPermanentDeleteTask,
-  formatDate,
   formatTime,
   getSectionLabel,
   getPriorityColor,
@@ -21,6 +21,7 @@ export const DeletedTaskItem: React.FC<DeletedTaskItemProps> = ({
     if (deletedDays <= 30) return 'bg-orange-100 text-orange-800 border-orange-200';
     return 'bg-red-100 text-red-800 border-red-200';
   };
+  const deletedDate = formatDate(task.deleted_at?.split('T')[0] || task.deleted_at);
 
   return (
     <div className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors">
@@ -37,7 +38,7 @@ export const DeletedTaskItem: React.FC<DeletedTaskItemProps> = ({
               className="text-sm font-medium cursor-pointer text-foreground/70 flex items-center gap-2"
               onClick={() => onToggleExpansion(task.id)}
             >
-              <span className="line-through">{task.title}</span>
+              <span>{task.title}</span>
 
               {/* Deleted badge */}
               {task.deletedDays >= 0 && (
@@ -63,18 +64,41 @@ export const DeletedTaskItem: React.FC<DeletedTaskItemProps> = ({
           </div>
 
           {/* Additional Info */}
+          <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+            {/* Priority Badge */}
+            {task.priority && (
+              <span className={`px-2 py-0.5 rounded-full font-medium ${getPriorityColor(task.priority)}`}>
+                {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+              </span>
+            )}
+
+            {/* Section Badge */}
+            <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 font-medium">
+              {getSectionLabel(task.section || 'other')}
+            </span>
+
+            {/* Original task dates */}
+            {(task.start_date || task.end_date) && (
+              <div className="flex items-center gap-1">
+                <Calendar className="w-3 h-3" />
+                {formatDate(task.start_date)}
+                {task.start_date && task.end_date && task.end_date !== task.start_date && ` - ${formatDate(task.end_date)}`}
+              </div>
+            )}
+
+            {/* Original task times */}
+            {(task.start_time || task.end_time) && (
+              <div className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {formatTime(task.start_time)}
+                {task.start_time && task.end_time && ` - ${formatTime(task.end_time)}`}
+              </div>
+            )}
+          </div>
           <div className="text-xs text-muted-foreground space-y-1">
-            <div>
-              <strong>Section:</strong> {getSectionLabel(task.section)}
-            </div>
             {task.deleted_at && (
               <div>
-                <strong>Deleted:</strong> {formatDate(task.deleted_at)}
-                {task.start_date && (
-                  <span className="ml-2">
-                    (Originally: {formatDate(task.start_date)})
-                  </span>
-                )}
+                <strong>Deleted:</strong> {deletedDate}
               </div>
             )}
           </div>

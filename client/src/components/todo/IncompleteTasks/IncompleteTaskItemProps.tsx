@@ -52,17 +52,6 @@ export const IncompleteTaskItem: React.FC<IncompleteTaskItemProps> = ({
                   <Repeat className="h-3 w-3 text-blue-500" />
                 </div>
               )}
-
-              {/* Completion count for recurring tasks */}
-              {task.completion_count && task.completion_count > 0 ? (
-                <Badge variant="outline" className="text-xs">
-                  {task.completion_count} completions
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="text-xs">
-                  {task.completion_count} completions
-                </Badge>
-              )}
             </div>
           </div>
 
@@ -94,24 +83,6 @@ export const IncompleteTaskItem: React.FC<IncompleteTaskItemProps> = ({
                 <Clock className="w-3 h-3" />
                 {formatTime(task.start_time)}
                 {task.start_time && task.end_time && ` - ${formatTime(task.end_time)}`}
-              </div>
-            )}
-          </div>
-
-          {/* Overdue Status */}
-          <div className="text-xs text-muted-foreground">
-            {task.overdueDays > 0 ? (
-              <div>
-                <strong>Overdue by:</strong> {task.overdueDays} day{task.overdueDays > 1 ? 's' : ''}
-                {task.end_date && (
-                  <span className="ml-2">
-                    (Due: {formatDate(task.end_date)})
-                  </span>
-                )}
-              </div>
-            ) : (
-              <div>
-                <strong>Due:</strong> {formatDate(task.end_date || task.start_date)}
               </div>
             )}
           </div>

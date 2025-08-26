@@ -100,7 +100,7 @@ export default function IncompleteTasks({ className }: IncompleteTasksProps) {
               variant="outline"
               size="sm"
               onClick={() => {
-                if (window.confirm('Are you sure you want to delete all incomplete tasks? This action cannot be undone.')) {
+                if (window.confirm('Are you sure you want to delete all incomplete tasks?')) {
                   handleClearAllTasks();
                 }
               }}
