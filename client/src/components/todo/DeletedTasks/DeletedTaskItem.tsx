@@ -53,13 +53,6 @@ export const DeletedTaskItem: React.FC<DeletedTaskItemProps> = ({
                   <Repeat className="h-3 w-3 text-blue-500/50" />
                 </div>
               )}
-
-              {/* Priority badge */}
-              {task.priority && task.priority !== 'low' && (
-                <Badge className={getPriorityColor(task.priority)}>
-                  {task.priority}
-                </Badge>
-              )}
             </div>
           </div>
 

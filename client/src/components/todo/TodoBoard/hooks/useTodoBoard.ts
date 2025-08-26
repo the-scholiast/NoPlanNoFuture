@@ -131,34 +131,86 @@ export const useTodoBoard = () => {
     }
   ], [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks, sortedTasks]);
 
-  // Reset sorted tasks when task IDs change - use useRef to prevent infinite loops
-  const previousTaskIds = useRef<{ daily: string; today: string; upcoming: string; }>({
+  // Reset and re-apply sorting when task data changes
+  const previousTaskData = useRef<{ daily: string; today: string; upcoming: string; }>({
     daily: '',
     today: '',
     upcoming: ''
   });
 
+  const currentSortConfig = useRef<Record<string, { field: string; order: 'asc' | 'desc' } | null>>({
+    daily: null,
+    today: null,
+    upcoming: null
+  });
+
   useEffect(() => {
-    const currentDailyIds = filteredDailyTasks.map(t => t.id).sort().join(',');
-    const currentTodayIds = todayTasksWithRecurring.filter(task => task.section !== 'daily' && task.section !== 'none').map(t => t.id).sort().join(',');
-    const currentUpcomingIds = [
+    // Create task data signatures that include completion status
+    const currentDailyData = filteredDailyTasks.map(t => `${t.id}-${t.completed}`).sort().join(',');
+    const currentTodayData = todayTasksWithRecurring
+      .filter(task => task.section !== 'daily' && task.section !== 'none')
+      .map(t => `${t.id}-${t.completed}`)
+      .sort()
+      .join(',');
+    const currentUpcomingData = [
       ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
       ...filteredUpcomingRecurringTasks
-    ].map(t => t.id).sort().join(',');
+    ].map(t => `${t.id}-${t.completed}`).sort().join(',');
 
-    // Only update if task IDs actually changed
-    if (
-      currentDailyIds !== previousTaskIds.current.daily ||
-      currentTodayIds !== previousTaskIds.current.today ||
-      currentUpcomingIds !== previousTaskIds.current.upcoming
-    ) {
-      previousTaskIds.current = {
-        daily: currentDailyIds,
-        today: currentTodayIds,
-        upcoming: currentUpcomingIds
+    // Check if task data has changed (including completion status)
+    const hasChanges =
+      currentDailyData !== previousTaskData.current.daily ||
+      currentTodayData !== previousTaskData.current.today ||
+      currentUpcomingData !== previousTaskData.current.upcoming;
+
+    if (hasChanges) {
+      previousTaskData.current = {
+        daily: currentDailyData,
+        today: currentTodayData,
+        upcoming: currentUpcomingData
       };
 
-      setSortedTasks({ daily: [], today: [], upcoming: [] });
+      // Re-apply existing sorts to fresh data
+      setSortedTasks(prev => {
+        const newSorted = { daily: [] as TaskData[], today: [] as TaskData[], upcoming: [] as TaskData[] };
+
+        // Re-apply daily sort if it exists
+        if (prev.daily.length > 0 && currentSortConfig.current.daily) {
+          const config = currentSortConfig.current.daily;
+          if (config.field === 'start_time') {
+            newSorted.daily = sortTasksTimeFirst(filteredDailyTasks, config.order);
+          } else {
+            newSorted.daily = sortTasksByField(filteredDailyTasks, config.field, config.order);
+          }
+        }
+
+        // Re-apply today sort if it exists
+        if (prev.today.length > 0 && currentSortConfig.current.today) {
+          const config = currentSortConfig.current.today;
+          const todayTasks = todayTasksWithRecurring.filter(task => task.section !== 'daily' && task.section !== 'none');
+          if (config.field === 'start_time') {
+            newSorted.today = sortTasksTimeFirst(todayTasks, config.order);
+          } else {
+            newSorted.today = sortTasksByField(todayTasks, config.field, config.order);
+          }
+        }
+
+        // Re-apply upcoming sort if it exists
+        if (prev.upcoming.length > 0 && currentSortConfig.current.upcoming) {
+          const config = currentSortConfig.current.upcoming;
+          const upcomingTasks = [
+            ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
+            ...filteredUpcomingRecurringTasks
+          ];
+          if (config.field === 'start_time') {
+            newSorted.upcoming = sortTasksTimeFirst(upcomingTasks, config.order);
+          } else {
+            newSorted.upcoming = sortTasksByField(upcomingTasks, config.field, config.order);
+          }
+        }
+
+        return newSorted;
+      });
     }
   }, [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks]);
 
@@ -187,7 +239,12 @@ export const useTodoBoard = () => {
     setEditModalOpen(true);
   };
 
-  const handleTasksSort = (sectionKey: string, tasks: TaskData[]) => {
+  const handleTasksSort = (sectionKey: string, tasks: TaskData[], sortConfig?: { field: string; order: 'asc' | 'desc' }) => {
+    // Store the sort configuration for re-application
+    if (sortConfig) {
+      currentSortConfig.current[sectionKey] = sortConfig;
+    }
+
     setSortedTasks(prev => ({
       ...prev,
       [sectionKey]: tasks

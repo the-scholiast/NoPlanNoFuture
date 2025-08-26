@@ -25,7 +25,7 @@ export interface SortConfig {
 export interface CompactTaskSortingProps<T extends TaskData = TaskData> {
   tasks: T[];
   onTasksChange: (sortedTasks: T[]) => void;
-  onSortChange?: (field: SortField, order: SortOrder) => void; // ADD this
+  onSortChange?: (field: SortField, order: SortOrder) => void; 
   className?: string;
   defaultSort?: SortConfig;
 }
