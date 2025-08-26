@@ -65,47 +65,6 @@ export const getDateTimeComparison = <T extends TaskData>(task1: T, task2: T): n
   return endTime1 - endTime2;
 };
 
-// Core sorting algorithm that matches Daily section behavior
-export const sortTasksTimeFirst = <T extends TaskData>(tasks: T[], order: 'asc' | 'desc' = 'asc'): T[] => {
-  return tasks.sort((a, b) => {
-    // First, sort by completion status (incomplete tasks first)
-    if (a.completed !== b.completed) {
-      return a.completed ? 1 : -1;
-    }
-
-    // Prioritize tasks with time
-    const aHasTime = !!(a.start_time || a.end_time);
-    const bHasTime = !!(b.start_time || b.end_time);
-
-    if (aHasTime !== bHasTime) {
-      return aHasTime ? -1 : 1; // Tasks with time first
-    }
-
-    if (aHasTime && bHasTime) {
-      const timeA = a.start_time || '';
-      const timeB = b.start_time || '';
-
-      if (timeA && timeB) {
-        return order === 'asc' ? timeA.localeCompare(timeB) : timeB.localeCompare(timeA);
-      }
-
-      if (timeA && !timeB) return -1;
-      if (!timeA && timeB) return 1;
-    }
-
-    // For tasks without time, check if they have any date/time info
-    const aHasDateTime = hasDateTime(a);
-    const bHasDateTime = hasDateTime(b);
-
-    if (aHasDateTime !== bHasDateTime) {
-      return aHasDateTime ? -1 : 1;
-    }
-
-    // Fallback to title comparison
-    return a.title.localeCompare(b.title);
-  });
-};
-
 // Generic sorting function for different fields
 export const sortTasksByField = <T extends TaskData>(tasks: T[], field: string, order: 'asc' | 'desc' = 'asc'): T[] => {
   return tasks.sort((a, b) => {
@@ -140,16 +99,19 @@ export const sortTasksByField = <T extends TaskData>(tasks: T[], field: string, 
         }
         break;
       case 'start_date':
-        // Prioritize tasks with date/time info
-        const aHasStartDateTime = hasDateTime(a);
-        const bHasStartDateTime = hasDateTime(b);
+        // Prioritize tasks with actual start_date values
+        const aHasStartDate = !!a.start_date;
+        const bHasStartDate = !!b.start_date;
 
-        if (aHasStartDateTime !== bHasStartDateTime) {
-          return aHasStartDateTime ? -1 : 1; // Tasks with date/time first
+        if (aHasStartDate !== bHasStartDate) {
+          return aHasStartDate ? -1 : 1; // Tasks with start_date first
         }
 
-        comparison = getDateObject(a.start_date).getTime() - getDateObject(b.start_date).getTime();
-        if (comparison === 0) {
+        // If both have start_date or both don't, sort by start_date
+        if (aHasStartDate && bHasStartDate) {
+          comparison = getDateObject(a.start_date).getTime() - getDateObject(b.start_date).getTime();
+        } else {
+          // For tasks without start_date, fall back to other date/time comparisons
           comparison = getDateTimeComparison(a, b);
         }
         break;

@@ -116,8 +116,8 @@ export const useTodoBoard = () => {
     const getSortedTasks = (tasks: TaskData[], sectionKey: string) => {
       const config = sortConfigs[sectionKey];
       if (!config) {
-        // Use default start_time sorting when no custom sort is applied
-        return sortTasksByField(tasks, 'start_time', 'asc');
+        const defaultField = sectionKey === 'upcoming' ? 'start_date' : 'start_time';
+        return sortTasksByField(tasks, defaultField, 'asc');
       }
 
       return sortTasksByField(tasks, config.field, config.order);
