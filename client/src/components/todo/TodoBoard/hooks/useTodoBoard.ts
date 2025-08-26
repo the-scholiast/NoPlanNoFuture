@@ -104,10 +104,10 @@ export const useTodoBoard = () => {
     return sortTasksByField(filtered, 'start_date', 'asc');
   }, [upcomingTasksWithRecurring, upcomingFilter]);
 
-  const filteredTodayTasks = useMemo(() => 
-  todayTasksWithRecurring.filter(task => task.section !== 'daily' && task.section !== 'none'),
-  [todayTasksWithRecurring]
-);
+  const filteredTodayTasks = useMemo(() => {
+    const tasks = todayTasksWithRecurring.filter(task => task.section !== 'daily' && task.section !== 'none');
+    return sortTasksByField(tasks, 'start_time', 'asc')
+  }, [todayTasksWithRecurring]);
 
   // Sections configuration
   const sections: TodoSection[] = useMemo(() => {
@@ -127,10 +127,7 @@ export const useTodoBoard = () => {
       {
         title: "Today",
         sectionKey: 'today',
-        tasks: getSortedTasks(
-          filteredTodayTasks,
-          'today'
-        ),
+        tasks: getSortedTasks(filteredTodayTasks, 'today'),
       },
       {
         title: "Upcoming",
