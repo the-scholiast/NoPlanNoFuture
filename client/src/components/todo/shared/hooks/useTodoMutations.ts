@@ -268,6 +268,18 @@ export const useTodoMutations = () => {
     onSuccess: refreshAllData,
   });
 
+  // Restore soft deleted task
+  const restoreTaskMutation = useMutation({
+    mutationFn: (taskId: string) => todoApi.restore(taskId),
+    onSuccess: refreshAllData,
+  });
+
+  // Hard delete task from database
+  const permanentDeleteTaskMutation = useMutation({
+    mutationFn: (taskId: string) => todoApi.permanentDelete(taskId),
+    onSuccess: refreshAllData,
+  });
+
   return {
     // Task operations
     toggleTaskFunction: createToggleTaskFunction(),
@@ -276,6 +288,8 @@ export const useTodoMutations = () => {
     deleteTaskMutation,
     uncompleteTaskMutation,
     completeTaskMutation,
+    restoreTaskMutation,
+    permanentDeleteTaskMutation,
 
     // Utility
     refreshAllData,

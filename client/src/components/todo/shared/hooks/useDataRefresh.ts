@@ -14,6 +14,7 @@ export const useDataRefresh = () => {
       queryClient.invalidateQueries({ queryKey: todoKeys.completed }), // Completed tasks history
       queryClient.invalidateQueries({ queryKey: todoKeys.incomplete }), // Overdue/incomplete tasks
       queryClient.invalidateQueries({ queryKey: todoKeys.timetable.allWeeks }), // Calendar timetable data
+      queryClient.invalidateQueries({ queryKey: todoKeys.deleted }), // Soft deleted tasks
       // Catch-all predicate to invalidate any missed task-related queries
       queryClient.invalidateQueries({
         predicate: (query) => {

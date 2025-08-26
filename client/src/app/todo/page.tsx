@@ -1,6 +1,6 @@
 'use client'
 
-import { TodoBoard, CompletedTasks, IncompleteTasks } from '@/components/todo';
+import { TodoBoard, CompletedTasks, IncompleteTasks, DeletedTasks } from '@/components/todo';
 
 export default function Page() {
 
@@ -18,6 +18,7 @@ export default function Page() {
       <TodoBoard />
       <CompletedTasks />
       <IncompleteTasks />
+      <DeletedTasks />
     </div>
   );
 }

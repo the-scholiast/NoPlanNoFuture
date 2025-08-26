@@ -2,6 +2,7 @@
 export { default as TodoBoard } from './TodoBoard/TodoBoard';
 export { default as CompletedTasks } from './CompletedTasks/CompletedTasks';
 export { default as IncompleteTasks } from './IncompleteTasks/IncompleteTasks';
+export { default as DeletedTasks } from './DeletedTasks/DeletedTasks';
 
 // Existing components
 export { default as AddTaskModal } from './global/AddTaskModal'
