@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { getCurrentWeekStart, getCurrentWeekEnd, DateRangeFilter, getLast7DaysStart, getLast7DaysEnd } from '../';
+import { getCurrentWeekStart, getCurrentWeekEnd, DateRangeFilter, getLast7DaysStart, getLast7DaysEnd, getMonthStartAndEndDate } from '../';
 
 /**
 * Date filter hook for todo app - manages date range filtering state
@@ -41,3 +41,19 @@ export const useDateFilterLast7Days = (initialEnabled = true) => {
 
   return { dateFilter, updateDateFilter };
 };
+
+// Date filter hook for deleted tasks - uses start and end date of month
+export const userDateFilterCurrentMonth = (initialEnabled = true) => {
+  const { startDate, endDate } = getMonthStartAndEndDate();
+  const [dateFilter, setDateFilter] = useState<DateRangeFilter>({
+    startDate,
+    endDate,
+    enabled: initialEnabled
+  });
+
+  const updateDateFilter = useCallback((filter: Partial<DateRangeFilter>) => {
+    setDateFilter(prev => ({ ...prev, ...filter }));
+  }, []);
+
+  return { dateFilter, updateDateFilter };
+}
