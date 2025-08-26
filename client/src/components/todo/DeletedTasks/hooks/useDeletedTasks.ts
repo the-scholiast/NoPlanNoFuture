@@ -5,7 +5,7 @@ import { getTodayString } from '@/lib/utils/dateUtils';
 import { todoApi } from '@/lib/api/todos';
 import { todoKeys } from '@/lib/queryKeys';
 import { useTodoMutations } from '../../shared';
-import { useDateFilter, useTaskState } from '../../shared/hooks/';
+import { userDateFilterCurrentMonth, useTaskState } from '../../shared/hooks/';
 import { applySearchFilter, applyDateFilter } from '../../shared/utils/';
 
 export const useDeletedTasks = () => {
@@ -16,7 +16,7 @@ export const useDeletedTasks = () => {
     refetchOnWindowFocus: true,
   });
 
-  const { dateFilter, updateDateFilter } = useDateFilter();
+  const { dateFilter, updateDateFilter } = userDateFilterCurrentMonth();
   const { state, toggleTaskExpansion, toggleTasksExpansion, updateSearchQuery } = useTaskState<DeletedTaskWithInfo>();
   const { restoreTaskMutation, permanentDeleteTaskMutation } = useTodoMutations();
 

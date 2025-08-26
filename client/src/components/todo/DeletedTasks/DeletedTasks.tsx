@@ -5,7 +5,6 @@ import { Archive, ChevronDown, ChevronUp, X, Trash2, AlertCircle } from 'lucide-
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { useDeletedTasks } from './hooks/useDeletedTasks';
 import { DeletedTasksProps } from './types';
 import { DeletedTaskItem } from './DeletedTaskItem';
