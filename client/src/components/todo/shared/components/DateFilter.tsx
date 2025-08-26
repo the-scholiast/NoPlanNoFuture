@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { getTodayString, formatDateString } from '@/lib/utils/dateUtils';
-import { formatLocalDate, DateRangeFilter } from '../';
+import { getTodayString } from '@/lib/utils/dateUtils';
+import { formatLocalDate, DateRangeFilter, getLast7DaysStart, getCurrentWeekEnd, getLast7DaysEnd, getCurrentWeekStart, getMonthStartAndEndDate } from '../';
 
 interface DateFilterProps {
   dateFilter: DateRangeFilter;
@@ -89,20 +89,8 @@ export function DateFilter({ dateFilter, onFilterChange, className }: DateFilter
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    // Set to current week (Monday to Sunday)
-                    const now = new Date();
-                    const dayOfWeek = now.getDay();
-                    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-
-                    const monday = new Date(now);
-                    monday.setDate(now.getDate() - daysFromMonday);
-
-                    const sunday = new Date(monday);
-                    sunday.setDate(monday.getDate() + 6);
-
-                    const startDate = formatDateString(monday);
-                    const endDate = formatDateString(sunday);
-
+                    const startDate = getCurrentWeekStart();
+                    const endDate = getCurrentWeekEnd();
                     onFilterChange({ startDate, endDate });
                   }}
                 >
@@ -112,13 +100,7 @@ export function DateFilter({ dateFilter, onFilterChange, className }: DateFilter
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const now = new Date();
-                    const sevenDaysAgo = new Date(now);
-                    sevenDaysAgo.setDate(now.getDate() - 6);
-                    onFilterChange({
-                      startDate: formatDateString(sevenDaysAgo),
-                      endDate: formatDateString(now)
-                    });
+                    onFilterChange({ startDate: getLast7DaysStart(), endDate: getLast7DaysEnd() });
                   }}
                 >
                   Last 7 Days
@@ -127,17 +109,7 @@ export function DateFilter({ dateFilter, onFilterChange, className }: DateFilter
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    // Set to current month
-                    const now = new Date();
-                    const year = now.getFullYear();
-                    const month = now.getMonth();
-
-                    const firstDay = new Date(year, month, 1);
-                    const lastDay = new Date(year, month + 1, 0);
-
-                    const startDate = formatDateString(firstDay);
-                    const endDate = formatDateString(lastDay);
-
+                    const { startDate, endDate } = getMonthStartAndEndDate();
                     onFilterChange({ startDate, endDate });
                   }}
                 >
