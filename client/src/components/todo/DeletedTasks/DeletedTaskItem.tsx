@@ -40,13 +40,6 @@ export const DeletedTaskItem: React.FC<DeletedTaskItemProps> = ({
             >
               <span>{task.title}</span>
 
-              {/* Deleted badge */}
-              {task.deletedDays >= 0 && (
-                <Badge className={getDeletedColor(task.deletedDays)}>
-                  {task.deletedDays === 0 ? 'Today' : `${task.deletedDays} day${task.deletedDays > 1 ? 's' : ''} ago`}
-                </Badge>
-              )}
-
               {/* Recurring task indicators */}
               {task.is_recurring && (
                 <div title="Recurring task">
