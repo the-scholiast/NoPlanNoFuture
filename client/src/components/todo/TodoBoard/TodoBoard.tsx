@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTodoBoard } from './hooks/useTodoBoard';
 import EditTaskModal from '../EditTaskModal';
 import UpcomingDateFilter from './components/UpcomingDateFilter';
-import { TodoBoardProps, useTodoMutations, CompactTaskSorting, sortTasksTimeFirst, sortTasksByField } from '../shared/';
+import { TodoBoardProps, useTodoMutations, CompactTaskSorting } from '../shared/';
 import { DailyTaskToggle } from '@/components/todo/TodoBoard/components/DailyTaskToggle';
 import TaskCard from '../shared/components/TaskCard';
 
@@ -92,17 +92,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                     <CompactTaskSorting
                       key={section.sectionKey}
                       tasks={section.tasks}
-                      onTasksChange={(tasks) => handleTasksSort(section.sectionKey, tasks)}
-                      onSortChange={(field, order) => {
-                        // Apply sorting and store config
-                        let sortedTasks;
-                        if (field === 'start_time') {
-                          sortedTasks = sortTasksTimeFirst(section.tasks, order);
-                        } else {
-                          sortedTasks = sortTasksByField(section.tasks, field, order);
-                        }
-                        handleTasksSort(section.sectionKey, sortedTasks, { field, order });
-                      }}
+                      onSortChange={(field, order) => handleTasksSort(section.sectionKey, { field, order })}
                       className="mr-2"
                       defaultSort={section.sectionKey === 'upcoming' ? { field: 'start_date', order: 'asc' } : { field: 'start_time', order: 'asc' }}
                     />

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { TaskData } from '@/types/todoTypes';
-import { sortTasksTimeFirst, sortTasksByField } from '../utils/taskSortingUtils';
+import { sortTasksByField } from '../utils/taskSortingUtils';
 
 export const useTaskSorting = <T extends TaskData>() => {
   // Current sort configuration (field and direction)
@@ -14,11 +14,9 @@ export const useTaskSorting = <T extends TaskData>() => {
     if (!sortConfig) return tasks;
 
     let sortedTasks: T[];
-    if (sortConfig.field === 'start_time') {
-      sortedTasks = sortTasksTimeFirst(tasks, sortConfig.order); // Use time-based sorting for start_time field
-    } else {
-      sortedTasks = sortTasksByField(tasks, sortConfig.field, sortConfig.order); // Use generic field sorting for other fields
-    }
+
+    sortedTasks = sortTasksByField(tasks, sortConfig.field, sortConfig.order); // Use generic field sorting 
+
     return sortedTasks;
   }, [sortConfig]);
 

@@ -12,7 +12,7 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { TaskData } from '@/types/todoTypes';
-import { sortTasksTimeFirst, sortTasksByField } from '../utils/taskSortingUtils';
+import { sortTasksByField } from '../utils/taskSortingUtils';
 
 type SortField = 'start_time' | 'priority' | 'start_date' | 'created_at';
 type SortOrder = 'asc' | 'desc';
@@ -24,8 +24,8 @@ export interface SortConfig {
 
 export interface CompactTaskSortingProps<T extends TaskData = TaskData> {
   tasks: T[];
-  onTasksChange: (sortedTasks: T[]) => void;
-  onSortChange?: (field: SortField, order: SortOrder) => void; 
+  onTasksChange?: (sortedTasks: T[]) => void;
+  onSortChange?: (field: SortField, order: SortOrder) => void;
   className?: string;
   defaultSort?: SortConfig;
 }
@@ -41,15 +41,14 @@ export const CompactTaskSorting = <T extends TaskData = TaskData>({
 
   // Simplified sorting logic using shared utilities
   const applySorting = (config: SortConfig) => {
+    if (!onTasksChange) {
+      return
+    }
     let sortedTasks: T[];
 
-    if (config.field === 'start_time') {
-      // Use the generic time-first logic
-      sortedTasks = sortTasksTimeFirst(tasks, config.order);
-    } else {
-      // Use generic field sorting for other fields
-      sortedTasks = sortTasksByField(tasks, config.field, config.order);
-    }
+    // Use generic field sorting for other fields
+    sortedTasks = sortTasksByField(tasks, config.field, config.order);
+
 
     onTasksChange(sortedTasks);
   };

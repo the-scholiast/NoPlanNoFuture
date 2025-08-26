@@ -6,7 +6,7 @@ import { todoApi } from '@/lib/api/todos';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { todoKeys } from '@/lib/queryKeys';
 import { TodoSection, useTodoMutations } from '../../shared/';
-import { filterDailyTasksByDate, filterTasksByDateRange, sortTasksTimeFirst, getRecurringDescription } from '../../shared';
+import { filterDailyTasksByDate, filterTasksByDateRange, getRecurringDescription } from '../../shared';
 import { formatDate, formatTime, getDateRangeDisplay, getTimeRangeDisplay, isRecurringInstance, sortTasksByField } from '../../shared';
 
 // Business logic for the TodoBoard component
@@ -75,9 +75,13 @@ export const useTodoBoard = () => {
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<TaskData | null>(null);
-  const [sortedTasks, setSortedTasks] = useState<Record<string, TaskData[]>>({ daily: [], today: [], upcoming: [] });
   const [upcomingFilter, setUpcomingFilter] = useState({ startDate: '', endDate: '', enabled: true });
   const [showAllDailyTasks, setShowAllDailyTasks] = useState(false);
+  const [sortConfigs, setSortConfigs] = useState<Record<string, { field: string; order: 'asc' | 'desc' } | null>>({
+    daily: null,
+    today: null,
+    upcoming: null
+  });
 
   // Get current date for filtering
   const currentDate: string = useMemo(() => getTodayString(), []);
@@ -92,7 +96,7 @@ export const useTodoBoard = () => {
   // Filtered daily tasks logic - filter by start time default
   const filteredDailyTasks = useMemo(() => {
     const filtered = filterDailyTasksByDate(dailyTasks, currentDate, showAllDailyTasks);
-    return sortTasksTimeFirst(filtered);
+    return sortTasksByField(filtered, 'start_time', 'asc');
   }, [dailyTasks, currentDate, currentDayOfWeek, showAllDailyTasks]);
 
   // Filter upcoming tasks logic - filter by start date default
@@ -104,115 +108,46 @@ export const useTodoBoard = () => {
   const filteredUpcomingRecurringTasks = useMemo(() => {
     const tasks = upcomingTasksWithRecurring.filter(task => task.section !== 'daily');
     const filtered = filterTasksByDateRange(tasks, upcomingFilter);
-    return sortTasksTimeFirst(filtered);
+    return sortTasksByField(filtered, 'start_date', 'asc');
   }, [upcomingTasksWithRecurring, upcomingFilter]);
 
   // Sections configuration
-  const sections: TodoSection[] = useMemo(() => [
-    {
-      title: "Daily Tasks",
-      sectionKey: 'daily',
-      tasks: sortedTasks.daily.length > 0 ? sortedTasks.daily : filteredDailyTasks,
-    },
-    {
-      title: "Today",
-      sectionKey: 'today',
-      tasks: sortedTasks.today.length > 0 ? sortedTasks.today : sortTasksTimeFirst(
-        todayTasksWithRecurring.filter(task => task.section !== 'daily' && task.section !== 'none')
-      ),
-    },
-    {
-      title: "Upcoming",
-      sectionKey: 'upcoming',
-      tasks: sortedTasks.upcoming.length > 0 ? sortedTasks.upcoming : [
-        ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
-        ...filteredUpcomingRecurringTasks
-      ],
-    }
-  ], [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks, sortedTasks]);
+  const sections: TodoSection[] = useMemo(() => {
+    const getSortedTasks = (tasks: TaskData[], sectionKey: string) => {
+      const config = sortConfigs[sectionKey];
+      if (!config) {
+        // Use default start_time sorting when no custom sort is applied
+        return sortTasksByField(tasks, 'start_time', 'asc');
+      }
 
-  // Reset and re-apply sorting when task data changes
-  const previousTaskData = useRef<{ daily: string; today: string; upcoming: string; }>({
-    daily: '',
-    today: '',
-    upcoming: ''
-  });
+      return sortTasksByField(tasks, config.field, config.order);
+    };
 
-  const currentSortConfig = useRef<Record<string, { field: string; order: 'asc' | 'desc' } | null>>({
-    daily: null,
-    today: null,
-    upcoming: null
-  });
+    return [
+      {
+        title: "Daily Tasks",
+        sectionKey: 'daily',
+        tasks: getSortedTasks(filteredDailyTasks, 'daily'),
+      },
+      {
+        title: "Today",
+        sectionKey: 'today',
+        tasks: getSortedTasks(
+          todayTasksWithRecurring.filter(task => task.section !== 'daily' && task.section !== 'none'),
+          'today'
+        ),
+      },
+      {
+        title: "Upcoming",
+        sectionKey: 'upcoming',
+        tasks: getSortedTasks([
+          ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
+          ...filteredUpcomingRecurringTasks
+        ], 'upcoming'),
+      }
+    ];
+  }, [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks, sortConfigs]);
 
-  useEffect(() => {
-    // Create task data signatures that include completion status
-    const currentDailyData = filteredDailyTasks.map(t => `${t.id}-${t.completed}`).sort().join(',');
-    const currentTodayData = todayTasksWithRecurring
-      .filter(task => task.section !== 'daily' && task.section !== 'none')
-      .map(t => `${t.id}-${t.completed}`)
-      .sort()
-      .join(',');
-    const currentUpcomingData = [
-      ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
-      ...filteredUpcomingRecurringTasks
-    ].map(t => `${t.id}-${t.completed}`).sort().join(',');
-
-    // Check if task data has changed (including completion status)
-    const hasChanges =
-      currentDailyData !== previousTaskData.current.daily ||
-      currentTodayData !== previousTaskData.current.today ||
-      currentUpcomingData !== previousTaskData.current.upcoming;
-
-    if (hasChanges) {
-      previousTaskData.current = {
-        daily: currentDailyData,
-        today: currentTodayData,
-        upcoming: currentUpcomingData
-      };
-
-      // Re-apply existing sorts to fresh data
-      setSortedTasks(prev => {
-        const newSorted = { daily: [] as TaskData[], today: [] as TaskData[], upcoming: [] as TaskData[] };
-
-        // Re-apply daily sort if it exists
-        if (prev.daily.length > 0 && currentSortConfig.current.daily) {
-          const config = currentSortConfig.current.daily;
-          if (config.field === 'start_time') {
-            newSorted.daily = sortTasksTimeFirst(filteredDailyTasks, config.order);
-          } else {
-            newSorted.daily = sortTasksByField(filteredDailyTasks, config.field, config.order);
-          }
-        }
-
-        // Re-apply today sort if it exists
-        if (prev.today.length > 0 && currentSortConfig.current.today) {
-          const config = currentSortConfig.current.today;
-          const todayTasks = todayTasksWithRecurring.filter(task => task.section !== 'daily' && task.section !== 'none');
-          if (config.field === 'start_time') {
-            newSorted.today = sortTasksTimeFirst(todayTasks, config.order);
-          } else {
-            newSorted.today = sortTasksByField(todayTasks, config.field, config.order);
-          }
-        }
-
-        // Re-apply upcoming sort if it exists
-        if (prev.upcoming.length > 0 && currentSortConfig.current.upcoming) {
-          const config = currentSortConfig.current.upcoming;
-          const upcomingTasks = [
-            ...filteredUpcomingTasks.filter(task => task.section !== 'daily'),
-            ...filteredUpcomingRecurringTasks
-          ];
-          if (config.field === 'start_time') {
-            newSorted.upcoming = sortTasksTimeFirst(upcomingTasks, config.order);
-          } else {
-            newSorted.upcoming = sortTasksByField(upcomingTasks, config.field, config.order);
-          }
-        }
-
-        return newSorted;
-      });
-    }
-  }, [filteredDailyTasks, todayTasksWithRecurring, filteredUpcomingTasks, filteredUpcomingRecurringTasks]);
 
   const getRecurringPatternDisplay = (task: TaskData) => {
     return getRecurringDescription(task);
@@ -239,15 +174,10 @@ export const useTodoBoard = () => {
     setEditModalOpen(true);
   };
 
-  const handleTasksSort = (sectionKey: string, tasks: TaskData[], sortConfig?: { field: string; order: 'asc' | 'desc' }) => {
-    // Store the sort configuration for re-application
-    if (sortConfig) {
-      currentSortConfig.current[sectionKey] = sortConfig;
-    }
-
-    setSortedTasks(prev => ({
+  const handleTasksSort = (sectionKey: string, sortConfig: { field: string; order: 'asc' | 'desc' }) => {
+    setSortConfigs(prev => ({
       ...prev,
-      [sectionKey]: tasks
+      [sectionKey]: sortConfig
     }));
   };
 

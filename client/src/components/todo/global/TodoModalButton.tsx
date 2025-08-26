@@ -11,7 +11,7 @@ import { todoKeys } from '@/lib/queryKeys';
 import { useTodoMutations } from '@/components/todo/';
 import { getTodayString } from '@/lib/utils/dateUtils';
 import { getSectionLabel, isRecurringInstance, getDateRangeDisplay, getTimeRangeDisplay, } from '@/components/todo/shared';
-import { filterDailyTasksByDate, sortTasksTimeFirst, hasDateTime } from '@/components/todo/shared/utils';
+import { filterDailyTasksByDate, hasDateTime, sortTasksByField } from '@/components/todo/shared/utils';
 
 export default function TodoModalButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -56,18 +56,18 @@ export default function TodoModalButton() {
   // Apply date filtering and time-first sorting using existing utilities
   const filteredDailyTasks = useMemo(() => {
     const filtered = filterDailyTasksByDate(dailyTasks, currentDate, false);
-    return sortTasksTimeFirst(filtered);
+    return sortTasksByField(filtered, 'start_time');
   }, [dailyTasks, currentDate]);
 
   // Apply sorting using existing utility
   const filteredUpcomingTasks = useMemo(() => {
-    return sortTasksTimeFirst(upcomingTasks);
+    return sortTasksByField(upcomingTasks, 'start_date');
   }, [upcomingTasks]);
 
   // Apply sorting to upcoming recurring tasks using existing utility
   const filteredUpcomingRecurringTasks = useMemo(() => {
     const filtered = upcomingTasksWithRecurring.filter(task => task.section !== 'daily');
-    return sortTasksTimeFirst(filtered);
+    return sortTasksByField(filtered, 'start_date');
   }, [upcomingTasksWithRecurring]);
 
   // Group tasks by section with proper filtering and sorting
@@ -89,7 +89,7 @@ export default function TodoModalButton() {
         }
 
         // Use existing sorting for the rest
-        return sortTasksTimeFirst([a, b])[0] === a ? -1 : 1;
+        return sortTasksByField([a, b], 'start_time')[0] === a ? -1 : 1;
       });
 
     return {

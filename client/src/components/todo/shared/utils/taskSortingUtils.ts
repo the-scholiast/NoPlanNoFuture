@@ -109,33 +109,90 @@ export const sortTasksTimeFirst = <T extends TaskData>(tasks: T[], order: 'asc' 
 // Generic sorting function for different fields
 export const sortTasksByField = <T extends TaskData>(tasks: T[], field: string, order: 'asc' | 'desc' = 'asc'): T[] => {
   return tasks.sort((a, b) => {
+    // First, sort by completion status (incomplete tasks first)
+    if (a.completed !== b.completed) {
+      return a.completed ? 1 : -1;
+    }
 
     let comparison = 0;
 
     switch (field) {
       case 'start_time':
+        // Prioritize tasks with any date/time info, then specifically those with time
+        const aHasDateTime = hasDateTime(a);
+        const bHasDateTime = hasDateTime(b);
+
+        if (aHasDateTime !== bHasDateTime) {
+          return aHasDateTime ? -1 : 1; // Tasks with any date/time first
+        }
+
+        // Among tasks with date/time, prioritize those with actual time
+        const aHasTime = !!(a.start_time || a.end_time);
+        const bHasTime = !!(b.start_time || b.end_time);
+
+        if (aHasTime !== bHasTime) {
+          return aHasTime ? -1 : 1; // Tasks with time first
+        }
+
         comparison = getTimeInMinutes(a.start_time) - getTimeInMinutes(b.start_time);
         if (comparison === 0) {
           comparison = getDateTimeComparison(a, b);
         }
         break;
       case 'start_date':
+        // Prioritize tasks with date/time info
+        const aHasStartDateTime = hasDateTime(a);
+        const bHasStartDateTime = hasDateTime(b);
+
+        if (aHasStartDateTime !== bHasStartDateTime) {
+          return aHasStartDateTime ? -1 : 1; // Tasks with date/time first
+        }
+
         comparison = getDateObject(a.start_date).getTime() - getDateObject(b.start_date).getTime();
         if (comparison === 0) {
           comparison = getDateTimeComparison(a, b);
         }
         break;
       case 'priority':
+        // For priority, still check date/time presence for secondary sorting
+        const aHasPriorityDateTime = hasDateTime(a);
+        const bHasPriorityDateTime = hasDateTime(b);
+
         comparison = getPriorityWeight(b.priority) - getPriorityWeight(a.priority);
         if (comparison === 0) {
-          comparison = getDateTimeComparison(a, b);
+          // If same priority, prioritize tasks with date/time
+          if (aHasPriorityDateTime !== bHasPriorityDateTime) {
+            comparison = aHasPriorityDateTime ? -1 : 1;
+          } else {
+            comparison = getDateTimeComparison(a, b);
+          }
         }
         break;
       case 'created_at':
+        // For created_at, still check date/time presence for secondary sorting
+        const aHasCreatedDateTime = hasDateTime(a);
+        const bHasCreatedDateTime = hasDateTime(b);
+
         comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        if (comparison === 0) {
+          // If same creation time, prioritize tasks with date/time
+          if (aHasCreatedDateTime !== bHasCreatedDateTime) {
+            comparison = aHasCreatedDateTime ? -1 : 1;
+          } else {
+            comparison = getDateTimeComparison(a, b);
+          }
+        }
         break;
       default:
-        comparison = 0;
+        // For unknown fields, just prioritize tasks with date/time and fallback to title
+        const aHasDefaultDateTime = hasDateTime(a);
+        const bHasDefaultDateTime = hasDateTime(b);
+
+        if (aHasDefaultDateTime !== bHasDefaultDateTime) {
+          comparison = aHasDefaultDateTime ? -1 : 1;
+        } else {
+          comparison = a.title.localeCompare(b.title);
+        }
     }
 
     return order === 'asc' ? comparison : -comparison;
