@@ -234,11 +234,11 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
           </TableHeader>
           <TableBody>
             {timeSlots.map((time) => (
-                             <TableRow
-                 key={time}
-                 id={time === "7:00 AM" ? "seven-am-row" : time === "8:00 AM" ? "eight-am-row" : undefined}
-                 className={shouldHighlightRow(time, weekDates, hoveredTaskId, scheduledTasks, dayNames) ? 'bg-muted/30' : ''}
-               >
+              <TableRow
+                key={time}
+                id={time === "7:00 AM" ? "seven-am-row" : time === "8:00 AM" ? "eight-am-row" : undefined}
+                className={shouldHighlightRow(time, weekDates, hoveredTaskId, scheduledTasks, dayNames) ? 'bg-muted/30' : ''}
+              >
                 <TableCell className="font-medium text-xs border-r sticky left-0 bg-background p-1">
                   {time}
                 </TableCell>
@@ -249,7 +249,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                   return (
                     <TableCell
                       key={`${dayName}-${time}`}
-                      className={`h-5 border-r w-32 relative cursor-pointer p-0 ${shouldHighlightRow(time, weekDates, hoveredTaskId, scheduledTasks, dayNames)
+                      className={`h-8 border-r w-32 relative cursor-pointer p-0 ${shouldHighlightRow(time, weekDates, hoveredTaskId, scheduledTasks, dayNames)
                         ? ''
                         : 'hover:bg-muted/50'
                         } ${isToday ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}
@@ -274,8 +274,8 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                             key={task.id}
                             className={`absolute inset-0 text-xs rounded cursor-pointer z-10 hover:opacity-80 border ${taskColors}`}
                             style={{
-                              height: `${durationSlots * 20 - 2}px`,
-                              minHeight: '18px',
+                              height: `${durationSlots * 32 - 4}px`,
+                              minHeight: '28px',
                               width: taskWidth,
                               left: taskLeft,
                               marginRight: tasks.length > 1 ? '2px' : '0px'
