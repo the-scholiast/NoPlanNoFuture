@@ -57,7 +57,7 @@ export const getCurrentWeekEnd = (): string => {
 export const getLast7DaysStart = (): string => {
   const now = new Date();
   const sevenDaysAgo = new Date(now);
-  sevenDaysAgo.setDate(now.getDate() - 7) 
+  sevenDaysAgo.setDate(now.getDate() - 7)
   return formatDateString(sevenDaysAgo);
 }
 
@@ -103,3 +103,17 @@ export const formatLocalDate = (dateStr: string): string => {
   const date = new Date(year, month - 1, day);
   return date.toLocaleDateString();
 };
+
+export const getMonthStartAndEndDate = (): { startDate: string; endDate: string } => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+
+  const startDate = formatDateString(firstDay);
+  const endDate = formatDateString(lastDay);
+
+  return { startDate, endDate }
+}
