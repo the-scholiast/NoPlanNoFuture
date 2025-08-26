@@ -68,11 +68,13 @@ export const useTodoMutations = () => {
     // Optimistic update for instant UI feedback
     onMutate: async ({ taskId, allTasks }) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: todoKeys.all });
-      await queryClient.cancelQueries({ queryKey: todoKeys.today });
-      await queryClient.cancelQueries({ queryKey: todoKeys.upcoming });
-      await queryClient.cancelQueries({ queryKey: todoKeys.completed });
-      await queryClient.cancelQueries({ queryKey: todoKeys.incomplete });
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: todoKeys.all }),
+        queryClient.cancelQueries({ queryKey: todoKeys.today }),
+        queryClient.cancelQueries({ queryKey: todoKeys.upcoming }),
+        queryClient.cancelQueries({ queryKey: todoKeys.completed }),
+        queryClient.cancelQueries({ queryKey: todoKeys.incomplete })
+      ]);
 
       // Snapshot current data
       const currentTodos = queryClient.getQueryData<TaskData[]>(todoKeys.all);
@@ -98,13 +100,13 @@ export const useTodoMutations = () => {
             const updatedTask = {
               ...t,
               completed: newCompleted,
-              completed_at: newCompleted ? getTodayString() : undefined
+              completed_at: newCompleted ? today : undefined
             };
 
             // Handle daily task completion count
             if (newCompleted) {
               updatedTask.completion_count = (t.completion_count || 0) + 1;
-              updatedTask.last_completed_date = getTodayString();
+              updatedTask.last_completed_date = today;
             } else {
               updatedTask.completion_count = Math.max((t.completion_count || 1) - 1, 0);
               if (updatedTask.completion_count === 0) {
@@ -239,7 +241,6 @@ export const useTodoMutations = () => {
       if (!task) throw new Error('Task not found');
 
       const today = getTodayString();
-      const now = getTodayString();
       const useDate = instanceDate || today; // Use provided date or default to today
       const originalTaskId = taskId.includes('_') ? taskId.split('_')[0] : taskId;
 
@@ -247,7 +248,7 @@ export const useTodoMutations = () => {
 
       const updates: Partial<TaskData> = {
         completed: true,
-        completed_at: now,
+        completed_at: today,
         completion_count: (task.completion_count || 0) + 1,
       };
 
@@ -260,7 +261,7 @@ export const useTodoMutations = () => {
       if (task.is_recurring && task.end_date && task.end_date === useDate) {
         // If the end date equals today's completion date, mark the original task as completed
         updates.completed = true;
-        updates.completed_at = now;
+        updates.completed_at = today;
       }
 
       return todoApi.update(taskId, updates);
