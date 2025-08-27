@@ -1,7 +1,13 @@
-import React from 'react';
+'use client'
+
+import React, { useState } from 'react';
 import { Calendar, Clock, RotateCcw, Trash2, Archive, Repeat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
+} from '@/components/ui/alert-dialog'; 
 import { DeletedTaskItemProps } from './types';
 import { formatDate } from '../shared/utils';
 
@@ -15,6 +21,8 @@ export const DeletedTaskItem: React.FC<DeletedTaskItemProps> = ({
   getSectionLabel,
   getPriorityColor,
 }) => {
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+
   const getDeletedColor = (deletedDays: number) => {
     if (deletedDays <= 7) return 'bg-gray-100 text-gray-800 border-gray-200';
     if (deletedDays <= 14) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
@@ -111,15 +119,44 @@ export const DeletedTaskItem: React.FC<DeletedTaskItemProps> = ({
         >
           <RotateCcw className="w-4 h-4" />
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onPermanentDeleteTask(task.id)}
-          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-          title="Permanently delete"
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
+        <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+              title="Permanently delete"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Permanently Delete Task</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-2">
+                  <div>Are you sure you want to permanently delete this task?</div>
+                  <div className="text-sm font-medium text-foreground">"{task.title}"</div>
+                  <div className="text-sm text-destructive font-medium">
+                    ⚠️ This action cannot be undone. The task will be completely removed from your account.
+                  </div>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  onPermanentDeleteTask(task.id);
+                  setIsConfirmDialogOpen(false);
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Permanently Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
