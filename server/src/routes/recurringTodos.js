@@ -2,7 +2,7 @@ import express from 'express';
 import { getTodosForDate, getUpcomingWeekTasks } from '../controllers/index.js';
 import { authenticateUser } from '../middleware/auth.js';
 import { getTodayString } from '../utils/dateUtils.js';
-import { getTasksMonth } from '../controllers/index.js';
+import { getTasksMonth, getRecurringTaskInstances } from '../controllers/index.js';
 
 const router = express.Router();
 
@@ -33,7 +33,7 @@ router.get('/month', authenticateUser, async (req, res, next) => {
     const { year, month } = req.query;
 
     if (!year || !month) {
-      return res.status(400).json({error: 'Both year and month are required'});
+      return res.status(400).json({ error: 'Both year and month are required' });
     }
 
     // Calculate first and last day of month
@@ -42,7 +42,7 @@ router.get('/month', authenticateUser, async (req, res, next) => {
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
     const tasks = await getRecurringTaskInstances(req.user.id, startDate, endDate);
-    
+
     // Also get non-recurring tasks for the month
     const { data: regularTasks, error } = await getTasksMonth(req.user.id, startDate, endDate);
 
@@ -50,7 +50,7 @@ router.get('/month', authenticateUser, async (req, res, next) => {
 
     // Combine recurring instances and regular tasks
     const allTasks = [...tasks, ...(regularTasks || [])];
-    
+
     res.json(allTasks);
   } catch (error) {
     next(error);
