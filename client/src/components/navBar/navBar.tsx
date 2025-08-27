@@ -47,10 +47,11 @@ const items: MenuItem[] = [
     title: "To Do",
     url: "/todo",
   },
-  {
-    title: "Stats",
-    url: "/stats",
-  },
+  // FOR FUTURE VERSION
+  // {
+  //   title: "Stats",
+  //   url: "/stats",
+  // },
   {
     title: "Memo",
     url: "/memo",
