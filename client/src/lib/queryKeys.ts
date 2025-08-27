@@ -10,5 +10,8 @@ export const todoKeys = {
     tasks: ['timetable-tasks'] as const,
     week: (weekStartDate: string) => ['timetable-week', weekStartDate] as const,
     allWeeks: ['timetable-week'] as const,
-  }
+  },
+  monthTasks: (year: number, month: number) => ['month-tasks', year, month] as const,
+
+
 }
