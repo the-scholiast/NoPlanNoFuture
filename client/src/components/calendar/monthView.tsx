@@ -4,10 +4,10 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Card } from '../ui/card';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { todoApi } from '@/lib/api/todos';
 import { TaskData } from '@/types/todoTypes';
 import { todoKeys } from '@/lib/queryKeys';
 import { recurringTodoApi } from '@/lib/api';
+import { formatDateString, getTodayString } from '@/lib/utils/dateUtils';
 
 interface MonthViewProps {
   selectedDate?: Date;
@@ -28,9 +28,10 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
   useEffect(() => setIsMounted(true), []);
 
   const { data: monthTasks = [] } = useQuery({
-    queryKey: ['recurring-todos', 'month', currentDate.getFullYear(), currentDate.getMonth() + 1],
+    queryKey: todoKeys.monthTasks(currentDate.getFullYear(), currentDate.getMonth() + 1),
     queryFn: () => recurringTodoApi.getMonthTasks(currentDate.getFullYear(), currentDate.getMonth() + 1),
-    enabled: isMounted,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes Cache garbage collection
   });
 
   // Group todos by date for quick lookup
@@ -45,7 +46,7 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
         dateKey = todo.instance_date;
       } else if (todo.start_date) {
         // This is a regular task
-        dateKey = new Date(todo.start_date).toISOString().split('T')[0];
+        dateKey = formatDateString(new Date(todo.start_date));
       }
 
       if (dateKey) {
@@ -58,13 +59,44 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
     }, {} as Record<string, TaskData[]>);
   }, [monthTasks]);
 
-  // Get tasks for a specific date
+  // Get tasks for a specific date with proper sorting
   const getTasksForDate = (date: Date) => {
-    const dateKey = date.toISOString().split('T')[0];
+    const dateKey = formatDateString(date);
     const todos = todosByDate[dateKey] || [];
+    const today = getTodayString();
 
     // Filter out tasks with section 'none' - these only show in timetable view
-    return todos.filter((t: TaskData) => t.section !== 'none');
+    const filteredTodos = todos.filter((t: TaskData) => t.section !== 'none');
+
+    // Sort tasks by priority order: due today by priority, then upcoming, then daily
+    return filteredTodos.sort((a, b) => {
+      const aIsToday = (a.instance_date || a.start_date) === today;
+      const bIsToday = (b.instance_date || b.start_date) === today;
+      const aIsDaily = a.section === 'daily';
+      const bIsDaily = b.section === 'daily';
+
+      // 1. Tasks due today come first
+      if (aIsToday && !bIsToday) return -1;
+      if (!aIsToday && bIsToday) return 1;
+
+      // 2. Among tasks due today, sort by priority
+      if (aIsToday && bIsToday) {
+        const priorityOrder = { 'high': 0, 'medium': 1, 'low': 2, undefined: 3 };
+        const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 3;
+        const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 3;
+        if (aPriority !== bPriority) return aPriority - bPriority;
+      }
+
+      // 3. Daily tasks come last
+      if (aIsDaily && !bIsDaily) return 1;
+      if (!aIsDaily && bIsDaily) return -1;
+
+      // 4. For remaining tasks (upcoming), sort by priority
+      const priorityOrder = { 'high': 0, 'medium': 1, 'low': 2, undefined: 3 };
+      const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 3;
+      const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 3;
+      return aPriority - bPriority;
+    });
   };
 
   // Get priority dot color
@@ -194,13 +226,12 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
                     <button
                       key={date.toISOString()}
                       className={`
-                        h-full p-2 border rounded-lg text-left transition-colors flex flex-col
+                        h-full p-2 border rounded-lg text-left transition-colors flex flex-col relative
                         ${overlay ? 'bg-muted/20 text-muted-foreground' : 'bg-background'}
                         ${isToday ? 'ring-2 ring-blue-500' : ''}
                         ${isSelected ? 'bg-blue-50 dark:bg-blue-950/30' : ''}
                         ${overlay ? 'hover:bg-muted/30' : 'hover:bg-muted/50'}
                       `}
-                      // Clicking a day goes to the Week view of that day
                       onClick={() => {
                         router.push(
                           `/calendar/week?year=${date.getFullYear()}&month=${date.getMonth() + 1}&day=${date.getDate()}`
@@ -211,6 +242,7 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
                         {date.getDate()}
                       </div>
                       <div className="flex-1 space-y-1">
+                        {/* Always visible tasks (first 3) */}
                         {getTasksForDate(date).slice(0, 3).map((task) => (
                           <div key={task.id} className="flex items-center gap-1 text-xs">
                             <div
