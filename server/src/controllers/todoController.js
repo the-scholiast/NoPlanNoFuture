@@ -1,6 +1,6 @@
 import supabase from '../supabaseAdmin.js';
 import { ValidationError } from '../utils/errors.js';
-import { formatDateString } from '../utils/dateUtils.js';
+import { formatDateString, getTodayString } from '../utils/dateUtils.js';
 
 const DAYS_OF_WEEK = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
@@ -16,6 +16,25 @@ export const getAllTodos = async (userId) => {
   if (error) throw error;
   return data || [];
 };
+
+// Fetches all Upcoming tasks
+export const getUpcomingTodos = async (userId) => {
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1)
+
+  const { data, error } = await supabase
+    .from('todos')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('section', 'upcoming')
+    .is('deleted_at', null)
+    .or(`start_date.gte.${formatDateString(tomorrow)},start_date.is.${null}`)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
 
 // Creates a new todo in the database
 export const createTodo = async (userId, todoData) => {

@@ -17,7 +17,8 @@ import {
   resetDailyTasks,
   deleteCompletionByDate,
   getCompletionTasksByOriginalTask,
-  createTodoCompletion
+  createTodoCompletion,
+  getUpcomingTodos
 } from '../controllers/index.js';
 
 const router = express.Router();
@@ -36,6 +37,16 @@ router.get('/', authenticateUser, async (req, res, next) => {
 router.get('/all', authenticateUser, async (req, res, next) => {
   try {
     const todos = await getAllTodos(req.user.id);
+    res.json(todos);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Endpoint fetches upcoming todos based on tomorrow's date
+router.get('/upcoming', authenticateUser, async (req, res, next) => {
+  try {
+    const todos = await getUpcomingTodos(req.user.id);
     res.json(todos);
   } catch (error) {
     next(error);
