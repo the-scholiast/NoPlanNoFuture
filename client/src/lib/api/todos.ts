@@ -12,6 +12,11 @@ export const todoApi = {
     return apiCall('/todos/incomplete');
   },
 
+  // Fetch upcoming todos
+  getUpcoming: async (): Promise<TaskData[]> => {
+    return apiCall('/todos/upcoming')
+  },
+
   // Get a single todo by ID
   get: async (id: string): Promise<TaskData> => {
     return apiCall(`/todos/${id}`);
