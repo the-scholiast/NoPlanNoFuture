@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { todoApi } from '@/lib/api/todos';
 import { TaskData } from '@/types/todoTypes';
+import { todoKeys } from '@/lib/queryKeys';
+import { recurringTodoApi } from '@/lib/api';
 
 interface MonthViewProps {
   selectedDate?: Date;
@@ -25,32 +27,28 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
 
   useEffect(() => setIsMounted(true), []);
 
-  // Fetch all todos
-  const { data: allTodos = [] } = useQuery({
-    queryKey: ['todos', 'all'],
-    queryFn: () => todoApi.getAll(),
+  const { data: monthTasks = [] } = useQuery({
+    queryKey: ['recurring-todos', 'month', currentDate.getFullYear(), currentDate.getMonth() + 1],
+    queryFn: () => recurringTodoApi.getMonthTasks(currentDate.getFullYear(), currentDate.getMonth() + 1),
     enabled: isMounted,
   });
 
   // Group todos by date for quick lookup
   const todosByDate = useMemo(() => {
-    return allTodos.reduce((acc: Record<string, TaskData[]>, todo: TaskData) => {
-      // For daily tasks, they appear every day
-      if (todo.section === 'daily') {
-        const currentYear = currentDate.getFullYear();
-        const currentMonth = currentDate.getMonth();
-        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-        for (let day = 1; day <= daysInMonth; day++) {
-          const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-          if (!acc[dateKey]) {
-            acc[dateKey] = [];
-          }
-          acc[dateKey].push(todo);
-        }
+    return monthTasks.reduce((acc: Record<string, TaskData[]>, todo: TaskData) => {
+      // For recurring instances, use instance_date; for regular tasks, use start_date
+      let dateKey: string | null = null;
+
+      if (todo.instance_date) {
+        // This is a recurring instance
+        dateKey = todo.instance_date;
       } else if (todo.start_date) {
-        // For tasks with specific dates
-        const dateKey = new Date(todo.start_date).toISOString().split('T')[0];
+        // This is a regular task
+        dateKey = new Date(todo.start_date).toISOString().split('T')[0];
+      }
+
+      if (dateKey) {
         if (!acc[dateKey]) {
           acc[dateKey] = [];
         }
@@ -58,7 +56,7 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
       }
       return acc;
     }, {} as Record<string, TaskData[]>);
-  }, [allTodos, currentDate]);
+  }, [monthTasks]);
 
   // Get tasks for a specific date
   const getTasksForDate = (date: Date) => {
