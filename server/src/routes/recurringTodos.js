@@ -44,9 +44,7 @@ router.get('/month', authenticateUser, async (req, res, next) => {
     const tasks = await getRecurringTaskInstances(req.user.id, startDate, endDate);
 
     // Also get non-recurring tasks for the month
-    const { data: regularTasks, error } = await getTasksMonth(req.user.id, startDate, endDate);
-
-    if (error) throw error;
+    const regularTasks = await getTasksMonth(req.user.id, startDate, endDate);
 
     // Combine recurring instances and regular tasks
     const allTasks = [...tasks, ...(regularTasks || [])];

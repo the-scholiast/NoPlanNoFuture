@@ -27,7 +27,7 @@ export const getTasksMonth = async (userId, startDate, endDate) => {
     .is('deleted_at', null)
     .gte('start_date', startDate)
     .lte('start_date', endDate)
-    .order('start_date', {ascending: true});
+    .order('start_date', {ascending: false});
   if (error) throw error;
   return data || [];
 }
