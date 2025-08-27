@@ -96,6 +96,22 @@ export function validateSingleTask(task: TaskFormData, taskLabel: string = 'Task
     }
   }
 
+  // Validation for calendar/timetable scheduling
+  if (task.is_schedule) {
+    if (!task.start_date) {
+      errors.push(`${taskLabel}: Start date is required when adding to calendar/timetable.`);
+    }
+    if (!task.start_time) {
+      errors.push(`${taskLabel}: Start time is required when adding to calendar/timetable.`);
+    }
+    if (!task.end_time) {
+      errors.push(`${taskLabel}: End time is required when adding to calendar/timetable.`);
+    }
+    if (!task.title.trim()) {
+      errors.push(`${taskLabel}: Task title is required when adding to calendar/timetable.`);
+    }
+  }
+
   return {
     isValid: errors.length === 0,
     errors
