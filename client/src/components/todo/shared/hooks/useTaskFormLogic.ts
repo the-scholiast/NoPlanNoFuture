@@ -288,11 +288,25 @@ export function useMultiTaskFormLogic() {
     setTasks([initialTask]);
   };
 
+  // Copy task to create a duplicate with new ID (used by "Copy Task" button)
+  const copyTask = (id: string) => {
+    const taskToCopy = tasks.find(t => t.id === id);
+    if (!taskToCopy) return;
+
+    const copiedTask = {
+      ...taskToCopy,
+      id: Date.now().toString(),
+      title: taskToCopy.title ? `${taskToCopy.title} (Copy)` : '',
+    };
+    setTasks(prev => [...prev, copiedTask]);
+  };
+
   return {
     tasks,
     addNewTask,
     removeTask,
     updateTask,
+    copyTask,
     getTaskHelpers,
     resetTasks,
     initializeWithData

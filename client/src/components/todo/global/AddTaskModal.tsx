@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { convertTimeSlotTo24Hour } from '@/components/calendar/timetable/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -13,18 +13,16 @@ import { useMultiTaskFormLogic, validateMultipleTasks, useTodoMutations } from '
 export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilledData }: AddTaskModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Use shared hook for managing multiple tasks
   const {
     tasks,
     addNewTask,
     removeTask,
     updateTask,
+    copyTask,
     getTaskHelpers,
     resetTasks,
     initializeWithData
   } = useMultiTaskFormLogic();
-
   const { createTaskMutation } = useTodoMutations();
 
   // Add helper function to calculate end time (30 minutes later)
@@ -143,18 +141,34 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilled
                     )}
                   </div>
 
-                  {/* Remove Task Button */}
-                  {tasks.length > 1 && (
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-1">
+                    {/* Copy Task Button */}
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => removeTask(task.id)}
+                      onClick={() => copyTask(task.id)}
                       disabled={isSubmitting}
-                      className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                      title="Copy this task"
                     >
-                      <X className="h-4 w-4" />
+                      <Copy className="h-4 w-4" />
                     </Button>
-                  )}
+
+                    {/* Remove Task Button */}
+                    {tasks.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeTask(task.id)}
+                        disabled={isSubmitting}
+                        className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                        title="Remove this task"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Basic Task Fields */}
