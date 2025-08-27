@@ -2,7 +2,7 @@
 export const todoKeys = {
   all: ['todos'] as const,
   today: ['recurring-todos', 'today'] as const,
-  upcoming: ['recurring-todos', 'upcoming'] as const,
+  upcoming: ['upcoming'] as const,
   completed: ['completed-tasks'] as const,
   incomplete: ['incomplete-tasks'] as const,
   deleted: ['deleted-tasks'] as const,
