@@ -6,7 +6,7 @@ export interface TaskData {
   completed_at?: string;
   created_at: string;
   section: 'daily' | 'today' | 'upcoming' | 'none';
-  priority?: 'low' | 'medium' | 'high';
+  priority: 'low' | 'medium' | 'high';
   description?: string;
   start_date?: string;
   end_date?: string;
