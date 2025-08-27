@@ -86,104 +86,30 @@ export default function YearView({ selectedDate }: YearViewProps) {
   const getPriorityCircles = (date: Date) => {
     const dateKey = formatDateString(date);
     const todos = todosByDate[dateKey] || [];
-
-    // Filter out tasks with section 'none' - these only show in timetable view
     const visibleTodos = todos.filter((t: TaskData) => t.section !== 'none');
 
     if (visibleTodos.length === 0) return null;
 
-    // Group by priority
-    const highPriority = visibleTodos.filter((t: TaskData) => t.priority === 'high');
-    const mediumPriority = visibleTodos.filter((t: TaskData) => t.priority === 'medium');
-    const lowPriority = visibleTodos.filter((t: TaskData) => t.priority === 'low');
-    const noPriority = visibleTodos.filter((t: TaskData) => !t.priority);
+    const priorityConfig = [
+      { priority: 'high', color: 'border-red-500', size: { width: '100%', height: '100%', top: '0%', left: '0%' } },
+      { priority: 'medium', color: 'border-yellow-500', size: { width: '75%', height: '75%', top: '12.5%', left: '12.5%' } },
+      { priority: 'low', color: 'border-green-500', size: { width: '55%', height: '55%', top: '22.5%', left: '22.5%' } },
+      { priority: undefined, color: 'border-gray-500', size: { width: '35%', height: '35%', top: '32.5%', left: '32.5%' } }
+    ];
 
-    const circles = [];
-
-    // Create target ring effect - outer to inner
-    // High priority - outer ring (largest)
-    if (highPriority.length > 0) {
-      circles.push(
-        <div
-          key="high"
-          className="absolute inset-0 rounded-full border-4 border-red-500"
-          style={{
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'transparent',
-            opacity: 0.5
-          }}
-        />
-      );
-    }
-
-    // Medium priority - middle ring
-    if (mediumPriority.length > 0) {
-      circles.push(
-        <div
-          key="medium"
-          className="absolute inset-0 rounded-full border-4 border-yellow-500"
-          style={{
-            width: '75%',
-            height: '75%',
-            top: '12.5%',
-            left: '12.5%',
-            backgroundColor: 'transparent',
-            opacity: 0.5
-          }}
-        />
-      );
-    }
-
-    // Low priority - inner ring (bigger green border)
-    if (lowPriority.length > 0) {
-      circles.push(
-        <div
-          key="low"
-          className="absolute inset-0 rounded-full border-4 border-green-500"
-          style={{
-            width: '55%',
-            height: '55%',
-            top: '22.5%',
-            left: '22.5%',
-            backgroundColor: 'transparent',
-            opacity: 0.5
-          }}
-        />
-      );
-    }
-
-    // No priority - inner ring (smallest)
-    if (noPriority.length > 0) {
-      circles.push(
-        <div
-          key="none"
-          className="absolute inset-0 rounded-full border-4 border-gray-500"
-          style={{
-            width: '35%',
-            height: '35%',
-            top: '32.5%',
-            left: '32.5%',
-            backgroundColor: 'transparent',
-            opacity: 0.5
-          }}
-        />
-      );
-    }
-
-    return circles;
+    return priorityConfig
+      .filter(({ priority }) => visibleTodos.some(t => t.priority === priority))
+      .map(({ priority, color, size }) => (
+        <div key={priority || 'none'} className={`absolute inset-0 rounded-full border-4 ${color}`}
+          style={{ ...size, backgroundColor: 'transparent', opacity: 0.5 }} />
+      ));
   };
 
   // nav
   const goToPrevYear = () => setCurrentDate(d => new Date(d.getFullYear() - 1, d.getMonth(), d.getDate()));
   const goToNextYear = () => setCurrentDate(d => new Date(d.getFullYear() + 1, d.getMonth(), d.getDate()));
-  const goToToday = () => setCurrentDate(new Date());
-
   const isToday = (date: Date | null) =>
     !!date && date.toDateString() === new Date().toDateString();
-
-  const isSelected = (date: Date | null) =>
-    !!date && date.toDateString() === currentDate.toDateString();
 
   return (
     <div className="w-full flex flex-col">
@@ -191,7 +117,6 @@ export default function YearView({ selectedDate }: YearViewProps) {
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-4">
           <h2 className="text-3xl font-semibold">{isMounted ? currentYear : '--'}</h2>
-          <Button variant="outline" size="sm" onClick={goToToday}>Today</Button>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={goToPrevYear}><ChevronLeft className="h-4 w-4" /></Button>

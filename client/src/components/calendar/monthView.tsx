@@ -9,6 +9,8 @@ import { todoKeys } from '@/lib/queryKeys';
 import { recurringTodoApi } from '@/lib/api';
 import { formatDateString, getTodayString } from '@/lib/utils/dateUtils';
 
+const PRIORITY_ORDER = { 'high': 0, 'medium': 1, 'low': 2, undefined: 3 };
+
 interface MonthViewProps {
   selectedDate?: Date;
   weekStartsOn?: 'mon' | 'sun'; // optional: choose Monday-first or Sunday-first (default: Monday)
@@ -81,9 +83,8 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
 
       // 2. Among tasks due today, sort by priority
       if (aIsToday && bIsToday) {
-        const priorityOrder = { 'high': 0, 'medium': 1, 'low': 2, undefined: 3 };
-        const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 3;
-        const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 3;
+        const aPriority = PRIORITY_ORDER[a.priority as keyof typeof PRIORITY_ORDER] ?? 3;
+        const bPriority = PRIORITY_ORDER[b.priority as keyof typeof PRIORITY_ORDER] ?? 3;
         if (aPriority !== bPriority) return aPriority - bPriority;
       }
 
@@ -92,9 +93,8 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
       if (!aIsDaily && bIsDaily) return -1;
 
       // 4. For remaining tasks (upcoming), sort by priority
-      const priorityOrder = { 'high': 0, 'medium': 1, 'low': 2, undefined: 3 };
-      const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 3;
-      const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 3;
+      const aPriority = PRIORITY_ORDER[a.priority as keyof typeof PRIORITY_ORDER] ?? 3;
+      const bPriority = PRIORITY_ORDER[b.priority as keyof typeof PRIORITY_ORDER] ?? 3;
       return aPriority - bPriority;
     });
   };
@@ -220,7 +220,6 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
                 {week.map((date) => {
                   const overlay = !isSameMonth(date, currentDate); // overlay detection
                   const isToday = isSameDay(date, new Date());
-                  const isSelected = isSameDay(date, currentDate);
 
                   return (
                     <button
