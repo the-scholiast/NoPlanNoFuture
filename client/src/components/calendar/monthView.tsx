@@ -46,7 +46,7 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
         dateKey = todo.instance_date;
       } else if (todo.start_date) {
         // This is a regular task
-        dateKey = formatDateString(new Date(todo.start_date));
+        dateKey = todo.start_date;
       }
 
       if (dateKey) {
