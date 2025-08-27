@@ -56,6 +56,10 @@ const items: MenuItem[] = [
     title: "Memo",
     url: "/memo",
   },
+  {
+    title: "Shares",
+    url: "/calendar/shares",
+  },
 ]
 
 export function NavSidebar() {

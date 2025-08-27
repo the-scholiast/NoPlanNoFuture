@@ -21,7 +21,7 @@ export const createCalendarShare = async (email: string, expiresAt?: string): Pr
 };
 
 export const getOwnedShares = async (): Promise<CalendarShare[]> => {
-  return apiCall(`calendar-shares/owned`)
+  return apiCall(`/calendar-shares/owned`)
 };
 
 export const getSharedWithMe = async (): Promise<CalendarShare[]> => {
