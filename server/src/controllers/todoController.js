@@ -32,6 +32,28 @@ export const getTasksMonth = async (userId, startDate, endDate) => {
   return data || [];
 }
 
+// Get todos for calendar view (today and upcoming tasks only, no daily tasks)
+export const getCalendarTodos = async (userId, year) => {
+  const startOfYear = new Date(year, 0, 1);
+  const endOfYear = new Date(year, 11, 31);
+  const today = new Date();
+  
+  const { data, error } = await supabase
+    .from('todos')
+    .select('*')
+    .eq('user_id', userId)
+    .is('deleted_at', null)
+    .neq('section', 'daily')
+    .or(`section.eq.today,section.eq.upcoming`)
+    .or(
+      `start_date.gte.${formatDateString(startOfYear)},start_date.lte.${formatDateString(endOfYear)},start_date.gte.${formatDateString(today)}`
+    )
+    .order('start_date', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+};
+
 // Fetches all Upcoming tasks
 export const getUpcomingTodos = async (userId) => {
   const today = new Date();
