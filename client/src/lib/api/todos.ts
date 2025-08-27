@@ -17,6 +17,11 @@ export const todoApi = {
     return apiCall('/todos/upcoming')
   },
 
+  // Fetch todos for calendar view (today and upcoming only)
+  getCalendarTodos: async (year: number): Promise<TaskData[]> => {
+    return apiCall(`/todos/calendar?year=${year}`);
+  },
+
   // Get a single todo by ID
   get: async (id: string): Promise<TaskData> => {
     return apiCall(`/todos/${id}`);
