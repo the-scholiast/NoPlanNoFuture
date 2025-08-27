@@ -34,7 +34,7 @@ export const shouldTaskAppearOnDate = (task, date) => {
 export const getTodosForDate = async (userId, date) => {
   const dayName = getDayName(date);
 
-  const orCondition = 
+  const orCondition =
     `and(is_recurring.eq.false,start_date.eq.${date}),` +
     `and(is_recurring.eq.true,recurring_days.cs.{${dayName}},` +
     `or(start_date.is.null,start_date.lte.${date}),` +
@@ -91,11 +91,8 @@ export const getUpcomingWeekTasks = async (userId) => {
     }
 
     if (willAppearInPeriod) {
-      console.log(`Task ${task.id} (${task.title}) will appear in upcoming period`);
       upcomingRecurringTasks.push(task);
     }
   }
-
-  console.log('Upcoming recurring tasks (originals):', upcomingRecurringTasks.length);
   return upcomingRecurringTasks;
 };
