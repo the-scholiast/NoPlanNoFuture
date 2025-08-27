@@ -100,7 +100,7 @@ export default function CompletedTasks({ className }: CompletedTasksProps) {
               variant="outline"
               size="sm"
               onClick={() => {
-                if (window.confirm('Are you sure you want to delete all completed tasks? This action cannot be undone.')) {
+                if (window.confirm('Are you sure you want to delete all completed tasks?')) {
                   handleClearAllTasks();
                 }
               }}
