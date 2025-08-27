@@ -27,9 +27,9 @@ export default function TodoModalButton() {
     queryFn: recurringTodoApi.getTodayTasks,
   });
 
-  const { data: upcomingTasksWithRecurring = [] } = useQuery({
+  const { data: upcomingTasks = [] } = useQuery({
     queryKey: todoKeys.upcoming,
-    queryFn: recurringTodoApi.getUpcomingTasks,
+    queryFn: todoApi.getUpcoming,
   });
 
   // Computed tasks from direct queries
@@ -37,15 +37,6 @@ export default function TodoModalButton() {
     allTasks.filter(task => task.section === 'daily'),
     [allTasks]
   );
-
-  const upcomingTasks = useMemo(() => {
-    const today = getTodayString();
-    return allTasks.filter(task => {
-      if (task.section !== 'upcoming') return false;
-      if (task.is_recurring) return false;
-      return !task.start_date || task.start_date > today;
-    });
-  }, [allTasks]);
 
   // Use the shared mutations hook
   const { toggleTaskFunction } = useTodoMutations();
@@ -68,18 +59,13 @@ export default function TodoModalButton() {
     return todayTasksWithRecurring.filter(task => task.section !== 'daily' && task.section !== 'none');
   }, [todayTasksWithRecurring]);
 
-  const filteredUpcomingRecurringTasks = useMemo(() => {
-    const filtered = upcomingTasksWithRecurring.filter(task => task.section !== 'daily');
-    return sortTasksByField(filtered, 'start_date');
-  }, [upcomingTasksWithRecurring]);
 
   // Handle task toggle
   const handleToggle = (taskId: string) => {
     // Get fresh task data
     const allCurrentTasks = [
       ...allTasks,
-      ...todayTasksWithRecurring,
-      ...upcomingTasksWithRecurring
+      ...todayTasksWithRecurring
     ];
 
     toggleTaskFunction(taskId, allCurrentTasks, isRecurringInstance);
@@ -98,7 +84,7 @@ export default function TodoModalButton() {
   const taskSections = {
     daily: filteredDailyTasks,
     today: filteredTodayTasks,
-    upcoming: [...filteredUpcomingTasks, ...filteredUpcomingRecurringTasks]
+    upcoming: filteredUpcomingTasks
   };
 
   // Count incomplete tasks
