@@ -18,13 +18,14 @@ import {
   deleteCompletionByDate,
   getCompletionTasksByOriginalTask,
   createTodoCompletion,
-  getUpcomingTodos
+  getUpcomingTodos,
+  getCalendarTodos
 } from '../controllers/index.js';
 
 const router = express.Router();
 
-// Base route - for backward compatibility with /api/todos
-router.get('/', authenticateUser, async (req, res, next) => {
+// Endpoint fetches all todo items belonging to the currently authenticated user
+router.get('/all', authenticateUser, async (req, res, next) => {
   try {
     const todos = await getAllTodos(req.user.id);
     res.json(todos);
@@ -33,10 +34,11 @@ router.get('/', authenticateUser, async (req, res, next) => {
   }
 });
 
-// Endpoint fetches all todo items belonging to the currently authenticated user
-router.get('/all', authenticateUser, async (req, res, next) => {
+// Endpoint fetches todos for calendar view
+router.get('/calendar', authenticateUser, async (req, res, next) => {
   try {
-    const todos = await getAllTodos(req.user.id);
+    const year = parseInt(req.query.year) || new Date().getFullYear();
+    const todos = await getCalendarTodos(req.user.id, year);
     res.json(todos);
   } catch (error) {
     next(error);
