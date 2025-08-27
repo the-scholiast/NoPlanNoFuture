@@ -11,3 +11,5 @@ export * from './taskValidation.js'
 export * from './profileController.js'
 export * from './statsGymController.js'
 export * from './statsTodoController.js'
+
+export * from './calendarShareController.js'

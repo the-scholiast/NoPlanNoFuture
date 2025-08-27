@@ -1,27 +1,24 @@
 'use client'
 
-import { useSearchParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import TimeTable from '@/components/calendar/timetable/TimeTable'
-import { useCalendarLastVisited } from '../hooks/useCalendarLastVisited'
-import { CalendarShareDialog } from '@/components/calendar/CalendarShareDialog'
+import SharedTimeTable from '@/components/calendar/SharedTimeTable'
 
-export default function WeekPage() {
-  useCalendarLastVisited()
+export default function SharedCalendarPage() {
+  const params = useParams()
   const searchParams = useSearchParams()
+  const shareToken = params.shareToken as string
   const [selectedDate, setSelectedDate] = useState(new Date())
 
   useEffect(() => {
     const year = searchParams.get('year')
     const month = searchParams.get('month')
-    const day = searchParams.get('day') // Add day parameter
+    const day = searchParams.get('day')
 
     if (year && month && day) {
-      // Create date with specific day
       const urlDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
       setSelectedDate(urlDate)
     } else if (year && month) {
-      // Fallback to first day of month if day is missing
       const urlDate = new Date(parseInt(year), parseInt(month) - 1, 1)
       setSelectedDate(urlDate)
     }
@@ -29,8 +26,7 @@ export default function WeekPage() {
 
   return (
     <>
-      <CalendarShareDialog />
-      <TimeTable selectedDate={selectedDate} />
+      <SharedTimeTable selectedDate={selectedDate} shareToken={shareToken} />
     </>
   )
 }
