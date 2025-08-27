@@ -11,4 +11,9 @@ export const recurringTodoApi = {
   getUpcomingTasks: async (): Promise<TaskData[]> => {
     return apiCall('/recurring-todos/upcoming-week');
   },
+
+  // Get tasks for a month including recurring instances
+  getMonthTasks: async (year: number, month: number): Promise<TaskData[]> => {
+    return apiCall(`/recurring-todos/month?year=${year}&month=${month}`);
+  },
 };
