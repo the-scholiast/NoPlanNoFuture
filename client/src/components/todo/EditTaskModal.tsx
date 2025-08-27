@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TaskData, EditTaskModalProps } from '@/types/todoTypes';
 import { updateTaskData, transformTaskFormDataBackend } from '@/lib/utils/transformers';
@@ -10,7 +11,7 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { updateTaskMutation } = useTodoMutations();
+  const { updateTaskMutation, deleteTaskMutation } = useTodoMutations();
 
   // Helper function to get original task data for recurring instances
   const getOriginalTaskData = (task: TaskData): TaskFormData => {
@@ -120,6 +121,34 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
     onOpenChange(false);
   };
 
+  // Add delete handler function
+  const handleDelete = async () => {
+    if (!task?.id) return;
+
+    const confirmMessage = isRecurringInstance(task)
+      ? 'Are you sure you want to delete this recurring task? This will delete the entire recurring series.'
+      : 'Are you sure you want to delete this task?';
+
+    if (!window.confirm(confirmMessage)) return;
+
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      const taskIdToDelete = isRecurringInstance(task) ? task.parent_task_id! : task.id;
+      await deleteTaskMutation.mutateAsync(taskIdToDelete);
+
+      // Notify parent component
+      onTaskUpdated();
+      // Close modal
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      setError(error instanceof Error ? error.message : 'Failed to delete task. Please try again.');
+      setIsSubmitting(false);
+    }
+  };
+
   if (!task) return null;
 
   return (
@@ -191,13 +220,25 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
         </div>
 
         {/* Modal Actions */}
-        <div className="flex justify-end gap-2 pt-4">
-          <Button variant="outline" onClick={handleCancel} disabled={isSubmitting}>
-            Cancel
+        <div className="flex justify-between pt-4">
+          <Button
+            variant="destructive"
+            onClick={handleDelete}
+            disabled={isSubmitting}
+            className="flex items-center gap-2"
+          >
+            <Trash2 className="w-4 h-4" />
+            {isSubmitting ? 'Deleting...' : 'Delete Task'}
           </Button>
-          <Button onClick={handleSave} disabled={isSubmitting}>
-            {isSubmitting ? 'Saving...' : 'Save Changes'}
-          </Button>
+
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleCancel} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
