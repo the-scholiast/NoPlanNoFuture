@@ -80,7 +80,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
           {sections.map((section) => (
             <Card key={section.title} className="flex flex-col h-fit min-h-[400px]">
               <CardHeader className="pb-4 border-b">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex flex-col [@media(min-width:1600px)]:flex-row [@media(min-width:1600px)]:items-center [@media(min-width:1600px)]:justify-between gap-3">
                   <CardTitle className="text-lg font-semibold flex-shrink-0">
                     {section.title}
                     <span className="ml-2 text-sm text-muted-foreground">
@@ -88,7 +88,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                     </span>
                   </CardTitle>
 
-                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                  <div className="flex items-center gap-2 flex-wrap [@media(min-width:1600px)]:flex-nowrap">
                     <CompactTaskSorting
                       key={section.sectionKey}
                       tasks={section.tasks}
