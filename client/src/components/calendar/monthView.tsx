@@ -229,7 +229,6 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
                         h-full p-2 border rounded-lg text-left transition-colors flex flex-col relative
                         ${overlay ? 'bg-muted/20 text-muted-foreground' : 'bg-background'}
                         ${isToday ? 'ring-2 ring-blue-500' : ''}
-                        ${isSelected ? 'bg-blue-50 dark:bg-blue-950/30' : ''}
                         ${overlay ? 'hover:bg-muted/30' : 'hover:bg-muted/50'}
                       `}
                       onClick={() => {
