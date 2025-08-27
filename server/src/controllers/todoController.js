@@ -1,6 +1,6 @@
 import supabase from '../supabaseAdmin.js';
 import { ValidationError } from '../utils/errors.js';
-import { formatDateString, getTodayString } from '../utils/dateUtils.js';
+import { formatDateString } from '../utils/dateUtils.js';
 
 const DAYS_OF_WEEK = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
@@ -16,6 +16,21 @@ export const getAllTodos = async (userId) => {
   if (error) throw error;
   return data || [];
 };
+
+// Fetches all active (non-deleted) todos for a month
+export const getTasksMonth = async (userId, startDate, endDate) => {
+  const { data, error } = await supabase
+    .from('todos')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_recurring', false)
+    .is('deleted_at', null)
+    .gte('start_date', startDate)
+    .lte('start_date', endDate)
+    .order('start_date', {ascending: true});
+  if (error) throw error;
+  return data || [];
+}
 
 // Fetches all Upcoming tasks
 export const getUpcomingTodos = async (userId) => {
