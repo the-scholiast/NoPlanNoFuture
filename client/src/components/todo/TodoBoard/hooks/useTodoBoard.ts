@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { TaskData } from '@/types/todoTypes';
 import { getTodayString } from '@/lib/utils/dateUtils';
@@ -7,7 +7,7 @@ import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { todoKeys } from '@/lib/queryKeys';
 import { TodoSection, useTodoMutations } from '../../shared/';
 import { filterDailyTasksByDate, filterTasksByDateRange, getRecurringDescription } from '../../shared';
-import { formatDate, formatTime, getDateRangeDisplay, getTimeRangeDisplay, isRecurringInstance, sortTasksByField } from '../../shared';
+import { getDateRangeDisplay, getTimeRangeDisplay, isRecurringInstance, sortTasksByField } from '../../shared';
 
 // Business logic for the TodoBoard component
 export const useTodoBoard = () => {
@@ -189,8 +189,6 @@ export const useTodoBoard = () => {
     toggleShowAllDailyTasks,
 
     // Helper functions
-    formatDate,
-    formatTime,
     getDateRangeDisplay,
     getTimeRangeDisplay,
     isRecurringInstance,
