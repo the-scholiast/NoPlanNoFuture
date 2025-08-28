@@ -12,8 +12,6 @@ interface TaskCardProps {
   onExpand: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  formatDate: (dateString?: string) => string | null;
-  formatTime: (timeString?: string) => string | null;
   getDateRangeDisplay: (task: TaskData) => string | null;
   getTimeRangeDisplay: (task: TaskData) => string | null;
   isRecurringInstance: (task: TaskData) => boolean;
@@ -29,8 +27,6 @@ export default function TaskCard({
   onExpand,
   onEdit,
   onDelete,
-  formatDate,
-  formatTime,
   getDateRangeDisplay,
   getTimeRangeDisplay,
   isRecurringInstance,
