@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -60,12 +60,13 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
   } = useTaskFormLogic();
 
   // Reset form when task changes or modal opens
-  const shouldResetForm = task && open;
-  if (shouldResetForm && (!editableTask.title || editableTask.title !== task.title)) {
-    const taskData = getOriginalTaskData(task);
-    setEditableTask(taskData);
-    setError(null);
-  }
+  useEffect(() => {
+    if (task && open) {
+      const taskData = getOriginalTaskData(task);
+      setEditableTask(taskData);
+      setError(null);
+    }
+  }, [task?.id, open]);
 
   const handleSave = async () => {
     if (!task?.id) return;
