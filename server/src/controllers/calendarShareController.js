@@ -145,7 +145,7 @@ export const getSharedCalendarTasks = async (shareToken, startDate, endDate) => 
 export const revokeCalendarShare = async (ownerId, shareId) => {
   const { data, error } = await supabase
     .from('calendar_shares')
-    .update({ is_active: false })
+    .delete()
     .eq('id', shareId)
     .eq('owner_id', ownerId)
     .select()
