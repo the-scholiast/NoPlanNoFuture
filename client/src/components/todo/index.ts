@@ -9,7 +9,7 @@ export { default as AddTaskModal } from './global/AddTaskModal'
 export { default as EditTaskModal } from './EditTaskModal';
 export { default as TodoModalButton } from './global/TodoModalButton';
 export { default as UpcomingDateFilter } from './TodoBoard/components/UpcomingDateFilter';
-export { CompactTaskSorting } from './shared/components/';
+export { CompactTaskSorting } from './shared/components/TaskSortingComponent';
 
 // Shared hooks
 export * from './shared/hooks';
