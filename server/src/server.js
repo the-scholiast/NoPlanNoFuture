@@ -1,4 +1,6 @@
 // COMBINED EXPRESS.JS SERVER - Main Entry Point
+// Serves as the central API server for the NoPlanNoFuture application
+// Handles todos, workouts, exercises, profiles, and notifications
 import express from 'express'
 import cors from 'cors'
 import 'dotenv/config'
@@ -17,7 +19,7 @@ app.use(cors({
     'http://localhost:3000',
     'http://localhost:3001' // Allow requests between frontend and backend
   ],
-  credentials: true,
+  credentials: true, // Allow cookies and auth headers
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -25,22 +27,12 @@ app.use(cors({
 
 // Parse JSON bodies - converts request bodies to JavaScript objects
 app.use(express.json())
-// Parse URL-encoded bodies
+// Parse URL-encoded bodies - handles form submissions
 app.use(express.urlencoded({ extended: true }))
 
-// Request logging middleware (development only)
-if (process.env.NODE_ENV !== 'production') {
-  app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`)
-    next()
-  })
-}
-
-// =============================================
 // ROUTES
-// =============================================
 
-// Health check endpoint
+// Health check endpoint - returns server status and available endpoints
 app.get('/', (req, res) => {
   res.json({
     message: 'NoPlanNoFuture API Server is running!',
@@ -58,7 +50,7 @@ app.get('/', (req, res) => {
   })
 })
 
-// Simple health check for debugging
+// Simple health check for debugging - minimal response for monitoring
 app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
@@ -67,14 +59,12 @@ app.get('/health', (req, res) => {
   })
 })
 
-// Main app mounts API routes
+// Main API routes - all business logic routes are prefixed with /api
 app.use('/api', apiRoutes)
 
-// =============================================
 // ERROR HANDLING
-// =============================================
 
-// 404 handler for undefined routes
+// 404 handler for undefined routes - catches all unmatched requests
 app.use((req, res) => {
   res.status(404).json({
     error: 'Endpoint not found',
@@ -88,7 +78,8 @@ app.use((req, res) => {
   })
 })
 
-// Global error handler when a route calls next(error)
+// Global error handler - catches all errors thrown by routes
+// Provides detailed error info in development, generic messages in production
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err)
 
@@ -105,8 +96,8 @@ app.use((err, req, res, next) => {
 
   res.status(err.status || 500).json({
     error: process.env.NODE_ENV === 'production'
-      ? 'Internal server error'
-      : err.message,
+      ? 'Internal server error' // Generic message for production security
+      : err.message, // Detailed message for development debugging
     ...(process.env.NODE_ENV !== 'production' && {
       stack: err.stack,
       details: err.details || null
@@ -114,54 +105,35 @@ app.use((err, req, res, next) => {
   })
 })
 
-// =============================================
 // SERVER STARTUP
-// =============================================
 
 app.listen(PORT, () => {
-  console.log('\n Server started successfully!')
-  console.log(` API available at http://localhost:${PORT}/api`)
-  console.log(` Environment: ${process.env.NODE_ENV || 'development'}`)
-  console.log(` Started at: ${new Date().toISOString()}`)
+  console.log('\n🚀 Server started successfully!')
+  console.log(` 📡 API available at http://localhost:${PORT}/api`)
+  console.log(` 🌍 Environment: ${process.env.NODE_ENV || 'development'}`)
+  console.log(` ⏰ Started at: ${new Date().toISOString()}`)
 
-  // Environment check
+  // Environment variable validation - ensures required config is present
   const requiredEnvVars = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
   const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName])
 
   if (missingEnvVars.length > 0) {
-    console.warn('\n  WARNING: Missing environment variables:')
+    console.warn('\n ⚠️  WARNING: Missing environment variables:')
     missingEnvVars.forEach(varName => {
       console.warn(`   - ${varName}`)
     })
-    console.warn('   Database connections may fail!')
+    console.warn('🔌 Database connections may fail!')
   } else {
-    console.log(' Environment variables loaded')
+    console.log('✅ Environment variables loaded')
   }
 
-  // Start notification scheduler
-  startNotificationScheduler()
+  // Initialize background services
+  startNotificationScheduler() // Start scheduled task notifications
 })
 
-// Graceful shutdown handlers
-process.on('SIGTERM', () => {
-  console.log('\nSIGTERM received, shutting down gracefully')
-  process.exit(0)
-})
-
-process.on('SIGINT', () => {
-  console.log('\nSIGINT received, shutting down gracefully')
-  process.exit(0)
-})
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error)
-  process.exit(1)
-})
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason)
-  process.exit(1)
-})
+// PROCESS MANAGEMENT
+// Graceful shutdown handlers - ensures clean server shutdown
+process.on('SIGTERM', () => { process.exit(0) })
+process.on('SIGINT', () => { process.exit(0) })
 
 export default app

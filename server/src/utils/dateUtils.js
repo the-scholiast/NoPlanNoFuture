@@ -7,6 +7,7 @@ export const getTodayString = () => {
   return `${year}-${month}-${day}`;
 };
 
+// Convert Date object to YYYY-MM-DD string for database storage
 export const formatDateString = (date) => {
   if (!(date instanceof Date)) {
     throw new Error('formatDateString expects a Date object');

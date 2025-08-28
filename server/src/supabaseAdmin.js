@@ -9,7 +9,6 @@
  * - NEVER expose this key to the client
  * - Only use in secure server environments
  */
-
 import 'dotenv/config' // Automatically loads .env file
 import { createClient } from '@supabase/supabase-js'
 

@@ -27,7 +27,7 @@ router.post('/', authenticateUser, async (req, res, next) => {
   }
 });
 
-// Get shares I own (calendars I've shared with others)
+// Get shares user owns (calendars shared with others)
 router.get('/owned', authenticateUser, async (req, res, next) => {
   try {
     const shares = await getOwnedShares(req.user.id);
