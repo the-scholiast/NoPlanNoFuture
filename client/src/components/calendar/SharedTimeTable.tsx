@@ -15,7 +15,6 @@ import {
   getTaskDurationSlots,
   isFirstSlotForTask,
   getDayHeader,
-  shouldHighlightRow
 } from './timetable/utils'
 import { useEffect, useState } from 'react'
 
@@ -28,7 +27,6 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
   const [isMounted, setIsMounted] = useState(false)
   const [currentDate, setCurrentDate] = useState(selectedDate)
   const router = useRouter()
-  const searchParams = useSearchParams()
 
   useEffect(() => {
     setIsMounted(true)
@@ -127,9 +125,6 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">Shared Calendar</h1>
-          <p className="text-muted-foreground">
-            {getWeekDisplayText()}
-          </p>
         </div>
         
         {/* Week Navigation */}

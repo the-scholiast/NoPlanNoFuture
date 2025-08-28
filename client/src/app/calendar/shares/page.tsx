@@ -1,36 +1,27 @@
 'use client'
 
-import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { 
   Share2, 
   Copy, 
   Trash2, 
   ExternalLink, 
-  Plus,
   Calendar,
   Users,
   Link as LinkIcon
 } from 'lucide-react'
 import { 
-  createCalendarShare, 
   getOwnedShares, 
   getSharedWithMe, 
   revokeCalendarShare,
   type CalendarShare
 } from '@/lib/api/calendarShareApi'
 import { toast } from 'sonner'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 
 export default function SharesPage() {
-  const [email, setEmail] = useState('')
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const queryClient = useQueryClient()
 
   // Fetch shares I own (sent to others)
@@ -45,27 +36,6 @@ export default function SharesPage() {
     queryFn: getSharedWithMe
   })
 
-  // Create share mutation
-  const createShareMutation = useMutation({
-    mutationFn: (email: string) => createCalendarShare(email),
-    onSuccess: (newShare) => {
-      queryClient.invalidateQueries({ queryKey: ['calendar-shares'] })
-      setEmail('')
-      setIsCreateModalOpen(false)
-      
-      const shareLink = `${window.location.origin}/calendar/shared/${newShare.share_token}`
-      
-      navigator.clipboard.writeText(shareLink).then(() => {
-        toast.success("Calendar shared! Link copied to clipboard.")
-      }).catch(() => {
-        toast.success("Calendar shared successfully!")
-      })
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to share calendar: ${error.message}`)
-    }
-  })
-
   // Revoke share mutation
   const revokeShareMutation = useMutation({
     mutationFn: (shareId: string) => revokeCalendarShare(shareId),
@@ -77,13 +47,6 @@ export default function SharesPage() {
       toast.error(`Failed to revoke share: ${error.message}`)
     }
   })
-
-  const handleCreateShare = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (email.trim()) {
-      createShareMutation.mutate(email.trim())
-    }
-  }
 
   const copyShareLink = (shareToken: string) => {
     const link = `${window.location.origin}/calendar/shared/${shareToken}`
@@ -111,44 +74,6 @@ export default function SharesPage() {
             Manage calendar sharing and view calendars shared with you
           </p>
         </div>
-
-        {/* Create New Share Button */}
-        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Share Calendar
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Share Your Calendar</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleCreateShare} className="space-y-4">
-              <div>
-                <Label htmlFor="email">Email address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter email to share with"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  User must have an account in your system
-                </p>
-              </div>
-              <Button 
-                type="submit" 
-                disabled={createShareMutation.isPending}
-                className="w-full"
-              >
-                {createShareMutation.isPending ? 'Creating Share Link...' : 'Create Share Link'}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
