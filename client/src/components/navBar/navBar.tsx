@@ -41,7 +41,7 @@ const items: MenuItem[] = [
   },
   {
     title: "Gym",
-    url: "/gym",
+    url: "/gym/workout",
   },
   {
     title: "To Do",
