@@ -30,8 +30,8 @@ const queryClient = new QueryClient({
 
 // Helper function to determine if breadcrumb should be shown
 function shouldShowBreadcrumb(pathname: string): boolean {
-  return (pathname.startsWith('/calendar') && pathname !== '/calendar') ||
-    (pathname.startsWith('/gym') && pathname !== '/gym')
+  return (pathname.startsWith('/calendar') && pathname !== '/calendar' && !pathname.startsWith('/calendar/shared'))
+    // (pathname.startsWith('/gym') && pathname !== '/gym')
 }
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
