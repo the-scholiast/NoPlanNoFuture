@@ -7,8 +7,8 @@ import { convertTimeSlotTo24Hour } from '@/components/calendar/timetable/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AddTaskModalProps, TaskData, CreateTaskData } from '@/types/todoTypes';
 import { transformCreateTaskData } from '@/lib/utils/transformers';
-import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField, getRecurringDescription } from '../shared/';
-import { useMultiTaskFormLogic, validateMultipleTasks, useTodoMutations } from '../shared/';
+import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField } from '../shared/components/TaskFormComponents';
+import { useMultiTaskFormLogic, validateMultipleTasks, useTodoMutations, getRecurringDescription } from '../shared/';
 
 export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilledData }: AddTaskModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);

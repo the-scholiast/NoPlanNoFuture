@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { TaskData, EditTaskModalProps } from '@/types/todoTypes';
 import { updateTaskData, transformTaskFormDataBackend } from '@/lib/utils/transformers';
 import { useTodoMutations, useTaskFormLogic, validateEditTask, getRecurringDescription, isRecurringInstance } from './shared/';
-import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField, TaskFormData } from './shared/';
+import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField, TaskFormData } from './shared/components/TaskFormComponents';
 
 export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated }: EditTaskModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
