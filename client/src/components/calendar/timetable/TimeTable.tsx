@@ -27,6 +27,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "../../ui/label"
 import { Input } from "../../ui/input"
 import { Switch } from "../../ui/switch"
+import { CalendarShareDialog } from '@/components/calendar/CalendarShareDialog'
+
 
 interface HiddenTimeRange {
   start: string
@@ -141,6 +143,9 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
   return (
     <div className="w-full flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
       <div className="flex justify-between items-center mb-2">
+        <div className="flex items-center gap-2">
+          <CalendarShareDialog />
+        </div>
         {tasksError && (
           <div className="text-red-500 text-sm px-4 py-2 bg-red-50 rounded">
             Error loading tasks: {tasksError.message}

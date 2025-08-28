@@ -4,7 +4,6 @@ import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import TimeTable from '@/components/calendar/timetable/TimeTable'
 import { useCalendarLastVisited } from '../hooks/useCalendarLastVisited'
-import { CalendarShareDialog } from '@/components/calendar/CalendarShareDialog'
 
 export default function WeekPage() {
   useCalendarLastVisited()
@@ -29,7 +28,6 @@ export default function WeekPage() {
 
   return (
     <>
-      <CalendarShareDialog />
       <TimeTable selectedDate={selectedDate} />
     </>
   )
