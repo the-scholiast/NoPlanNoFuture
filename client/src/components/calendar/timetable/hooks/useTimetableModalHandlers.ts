@@ -8,9 +8,8 @@ interface UseTimeTableModalHandlersProps {
   setTaskToEdit: (task: TaskData | null) => void;
   setEditModalOpen: (open: boolean) => void;
   setAddModalOpen: (open: boolean) => void;
-  setPreFilledData: (data: any) => void;
+  setPreFilledData: (data: { selectedDate?: string; selectedTime?: string }) => void;
   weekDates: Date[];
-  weekStartDate: string;
   handleDataRefresh: () => void;
 }
 
@@ -22,7 +21,6 @@ export const useTimetableModalHandlers = ({
   setAddModalOpen,
   setPreFilledData,
   weekDates,
-  weekStartDate,
   handleDataRefresh
 }: UseTimeTableModalHandlersProps) => {
 
@@ -37,7 +35,7 @@ export const useTimetableModalHandlers = ({
   }, [editModalOpen, addModalOpen, handleDataRefresh]);
 
   // Handle clicking on a task
-  const handleTaskClick = (task: any) => {
+  const handleTaskClick = (task: TaskData) => {
     setTaskToEdit(task);
     setEditModalOpen(true);
   };
@@ -63,7 +61,7 @@ export const useTimetableModalHandlers = ({
   };
 
   // Handle add tasks callback
-  const handleAddTasks = async (tasks: TaskData[]) => {
+  const handleAddTasks = async () => {
     handleDataRefresh();
   };
 

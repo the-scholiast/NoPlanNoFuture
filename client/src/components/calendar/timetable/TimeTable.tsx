@@ -45,7 +45,6 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
   const {
     isMounted,
     weekDates,
-    weekStartDate,
     scheduledTasks,
     isLoadingTasks,
     tasksError,
@@ -87,7 +86,6 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
     setAddModalOpen,
     setPreFilledData,
     weekDates,
-    weekStartDate,
     handleDataRefresh
   });
 

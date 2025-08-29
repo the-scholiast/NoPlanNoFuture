@@ -97,7 +97,6 @@ export const useTimetableData = ({ selectedDate }: UseTimetableDataProps) => {
     currentDate,
     isMounted,
     weekDates,
-    weekStartDate,
     scheduledTasks,
     isLoadingTasks,
     tasksError,
