@@ -56,15 +56,6 @@ function getModeFromPath(pathname: string): NavigationMode | null {
 }
 
 /**
- * Get the base path for navigation (calendar or gym)
- */
-function getBasePath(pathname: string): string {
-  if (pathname.startsWith('/calendar')) return '/calendar'
-  if (pathname.startsWith('/gym')) return '/gym'
-  return '/calendar' // fallback
-}
-
-/**
  * Format date parameters for URL
  */
 function formatDateParams(date: Date) {
