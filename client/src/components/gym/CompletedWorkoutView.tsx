@@ -6,6 +6,7 @@ import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import type { CompletedWorkoutViewProps } from '@/types/workoutTypes';
+import type { Set } from '@/types/workoutTypes';
 
 // Displays a completed workout with all its details including:
 // - Workout summary (name, date, duration, exercise count)
@@ -43,7 +44,7 @@ export default function CompletedWorkoutView({
   };
 
   // Calculates the completion percentage for an exercise
-  const getSetCompletionStats = (sets: any[]) => {
+  const getSetCompletionStats = (sets: Set[]) => {
     if (!sets || sets.length === 0) {
       return { completed: 0, total: 0, percentage: 0 };
     }
@@ -174,7 +175,7 @@ export default function CompletedWorkoutView({
                     </div>
 
                     {/* Table Rows */}
-                    {exercise.sets.map((set: any, setIndex: number) => (
+                    {exercise.sets.map((set: Set, setIndex: number) => (
                       <div
                         key={setIndex}
                         className={`grid grid-cols-3 gap-4 text-sm py-2 px-1 rounded transition-colors ${set.completed
