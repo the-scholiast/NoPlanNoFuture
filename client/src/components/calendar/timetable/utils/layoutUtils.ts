@@ -1,3 +1,4 @@
+import { TaskData } from '@/types/todoTypes';
 import { getTasksForTimeSlot } from './taskUtils';
 
 // Generate header content for each day
@@ -26,7 +27,7 @@ export const shouldHighlightRow = (
   time: string,
   weekDates: Date[],
   hoveredTaskId: string | null,
-  scheduledTasks: any[],
+  scheduledTasks: TaskData[],
   dayNames: string[]
 ) => {
   if (!hoveredTaskId || !weekDates || !scheduledTasks) return false;
