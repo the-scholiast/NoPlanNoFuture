@@ -189,7 +189,7 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
   // Build cells only when mounted (to avoid hydration mismatch)
   const cells = useMemo(
     () => (isMounted ? getMonthCellsWithOverlay(currentDate) : []),
-    [currentDate, isMounted, weekStartsOn]
+    [currentDate, isMounted, weekStartsOn, getMonthCellsWithOverlay]
   );
 
   // Split into weeks
