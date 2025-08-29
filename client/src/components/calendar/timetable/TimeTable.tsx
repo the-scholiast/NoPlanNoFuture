@@ -43,7 +43,6 @@ interface TimeTableProps {
 export default function TimeTable({ selectedDate }: TimeTableProps) {
   // Data management
   const {
-    currentDate,
     isMounted,
     weekDates,
     weekStartDate,
@@ -170,7 +169,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                 <div key={index} className="flex items-center space-x-2 p-3 border rounded-lg">
                   <Switch
                     checked={range.enabled}
-                    onCheckedChange={(checked) => updateHiddenTimeRange(index, 'enabled', checked)}
+                    onCheckedChange={(checked: boolean) => updateHiddenTimeRange(index, 'enabled', checked)}
                   />
                   <div className="flex-1 flex items-center space-x-2">
                     <div className="flex-1">
