@@ -1,11 +1,11 @@
 import { getAuthHeaders } from './auth'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
 export async function apiCall(endpoint: string, options: RequestInit = {}) {
   const headers = await getAuthHeaders()
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
+  const response = await fetch(`${API_BASE}/api${endpoint}`, {
     ...options,
     headers: {
       ...headers,
