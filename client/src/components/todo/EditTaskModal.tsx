@@ -66,7 +66,7 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
       setEditableTask(taskData);
       setError(null);
     }
-  }, [task?.id, open]);
+  }, [task, open, setEditableTask]);
 
   const handleSave = async () => {
     if (!task?.id) return;
