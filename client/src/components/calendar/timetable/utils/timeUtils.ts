@@ -29,7 +29,8 @@ export const generateTimeSlots = () => {
 // Helper function to convert time slot to 24-hour format
 export const convertTimeSlotTo24Hour = (timeSlot: string): string => {
   const [time, period] = timeSlot.split(' ');
-  let [hours, minutes] = time.split(':').map(Number);
+  let [hours] = time.split(':').map(Number);
+  const [, minutes] = time.split(':').map(Number);
 
   if (period === 'AM' && hours === 12) hours = 0;
   if (period === 'PM' && hours !== 12) hours += 12;
