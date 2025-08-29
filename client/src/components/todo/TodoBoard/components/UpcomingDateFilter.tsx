@@ -74,7 +74,7 @@ export default function UpcomingDateFilter({ onFilterChange, className = '' }: U
   // Notify parent component of filter changes
   useEffect(() => {
     onFilterChange(dateFilter);
-  }, [dateFilter]);
+  }, [dateFilter, onFilterChange]);
 
   const handleDateFilterChange = (field: 'startDate' | 'endDate', value: string) => {
     // Ensure the date is not before tomorrow
