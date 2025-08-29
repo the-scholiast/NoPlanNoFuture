@@ -4,18 +4,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Share2, 
-  Copy, 
-  Trash2, 
-  ExternalLink, 
+import {
+  Share2,
+  Copy,
+  Trash2,
+  ExternalLink,
   Calendar,
   Users,
   Link as LinkIcon
 } from 'lucide-react'
-import { 
-  getOwnedShares, 
-  getSharedWithMe, 
+import {
+  getOwnedShares,
+  getSharedWithMe,
   revokeCalendarShare,
   type CalendarShare
 } from '@/lib/api/calendarShareApi'
@@ -85,7 +85,7 @@ export default function SharesPage() {
               My Shared Calendars
             </CardTitle>
             <CardDescription>
-              Calendars you've shared with others ({ownedShares.length})
+              {"Calendars you've shared with others"} ({ownedShares.length})
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -97,7 +97,7 @@ export default function SharesPage() {
               <div className="text-center py-8 text-muted-foreground">
                 <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>No calendars shared yet</p>
-                <p className="text-sm">Click "Share Calendar" to get started</p>
+                <p className="text-sm">{"Click 'Share Calendar' to get started"}</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -116,7 +116,7 @@ export default function SharesPage() {
                           <p className="text-xs text-muted-foreground">
                             Shared {new Date(share.created_at).toLocaleDateString()}
                           </p>
-                          
+
                           {/* Share Link */}
                           <div className="bg-muted rounded p-2 mt-2">
                             <div className="flex items-center gap-2 text-xs">
@@ -127,7 +127,7 @@ export default function SharesPage() {
                             </div>
                           </div>
                         </div>
-                        
+
                         <div className="flex flex-col gap-2">
                           <Button
                             variant="outline"
@@ -192,7 +192,7 @@ export default function SharesPage() {
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
                             <Calendar className="w-4 h-4 text-muted-foreground" />
-                            <span className="font-medium">{share.owner?.email}'s Calendar</span>
+                            <span className="font-medium">{`${share.owner?.email}'s Calendar`}</span>
                             <Badge variant="outline" className="text-xs">
                               Received
                             </Badge>
@@ -200,7 +200,7 @@ export default function SharesPage() {
                           <p className="text-xs text-muted-foreground">
                             Shared {new Date(share.created_at).toLocaleDateString()}
                           </p>
-                          
+
                           {/* Share Link */}
                           <div className="bg-muted rounded p-2 mt-2">
                             <div className="flex items-center gap-2 text-xs">
@@ -211,7 +211,7 @@ export default function SharesPage() {
                             </div>
                           </div>
                         </div>
-                        
+
                         <div className="flex flex-col gap-2">
                           <Button
                             variant="outline"
@@ -244,7 +244,7 @@ export default function SharesPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Calendars I've Shared</p>
+                <p className="text-sm text-muted-foreground">{`Calendars I've Shared`}</p>
                 <p className="text-2xl font-bold">{ownedShares.length}</p>
               </div>
               <Share2 className="w-8 h-8 text-blue-500" />
