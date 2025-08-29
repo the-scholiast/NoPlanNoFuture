@@ -1,6 +1,9 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTheme } from 'next-themes';
+import { useTimetableData } from '@/components/calendar/timetable/hooks/useTimetableData';
+import { formatDateString } from '@/lib/utils/dateUtils';
+import type { TaskData } from '@/types/todoTypes';
 
 
 interface Task {
@@ -10,17 +13,98 @@ interface Task {
     remarks: string;
     hourGroup: 'AM' | 'PM';
     displayRing?: 'inner' | 'outer';
+    id?: string;
+    source: 'planner' | 'timetable';
+    isRecurring?: boolean;
 }
 
 const RadialPlanner: React.FC = () => {
     const { theme } = useTheme();
     const isDarkMode = theme === 'dark';
-    const [tasks, setTasks] = useState<Task[]>([]);
+    const [plannerTasks, setPlannerTasks] = useState<Task[]>([]);
     const [formVisible, setFormVisible] = useState<boolean>(false);
-    const [newTask, setNewTask] = useState<Task>({ title: '', start: 0, end: 1, remarks: '', hourGroup: 'AM' });
+    const [newTask, setNewTask] = useState<Task>({ title: '', start: 0, end: 1, remarks: '', hourGroup: 'AM', source: 'planner' });
     const [startTime, setStartTime] = useState<string>("12:00");
     const [endTime, setEndTime] = useState<string>("1:00");
     const [timeError, setTimeError] = useState<string>("");
+
+    const { currentDate, scheduledTasks, isMounted } = useTimetableData({});
+    const selectedDateString = useMemo(() => currentDate ? formatDateString(currentDate) : '', [currentDate]);
+
+    const convertTimetableTaskToRadial = (task: TaskData): Task | null => {
+        if (!task.start_time || !task.end_time) return null;
+
+        const [sh, sm] = task.start_time.split(':').map(Number);
+        const [eh, em] = task.end_time.split(':').map(Number);
+
+        const startIsPM = sh >= 12;
+        const to12Hour = (h: number) => {
+            const hh = h % 12;
+            return hh === 0 ? 12 : hh;
+        };
+        const start12h = to12Hour(sh) + (sm || 0) / 60;
+        const end12h = to12Hour(eh) + (em || 0) / 60;
+        const hourGroup: 'AM' | 'PM' = startIsPM ? 'PM' : 'AM';
+
+        return {
+            id: task.id,
+            title: task.title,
+            start: start12h === 12 ? 0 : start12h,
+            end: end12h === 12 ? 0 : end12h,
+            remarks: '',
+            hourGroup,
+            source: 'timetable',
+            isRecurring: !!task.is_recurring,
+        };
+    };
+
+    const timetableDayTasks: Task[] = useMemo(() => {
+        if (!isMounted || !selectedDateString) return [];
+        const dayTasks = (scheduledTasks || []).filter((t) => {
+            const dateStr = (t.instance_date || t.start_date) || '';
+            return dateStr === selectedDateString;
+        });
+        return dayTasks.map(convertTimetableTaskToRadial).filter((t): t is Task => t !== null);
+    }, [isMounted, selectedDateString, scheduledTasks]);
+
+    const localKey = useMemo(() => selectedDateString ? `radial-planner-${selectedDateString}` : '', [selectedDateString]);
+
+    useEffect(() => {
+        if (!localKey) return;
+        try {
+            const raw = localStorage.getItem(localKey);
+            if (raw) {
+                const parsed = JSON.parse(raw) as Partial<Task>[];
+                const normalized: Task[] = parsed.map((p): Task => ({
+                    title: p.title || '',
+                    start: typeof p.start === 'number' ? p.start : 0,
+                    end: typeof p.end === 'number' ? p.end : 0,
+                    remarks: p.remarks || '',
+                    hourGroup: (p.hourGroup as 'AM' | 'PM') || 'AM',
+                    displayRing: p.displayRing,
+                    id: p.id,
+                    source: 'planner',
+                    isRecurring: false,
+                }));
+                setPlannerTasks(normalized);
+            } else {
+                setPlannerTasks([]);
+            }
+        } catch (e) {
+            console.warn('Failed to load planner tasks from localStorage', e);
+            setPlannerTasks([]);
+        }
+    }, [localKey]);
+
+    const persistPlannerTasks = (items: Task[]) => {
+        if (!localKey) return;
+        setPlannerTasks(items);
+        try {
+            localStorage.setItem(localKey, JSON.stringify(items));
+        } catch (e) {
+            console.warn('Failed to save planner tasks to localStorage', e);
+        }
+    };
 
     const validateTimeString = (timeStr: string): boolean => {
         // Allow single digit hours (1-12) and proper HH:MM format
@@ -102,14 +186,17 @@ const RadialPlanner: React.FC = () => {
             return;
         }
 
-        const taskToAdd = {
+        const taskToAdd: Task = {
             ...newTask,
             start: parseTimeString(startTime),
-            end: parseTimeString(endTime)
+            end: parseTimeString(endTime),
+            source: 'planner',
+            id: `planner_${Date.now()}`,
         };
 
-        setTasks([...tasks, taskToAdd]);
-        setNewTask({ title: '', start: 0, end: 1, remarks: '', hourGroup: 'AM' });
+        const next = [...plannerTasks, taskToAdd];
+        persistPlannerTasks(next);
+        setNewTask({ title: '', start: 0, end: 1, remarks: '', hourGroup: 'AM', source: 'planner' });
         setStartTime("12:00");
         setEndTime("1:00");
         setTimeError("");
@@ -212,7 +299,7 @@ const RadialPlanner: React.FC = () => {
 
     const renderCrossPeriodTask = (task: Task, index: number) => {
         const offset = -Math.PI / 2;
-        const originalIndex = tasks.findIndex(t => t === task);
+        const originalIndex = index;
 
         const amPortion = {
             start: task.start,
@@ -329,11 +416,13 @@ const RadialPlanner: React.FC = () => {
         return elements;
     };
 
+    const allTasks = useMemo(() => [...timetableDayTasks, ...plannerTasks], [timetableDayTasks, plannerTasks]);
+
     const renderTasks = () => {
         console.log("=== rendering tasks ===");
         const elements: React.ReactElement[] = [];
 
-        const sortedTasks = [...tasks].sort((a, b) => {
+        const sortedTasks = [...allTasks].sort((a, b) => {
             const aRing = a.hourGroup === 'AM' ? 'outer' : 'inner';
             const bRing = b.hourGroup === 'AM' ? 'outer' : 'inner';
 
@@ -392,7 +481,7 @@ const RadialPlanner: React.FC = () => {
             }
 
             const textPos = getOptimalTextPosition(startAngle, endAngle, radius, isInnerRing);
-            const originalIndex = tasks.findIndex(t => t === task);
+            const originalIndex = sortedTasks.findIndex(t => t === task);
             const avgTime = (startHour + endHour) / 2;
             const colorTimeGroup = task.hourGroup;
             const taskColor = getTimeColor(avgTime, colorTimeGroup === 'AM');
@@ -513,11 +602,11 @@ const RadialPlanner: React.FC = () => {
         const offset = -Math.PI / 2;
 
         const maxTaskRadius = Math.max(
-            outerRadius + Math.max(...tasks.filter(t => t.hourGroup === 'AM').map(t => {
+            outerRadius + Math.max(...allTasks.filter((t: Task) => t.hourGroup === 'AM').map((t: Task) => {
                 const duration = getTaskDuration(t);
                 return Math.max(0, (duration - 1) * 8);
             }), 0),
-            innerRadius + Math.max(...tasks.filter(t => t.hourGroup === 'PM').map(t => {
+            innerRadius + Math.max(...allTasks.filter((t: Task) => t.hourGroup === 'PM').map((t: Task) => {
                 const duration = getTaskDuration(t);
                 return Math.max(0, (duration - 1) * 8);
             }), 0)
@@ -547,8 +636,10 @@ const RadialPlanner: React.FC = () => {
         return numbers;
     };
 
-    const deleteTask = (index: number) => {
-        setTasks(tasks.filter((_, i) => i !== index));
+    const deletePlannerTask = (id?: string) => {
+        if (!id) return;
+        const next = plannerTasks.filter(t => t.id !== id);
+        persistPlannerTasks(next);
     };
 
     const formatTime = (timeValue: number, hourGroup: string) => {
@@ -711,12 +802,12 @@ const RadialPlanner: React.FC = () => {
                     {renderClockNumbers()}
                 </svg>
 
-                {tasks.length > 0 && (
+                {allTasks.length > 0 && (
                     <div className={`p-4 rounded-lg shadow-lg min-w-[500px] ${isDarkMode ? 'bg-gray-800' : 'bg-white border border-gray-300'}`}>
                         <h3 className="text-lg font-bold mb-3">Tasks</h3>
                         <div className="space-y-1">
-                            {tasks.map((task, index) => (
-                                <div key={index} className={`p-3 rounded flex items-center transition-colors ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'}`}>
+                            {allTasks.map((task, index) => (
+                                <div key={task.id || index} className={`p-3 rounded flex items-center transition-colors ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'}`}>
                                     <div className="flex-shrink-0 w-32 text-sm font-medium">
                                         {formatTime(task.start, task.hourGroup)}
                                     </div>
@@ -729,17 +820,24 @@ const RadialPlanner: React.FC = () => {
                                     <div className="font-medium flex-1 min-w-0 mx-3" title={task.title}>
                                         {task.title}
                                     </div>
+                                    <div className={`text-xs px-2 py-1 rounded-full mr-2 ${task.source === 'timetable' ? (isDarkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-700') : (isDarkMode ? 'bg-green-900 text-green-200' : 'bg-green-100 text-green-700')}`}>
+                                        {task.source === 'timetable' ? 'Timetable' : 'Planner'}{task.isRecurring ? ' • Recurring' : ''}
+                                    </div>
                                     {task.remarks && (
                                         <div className={`text-sm flex-1 min-w-0 mx-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} title={task.remarks}>
                                             {task.remarks}
                                         </div>
                                     )}
-                                    <button
-                                        onClick={() => deleteTask(index)}
-                                        className={`ml-3 flex-shrink-0 ${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-500'}`}
-                                    >
-                                        ✕
-                                    </button>
+                                    {task.source === 'planner' ? (
+                                        <button
+                                            onClick={() => deletePlannerTask(task.id)}
+                                            className={`ml-3 flex-shrink-0 ${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-500'}`}
+                                        >
+                                            ✕
+                                        </button>
+                                    ) : (
+                                        <span className={`ml-3 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Read-only</span>
+                                    )}
                                 </div>
                             ))}
                         </div>
