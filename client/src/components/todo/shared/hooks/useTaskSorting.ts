@@ -13,9 +13,7 @@ export const useTaskSorting = <T extends TaskData>() => {
   const applySorting = useCallback((tasks: T[]): T[] => {
     if (!sortConfig) return tasks;
 
-    let sortedTasks: T[];
-
-    sortedTasks = sortTasksByField(tasks, sortConfig.field, sortConfig.order); // Use generic field sorting 
+    const sortedTasks = sortTasksByField(tasks, sortConfig.field, sortConfig.order); // Use generic field sorting 
 
     return sortedTasks;
   }, [sortConfig]);
