@@ -54,7 +54,7 @@ export const useTodoBoard = () => {
       }
     };
     checkAndResetDailyTasks();
-  }, []);
+  }, [refreshAllData]);
 
   // Computed tasks from direct queries
   const dailyTasks = useMemo(() =>

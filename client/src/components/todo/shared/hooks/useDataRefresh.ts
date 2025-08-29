@@ -1,10 +1,11 @@
 import { todoKeys } from '@/lib/queryKeys';
 import { useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
 
 export const useDataRefresh = () => {
   const queryClient = useQueryClient();
   
-  const refreshAllData = async () => {
+  const refreshAllData = useCallback(async () => {
     // Force React Query to refetch all todo data after mutations (create/update/delete tasks)
     await Promise.all([
       // Invalidate standardized query keys for different task views
@@ -23,7 +24,7 @@ export const useDataRefresh = () => {
         }
       })
     ]);
-  };
+  }, [queryClient]);
 
   return { refreshAllData };
 };
