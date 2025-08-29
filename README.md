@@ -61,7 +61,7 @@ A comprehensive full-stack application that combines task management, calendar p
 │   │   │   ├── calendar/  # Calendar-specific components
 │   │   │   ├── gym/       # Fitness tracking components
 │   │   │   ├── todo/      # Task management components
-│   │   │   └── ui/        # Base UI components
+│   │   │   └── ui/        # Base UI components from Shadcn
 │   │   ├── hooks/         # Custom React hooks
 │   │   ├── lib/           # Utilities and API clients
 │   │   └── types/         # TypeScript type definitions
