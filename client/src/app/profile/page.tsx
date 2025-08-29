@@ -9,13 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { 
   Bell, 
   Plus, 
   Edit, 
   Trash2, 
-  TestTube, 
   Clock, 
   Calendar,
   AlertCircle,
@@ -30,7 +28,6 @@ import {
   createNotification, 
   updateNotification, 
   deleteNotification, 
-  testNotification,
   sendNotificationManually
 } from '@/lib/api/notificationsApi';
 
@@ -424,7 +421,7 @@ export default function ProfilePage() {
                       <Switch
                         id="include_upcoming"
                         checked={formData.include_upcoming}
-                        onCheckedChange={(checked) => 
+                        onCheckedChange={(checked: boolean) => 
                           setFormData({ ...formData, include_upcoming: checked })
                         }
                       />
@@ -434,7 +431,7 @@ export default function ProfilePage() {
                       <Switch
                         id="include_recurring"
                         checked={formData.include_recurring}
-                        onCheckedChange={(checked) => 
+                        onCheckedChange={(checked: boolean) => 
                           setFormData({ ...formData, include_recurring: checked })
                         }
                       />
@@ -444,7 +441,7 @@ export default function ProfilePage() {
                       <Switch
                         id="include_daily"
                         checked={formData.include_daily}
-                        onCheckedChange={(checked) => 
+                        onCheckedChange={(checked: boolean) => 
                           setFormData({ ...formData, include_daily: checked })
                         }
                       />
