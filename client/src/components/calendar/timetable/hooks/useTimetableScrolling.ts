@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export const useTimetableScrolling = () => {
   const tableRef = useRef<HTMLTableElement>(null);
-  const [savedScrollPosition, setSavedScrollPosition] = useState<number | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
 
   const getStoredScrollPosition = (): number | null => {
@@ -21,7 +20,6 @@ export const useTimetableScrolling = () => {
     } catch (e) {
       console.warn('localStorage not available:', e);
     }
-    setSavedScrollPosition(position);
   };
 
   const getScrollContainer = () => {
@@ -42,32 +40,7 @@ export const useTimetableScrolling = () => {
     return table.parentElement;
   };
 
-  const scrollToDefaultTime = () => {
-    // Try to find a suitable time to scroll to (7 AM, 8 AM, or first visible time)
-    const sevenAmRow = document.getElementById('seven-am-row');
-    const eightAmRow = document.getElementById('eight-am-row');
-    const firstRow = document.querySelector('tbody tr') as HTMLElement;
-    
-    const targetRow = sevenAmRow || eightAmRow || firstRow;
-    const scrollContainer = getScrollContainer();
-
-    if (!targetRow || !scrollContainer) return;
-
-    const tableHeader = tableRef.current?.querySelector('thead');
-    const headerHeight = tableHeader?.offsetHeight || 0;
-    const rowTop = targetRow.offsetTop;
-    const scrollPosition = rowTop - headerHeight;
-
-    scrollContainer.scrollTop = scrollPosition;
-    scrollContainer.scrollTo({
-      top: scrollPosition,
-      behavior: 'smooth'
-    });
-
-    setStoredScrollPosition(scrollPosition);
-  };
-
-  const restoreScrollPosition = (position: number) => {
+  const restoreScrollPosition = useCallback((position: number) => {
     const scrollContainer = getScrollContainer();
     if (!scrollContainer) return;
 
@@ -76,17 +49,15 @@ export const useTimetableScrolling = () => {
       top: position,
       behavior: 'auto'
     });
+  }, []);
 
-    setSavedScrollPosition(position);
-  };
-
-  const saveCurrentScrollPosition = () => {
+  const saveCurrentScrollPosition = useCallback(() => {
     const scrollContainer = getScrollContainer();
     if (!scrollContainer) return;
 
     const currentPosition = scrollContainer.scrollTop;
     setStoredScrollPosition(currentPosition);
-  };
+  }, []);
 
   useEffect(() => {
     const initializePosition = () => {
@@ -96,8 +67,6 @@ export const useTimetableScrolling = () => {
 
       if (storedPosition !== null && storedPosition > 0) {
         restoreScrollPosition(storedPosition);
-      } else {
-        scrollToDefaultTime();
       }
       setHasInitialized(true);
     };
