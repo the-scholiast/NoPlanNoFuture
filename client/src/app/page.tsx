@@ -1,19 +1,11 @@
 'use client';
 import Image from 'next/image';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from '@/hooks/useAuth';
 import GoogleAuthButton from '@/components/login/GoogleAuthButton';
-
-interface Sentence {
-  id: number;
-  content: string;
-  created_at: string;
-  created_by?: string;
-}
 
 export default function HomePage() {
   const { user, loading } = useAuth();
@@ -61,7 +53,7 @@ export default function HomePage() {
     setMessage('');
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('sentences')
         .insert([
           {
@@ -150,7 +142,7 @@ export default function HomePage() {
         <div className="mb-6">
           <div className='flex space-x-1'>
           <h2 className="text-lg font-semibold mb-2">Sentence of the day: </h2>
-          <p className="text-xl italic text-blue-300 mb-4">"{currentSentence}"</p>
+          <p className="text-xl italic text-blue-300 mb-4">{`"${currentSentence}"`}</p>
 
           </div>
           <Button
