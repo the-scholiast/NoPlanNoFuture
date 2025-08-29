@@ -188,7 +188,7 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
                     >
                       {tasks.map((task, taskIndex) => {
                         const isFirstSlot = isFirstSlotForTask(task, time);
-                        const durationSlots = getTaskDurationSlots(task, timeSlots);
+                        const durationSlots = getTaskDurationSlots(task);
 
                         if (!isFirstSlot) return null;
 

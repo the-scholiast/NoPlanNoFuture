@@ -263,7 +263,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                     >
                       {tasks.map((task, taskIndex) => {
                         const isFirstSlot = isFirstSlotForTask(task, time);
-                        const durationSlots = getTaskDurationSlots(task, timeSlots);
+                        const durationSlots = getTaskDurationSlots(task );
 
                         if (!isFirstSlot) return null;
 

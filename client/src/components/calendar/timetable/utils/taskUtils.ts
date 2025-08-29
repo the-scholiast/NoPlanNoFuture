@@ -1,12 +1,14 @@
 import { formatDateString } from '@/lib/utils/dateUtils';
 import { convertTimeSlotTo24Hour } from './timeUtils';
+import { TaskData } from '@/types/todoTypes';
+import { getTimeInMinutes } from '@/components/todo';
 
 // Helper to get tasks for a specific time slot
 export const getTasksForTimeSlot = (
   dayIndex: number,
   timeSlot: string,
   weekDates: Date[],
-  scheduledTasks: any[]
+  scheduledTasks: TaskData[]
 ) => {
   if (!weekDates || !scheduledTasks) return [];
 
@@ -38,7 +40,7 @@ export const getTasksForTimeSlot = (
 };
 
 // Helper to calculate task duration in time slots
-export const getTaskDurationSlots = (task: any, timeSlots: string[]) => {
+export const getTaskDurationSlots = (task: TaskData) => {
   if (!task.start_time || !task.end_time) return 1;
 
   const startTime24 = convertTimeSlotTo24Hour(task.start_time);
@@ -56,7 +58,7 @@ export const getTaskDurationSlots = (task: any, timeSlots: string[]) => {
 
 // Helper to check if this is the first slot for a task
 export const isFirstSlotForTask = (
-  task: any,
+  task: TaskData,
   currentTime: string,
 ) => {
   if (!task.start_time) return true;
@@ -74,7 +76,7 @@ export const isFirstSlotForTask = (
 };
 
 // Check which tasks are overlapping
-export const detectTimeConflicts = (dayIndex: number, weekDates: Date[], scheduledTasks: any[]) => {
+export const detectTimeConflicts = (dayIndex: number, weekDates: Date[], scheduledTasks: TaskData[]) => {
   if (!weekDates || !scheduledTasks) return new Set<string>();
 
   const conflicts = new Set<string>();
@@ -101,16 +103,16 @@ export const detectTimeConflicts = (dayIndex: number, weekDates: Date[], schedul
 };
 
 // Determine if the two tasks are overlapping
-const tasksOverlap = (task1: any, task2: any): boolean => {
-  const getMinutes = (timeStr: string): number => {
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    return hours * 60 + minutes;
-  };
+const tasksOverlap = (task1: TaskData, task2: TaskData): boolean => {
+  // If either task doesn't have both start and end times, they don't overlap
+  if (!task1.start_time || !task1.end_time || !task2.start_time || !task2.end_time) {
+    return false;
+  }
 
-  const task1Start = getMinutes(task1.start_time);
-  const task1End = getMinutes(task1.end_time);
-  const task2Start = getMinutes(task2.start_time);
-  const task2End = getMinutes(task2.end_time);
+  const task1Start = getTimeInMinutes(task1.start_time);
+  const task1End = getTimeInMinutes(task1.end_time);
+  const task2Start = getTimeInMinutes(task2.start_time);
+  const task2End = getTimeInMinutes(task2.end_time);
 
   return task1Start < task2End && task2Start < task1End;
 };
