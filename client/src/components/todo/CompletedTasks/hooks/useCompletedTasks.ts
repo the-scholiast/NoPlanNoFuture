@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CompletedTaskWithCompletion } from '../../shared/types';
-import { todoCompletionsApi } from '@/lib/api/todoCompletions';
+import { CompletedTaskWithDetails, todoCompletionsApi } from '@/lib/api/todoCompletions';
 import { useTodoMutations } from '../../shared';
 import { todoKeys } from '@/lib/queryKeys';
 import { useDateFilter, useTaskState } from '../../shared/hooks/';
@@ -23,7 +23,7 @@ export const useCompletedTasks = () => {
   const processedCompletedTasks = useMemo(() => {
     if (!completedTasks || completedTasks.length === 0) return [];
 
-    return completedTasks.map((item: any): CompletedTaskWithCompletion => ({
+    return completedTasks.map((item: CompletedTaskWithDetails): CompletedTaskWithCompletion => ({
       ...item,
       is_recurring_instance: item.is_recurring_instance ?? (item.is_recurring || false),
       completion_count: item.completion_count

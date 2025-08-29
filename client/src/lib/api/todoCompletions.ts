@@ -7,6 +7,7 @@ export interface CompletedTaskWithDetails extends TaskData {
   instance_date: string;
   completion: TodoCompletion;
   completion_count: number;
+  is_recurring_instance?: boolean;
 }
 
 export const todoCompletionsApi = {
