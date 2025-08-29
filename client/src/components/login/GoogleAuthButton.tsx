@@ -10,7 +10,7 @@ export default function GoogleAuthButton() {
   const handleGoogleLogin = async () => {
     try {
       // Initiate OAuth flow with Google as the provider
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           queryParams: {
