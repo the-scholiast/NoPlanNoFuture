@@ -147,6 +147,8 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
       console.error('Error deleting task:', error);
       setError(error instanceof Error ? error.message : 'Failed to delete task. Please try again.');
       setIsSubmitting(false);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
