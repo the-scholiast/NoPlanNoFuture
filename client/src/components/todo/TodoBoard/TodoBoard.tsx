@@ -5,12 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTodoBoard } from './hooks/useTodoBoard';
 import EditTaskModal from '../EditTaskModal';
 import UpcomingDateFilter from './components/UpcomingDateFilter';
-import { TodoBoardProps, useTodoMutations } from '../shared/';
+import { useTodoMutations } from '../shared/';
 import { CompactTaskSorting } from '../shared/components/TaskSortingComponent';
 import { DailyTaskToggle } from '@/components/todo/TodoBoard/components/DailyTaskToggle';
 import TaskCard from '../shared/components/TaskCard';
 
-export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
+export default function TodoBoard() {
   const {
     sections,
     getAllCurrentTasks,
@@ -122,7 +122,7 @@ export default function TodoBoard({ onAddTasks }: TodoBoardProps) {
                         <div>
                           <p className="mb-2">No tasks scheduled for today</p>
                           <p className="text-sm">
-                            Toggle "All" to see all daily tasks regardless of recurring schedule
+                            {`Toggle "All" to see all daily tasks regardless of recurring schedule`}
                           </p>
                         </div>
                       ) : (
