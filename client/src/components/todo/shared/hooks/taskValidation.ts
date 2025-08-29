@@ -1,5 +1,5 @@
 import { getTodayString } from '@/lib/utils/dateUtils';
-import { TaskFormData } from '../components';
+import { TaskFormData } from '../components/TaskFormComponents';
 import { getTimeInMinutes } from '../utils/taskSortingUtils';
 
 export interface ValidationResult {

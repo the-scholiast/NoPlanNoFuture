@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { DAYS_OF_WEEK } from '@/lib/utils/constants';
 import { formatDateString, getTodayString } from '@/lib/utils/dateUtils';
-import { TaskFormData } from '../components';
+import { TaskFormData } from '../components/TaskFormComponents';
 
 /**
  * Core logic for task form management
@@ -213,7 +213,7 @@ export function useMultiTaskFormLogic() {
   ]);
 
   // Add new task to the list (used by "Add Another Task" button)
-  const addNewTask = () => {
+  const addNewTask = useCallback(() => {
     const newTask = {
       ...placeholderTask,
       id: Date.now().toString(),
@@ -221,24 +221,24 @@ export function useMultiTaskFormLogic() {
       recurring_days: [...DAYS_OF_WEEK],
     };
     setTasks(prev => [...prev, newTask]);
-  };
+  }, [placeholderTask]);
 
   // Remove task from list (minimum 1 task required)
-  const removeTask = (id: string) => {
+  const removeTask = useCallback((id: string) => {
     if (tasks.length > 1) {
       setTasks(prev => prev.filter(task => task.id !== id));
     }
-  };
+  }, [tasks.length]);
 
   // Update specific task field with logic applied
-  const updateTask = (id: string, field: keyof TaskFormData, value: any) => {
+  const updateTask = useCallback((id: string, field: keyof TaskFormData, value: any) => {
     setTasks(prev => prev.map(task => {
       if (task.id === id) {
         return TaskLogicHelper.updateTaskField(task, field, value);
       }
       return task;
     }));
-  };
+  }, []);
 
   /**
    * Get task-specific helper functions for individual tasks in the array
@@ -268,7 +268,7 @@ export function useMultiTaskFormLogic() {
   };
 
   // Reset to single default task (used when modal closes/resets)
-  const resetTasks = () => {
+  const resetTasks = useCallback(() => {
     const resetTask = {
       ...placeholderTask,
       id: '1',
@@ -276,20 +276,20 @@ export function useMultiTaskFormLogic() {
       recurring_days: [...DAYS_OF_WEEK],
     };
     setTasks([resetTask]);
-  };
+  }, [placeholderTask]);
 
   // Initialize with pre-filled data (used when adding scheduled tasks from calendar)
-  const initializeWithData = (initialData: Partial<TaskFormData>) => {
+  const initializeWithData = useCallback((initialData: Partial<TaskFormData>) => {
     const initialTask = {
       ...placeholderTask,
       ...initialData,
       id: '1',
     };
     setTasks([initialTask]);
-  };
+  }, [placeholderTask]);
 
   // Copy task to create a duplicate with new ID (used by "Copy Task" button)
-  const copyTask = (id: string) => {
+  const copyTask = useCallback((id: string) => {
     const taskToCopy = tasks.find(t => t.id === id);
     if (!taskToCopy) return;
 
@@ -299,7 +299,7 @@ export function useMultiTaskFormLogic() {
       title: taskToCopy.title ? `${taskToCopy.title} (Copy)` : '',
     };
     setTasks(prev => [...prev, copiedTask]);
-  };
+  }, [tasks]);
 
   return {
     tasks,

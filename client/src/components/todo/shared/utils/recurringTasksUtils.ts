@@ -1,6 +1,6 @@
 import { formatDateString, getTodayString } from "@/lib/utils/dateUtils";
 import { TaskData } from "@/types/todoTypes";
-import { TaskFormData } from "..";
+import { TaskFormData } from "../components/TaskFormComponents";
 import { DAYS_OF_WEEK } from "@/lib/utils/constants";
 
 // Identify recurring task instances. Used by TodoBoard/EditTaskModal to distinguish instances from originals
