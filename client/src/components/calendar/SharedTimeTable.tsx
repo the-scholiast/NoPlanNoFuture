@@ -8,7 +8,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getSharedCalendarTasks } from '@/lib/api/calendarShareApi'
 import { formatDateString } from '@/lib/utils/dateUtils'
 import { getTaskColors } from '@/components/todo/shared/utils/sectionUtils'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import {
   generateTimeSlots,
   getTasksForTimeSlot,
@@ -73,7 +73,7 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
     const year = date.getFullYear()
     const month = date.getMonth() + 1
     const day = date.getDate()
-    
+
     const params = new URLSearchParams()
     params.set('year', year.toString())
     params.set('month', month.toString())
@@ -86,10 +86,10 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
   // Get display text for current week
   const getWeekDisplayText = (): string => {
     if (weekDates.length === 0) return 'Loading...'
-    
+
     const monday = weekDates[0]
     const sunday = weekDates[6]
-    
+
     // Format based on whether week spans months
     if (monday.getMonth() === sunday.getMonth()) {
       return `${monday.toLocaleString('default', { month: 'long' })} ${monday.getDate()}-${sunday.getDate()}, ${monday.getFullYear()}`
@@ -126,7 +126,7 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
         <div>
           <h1 className="text-2xl font-bold">Shared Calendar</h1>
         </div>
-        
+
         {/* Week Navigation */}
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={navigatePrevious}>
@@ -156,12 +156,12 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
                 return (
                   <TableHead
                     key={dayName}
-                    className={`text-center w-32 ${headerData.isToday ? 
+                    className={`text-center w-32 ${headerData.isToday ?
                       'text-blue-600 dark:text-blue-400 font-semibold' : ''}`}
                   >
                     <div className="flex flex-col items-center">
                       <div>{headerData.dayName}</div>
-                      <div className={`text-xs font-normal ${headerData.isToday ? 
+                      <div className={`text-xs font-normal ${headerData.isToday ?
                         'text-blue-600 font-medium' : 'text-muted-foreground'}`}>
                         {headerData.dateDisplay}
                       </div>
