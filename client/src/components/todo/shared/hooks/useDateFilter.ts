@@ -43,7 +43,7 @@ export const useDateFilterLast7Days = (initialEnabled = true) => {
 };
 
 // Date filter hook for deleted tasks - uses start and end date of month
-export const userDateFilterCurrentMonth = (initialEnabled = true) => {
+export const useDateFilterCurrentMonth = (initialEnabled = true) => {
   const { startDate, endDate } = getMonthStartAndEndDate();
   const [dateFilter, setDateFilter] = useState<DateRangeFilter>({
     startDate,
