@@ -22,13 +22,6 @@ export const DeletedTaskItem: React.FC<DeletedTaskItemProps> = ({
   getPriorityColor,
 }) => {
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-
-  const getDeletedColor = (deletedDays: number) => {
-    if (deletedDays <= 7) return 'bg-gray-100 text-gray-800 border-gray-200';
-    if (deletedDays <= 14) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    if (deletedDays <= 30) return 'bg-orange-100 text-orange-800 border-orange-200';
-    return 'bg-red-100 text-red-800 border-red-200';
-  };
   const deletedDate = formatDate(task.deleted_at?.split('T')[0] || task.deleted_at);
 
   return (
@@ -136,7 +129,7 @@ export const DeletedTaskItem: React.FC<DeletedTaskItemProps> = ({
               <AlertDialogDescription asChild>
                 <div className="space-y-2">
                   <div>Are you sure you want to permanently delete this task?</div>
-                  <div className="text-sm font-medium text-foreground">"{task.title}"</div>
+                  <div className="text-sm font-medium text-foreground">{task.title}</div>
                   <div className="text-sm text-destructive font-medium">
                     ⚠️ This action cannot be undone. The task will be completely removed from your account.
                   </div>
