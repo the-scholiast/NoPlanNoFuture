@@ -6,6 +6,8 @@ export interface TodoSection {
   tasks: TaskData[];
 }
 
+export type TaskFormDataValue = string | boolean | string[] | 'daily' | 'today' | 'upcoming' | 'none';
+
 export interface TodoBoardProps {
   onAddTasks?: (tasks: TaskData[]) => void;
 }
