@@ -2,17 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-// Custom hooks for state management
 import { useWorkoutAuth } from '@/hooks/useWorkoutAuth';
 import { useWorkoutTemplates } from '@/hooks/useWorkoutTemplates';
 import { useWorkoutState } from '@/hooks/useWorkoutState';
 import { useWorkoutPersistence } from '@/hooks/useWorkoutPersistence';
-// Child components
 import CompletedWorkoutView from './CompletedWorkoutView';
 import ActiveWorkoutEditor from './ActiveWorkoutEditor';
 import LoadingSpinner from '../ui/LoadingSpinner';
-// Types
 import type { WorkoutSheetProps } from '@/types/workoutTypes';
+import { getTodayString } from '@/lib/utils/dateUtils';
 
 // Main container component that orchestrates the workout tracking experience
 export default function WorkoutSheet({ className }: WorkoutSheetProps) {
@@ -35,7 +33,7 @@ export default function WorkoutSheet({ className }: WorkoutSheetProps) {
       dateString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     } else {
       // Use today's date
-      dateString = new Date().toISOString().split('T')[0];
+      dateString = getTodayString();
     }
 
     setTargetDate(dateString);
@@ -67,7 +65,6 @@ export default function WorkoutSheet({ className }: WorkoutSheetProps) {
     setWorkoutName,
     setWorkoutNotes,
     setWorkoutDuration,
-    addExercise,
     loadTemplate,
     resetWorkout
   } = useWorkoutState();
@@ -95,9 +92,9 @@ export default function WorkoutSheet({ className }: WorkoutSheetProps) {
     try {
       await saveWorkout(workoutName, exercises, workoutNotes, startTime);
       alert(`Workout "${workoutName}" completed and saved!`);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving workout:', error);
-      alert(`Failed to save workout: ${error.message}`);
+      alert(`Failed to save workout: ${error}`);
     }
   };
 
@@ -106,9 +103,9 @@ export default function WorkoutSheet({ className }: WorkoutSheetProps) {
     try {
       await saveAsTemplate(workoutName, exercises);
       alert(`Template "${workoutName} Template" saved successfully!`);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving template:', error);
-      alert(`Failed to save template: ${error.message}`);
+      alert(`Failed to save template: ${error}`);
     }
   };
 
