@@ -48,43 +48,6 @@ export default function ExerciseInput({
     return () => clearTimeout(timeoutId);
   }, [inputValue]);
 
-  // Handle keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!showSuggestions) return;
-
-      switch (e.key) {
-        case 'ArrowDown':
-          e.preventDefault();
-          setHighlightedIndex(prev => 
-            prev < suggestions.length - 1 ? prev + 1 : prev
-          );
-          break;
-        case 'ArrowUp':
-          e.preventDefault();
-          setHighlightedIndex(prev => prev > 0 ? prev - 1 : -1);
-          break;
-        case 'Enter':
-          e.preventDefault();
-          if (highlightedIndex >= 0) {
-            selectExercise(suggestions[highlightedIndex].name);
-          } else if (inputValue.trim()) {
-            handleAddExercise();
-          }
-          break;
-        case 'Escape':
-          setShowSuggestions(false);
-          setHighlightedIndex(-1);
-          break;
-      }
-    };
-
-    if (showSuggestions) {
-      document.addEventListener('keydown', handleKeyDown);
-      return () => document.removeEventListener('keydown', handleKeyDown);
-    }
-  }, [showSuggestions, highlightedIndex, suggestions, inputValue]);
-
   // Search exercises in database
   const searchExerciseDatabase = async (searchTerm: string) => {
     try {
@@ -155,6 +118,43 @@ export default function ExerciseInput({
       setIsCreating(false);
     }
   };
+
+    // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!showSuggestions) return;
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setHighlightedIndex(prev => 
+            prev < suggestions.length - 1 ? prev + 1 : prev
+          );
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setHighlightedIndex(prev => prev > 0 ? prev - 1 : -1);
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (highlightedIndex >= 0) {
+            selectExercise(suggestions[highlightedIndex].name);
+          } else if (inputValue.trim()) {
+            handleAddExercise();
+          }
+          break;
+        case 'Escape':
+          setShowSuggestions(false);
+          setHighlightedIndex(-1);
+          break;
+      }
+    };
+
+    if (showSuggestions) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [showSuggestions, highlightedIndex, suggestions, inputValue, handleAddExercise, selectExercise]);
 
   // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -261,7 +261,7 @@ export default function ExerciseInput({
                 <div className="flex items-center gap-2">
                   <Plus className="h-4 w-4 text-green-600" />
                   <span>
-                    Create "<span className="font-medium">{inputValue.trim()}</span>"
+                    Create <span className="font-medium">{inputValue.trim()}</span>
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
@@ -287,7 +287,7 @@ export default function ExerciseInput({
 
       {/* Helper text */}
       <p className="text-xs text-gray-500">
-        Start typing to search exercises. If not found, we'll create a new one for you.
+        {`Start typing to search exercises. If not found, we'll create a new one for you.`}
       </p>
     </div>
   );
