@@ -18,9 +18,12 @@ export interface TaskFormData {
   is_schedule?: boolean;
 }
 
+// Create a type for the possible values
+type TaskFormDataValue = string | boolean | string[] | 'daily' | 'today' | 'upcoming' | 'none';
+
 interface TaskFormFieldsProps {
   task: TaskFormData;
-  updateField: (field: keyof TaskFormData, value: any) => void;
+  updateField: (field: keyof TaskFormData, value: TaskFormDataValue) => void;
   isSubmitting: boolean;
   showScheduleField?: boolean;
   fieldPrefix?: string; // For unique IDs in multi-task forms
@@ -100,7 +103,7 @@ export function TaskBasicFields({ task, updateField, isSubmitting }: TaskFormFie
 // Recurring section component
 interface RecurringSectionProps {
   task: TaskFormData;
-  updateField: (field: keyof TaskFormData, value: any) => void;
+  updateField: (field: keyof TaskFormData, value: TaskFormDataValue) => void;
   isSubmitting: boolean;
   fieldPrefix?: string;
   showRecurringToggle?: boolean; // For edit modal
@@ -189,7 +192,7 @@ export function RecurringSection({
 // Date and time fields component
 interface DateTimeFieldsProps {
   task: TaskFormData;
-  updateField: (field: keyof TaskFormData, value: any) => void;
+  updateField: (field: keyof TaskFormData, value: TaskFormDataValue) => void;
   isSubmitting: boolean;
   isEndDateDisabled?: boolean;
   getMinEndDate?: () => string;
@@ -265,7 +268,7 @@ export function DateTimeFields({
 // Schedule checkbox component
 interface ScheduleFieldProps {
   task: TaskFormData;
-  updateField: (field: keyof TaskFormData, value: any) => void;
+  updateField: (field: keyof TaskFormData, value: TaskFormDataValue) => void;
   isSubmitting: boolean;
   fieldPrefix?: string;
   forceChecked?: boolean;
