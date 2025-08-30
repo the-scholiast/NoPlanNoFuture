@@ -15,7 +15,7 @@ export default function WorkoutPage() {
       exercises: ["Bench Press", "Overhead Press", "Incline Press", "Tricep Dips", "Lateral Raises"]
     },
     {
-      name: "Pull Day Template", 
+      name: "Pull Day Template",
       exercises: ["Pull-ups", "Deadlifts", "Bent-over Rows", "Lat Pulldowns", "Bicep Curls"]
     },
     {
@@ -26,9 +26,7 @@ export default function WorkoutPage() {
 
   return (
     <div className="container mx-auto">
-      <WorkoutSheet
-        initialTemplates={templates}
-      />
+      <WorkoutSheet />
     </div>
   );
 }
