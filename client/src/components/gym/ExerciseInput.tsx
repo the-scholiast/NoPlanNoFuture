@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Search, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,16 +65,16 @@ export default function ExerciseInput({
   };
 
   // Select an exercise from suggestions
-  const selectExercise = (exerciseName: string) => {
+  const selectExercise = useCallback((exerciseName: string) => {
     onExerciseAdd(exerciseName);
     setInputValue('');
     setSuggestions([]);
     setShowSuggestions(false);
     setHighlightedIndex(-1);
-  };
+  }, []);
 
   // Add new exercise (create if doesn't exist)
-  const handleAddExercise = async () => {
+  const handleAddExercise = useCallback(async () => {
     const trimmedName = inputValue.trim();
     if (!trimmedName) return;
 
@@ -117,7 +117,7 @@ export default function ExerciseInput({
     } finally {
       setIsCreating(false);
     }
-  };
+  }, []);
 
   // Handle keyboard navigation
   useEffect(() => {
