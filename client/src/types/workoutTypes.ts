@@ -1,3 +1,5 @@
+import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
+
 // Represents a single set within an exercise
 export interface Set {
   id: string;
@@ -106,7 +108,7 @@ export interface WorkoutSheetProps {
 export interface CompletedWorkoutViewProps {
   workout: CompletedWorkout; // The completed workout to display
   onStartNewWorkout: () => void; // Callback to start a new workout
-  router: any; // Router instance for navigation (consider using NextRouter type)
+  router: AppRouterInstance; // Router instance for navigation (consider using NextRouter type)
   className?: string; // Optional CSS class name
 }
 
