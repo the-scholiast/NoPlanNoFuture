@@ -51,7 +51,7 @@ export default function TodoBoard() {
       return;
     }
 
-    toggleTaskFunction(taskId, allCurrentTasks, isRecurringInstance);
+    toggleTaskFunction(taskId, allCurrentTasks );
   };
 
   if (isLoading) {

@@ -10,7 +10,7 @@ import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
 import { todoKeys } from '@/lib/queryKeys';
 import { useTodoMutations } from '@/components/todo/';
 import { getTodayString } from '@/lib/utils/dateUtils';
-import { getSectionLabel, isRecurringInstance, getDateRangeDisplay, getTimeRangeDisplay, } from '@/components/todo/shared';
+import { getSectionLabel, getDateRangeDisplay, getTimeRangeDisplay, } from '@/components/todo/shared';
 import { filterDailyTasksByDate, sortTasksByField } from '@/components/todo/shared/utils';
 
 export default function TodoModalButton() {
@@ -68,7 +68,7 @@ export default function TodoModalButton() {
       ...todayTasksWithRecurring
     ];
 
-    toggleTaskFunction(taskId, allCurrentTasks, isRecurringInstance);
+    toggleTaskFunction(taskId, allCurrentTasks );
   };
 
   // Show loading state

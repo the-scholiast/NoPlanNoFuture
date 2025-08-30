@@ -3,11 +3,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { DAYS_OF_WEEK, DAY_ABBREVIATIONS } from '@/lib/utils/constants';
+import { TaskFormDataValue } from '../types';
 
 export interface TaskFormData {
   title: string;
   section: 'daily' | 'today' | 'upcoming' | 'none';
-  priority: string;
+  priority: 'low' | 'medium' | 'high';
   description: string;
   start_date: string;
   end_date: string;
@@ -17,9 +18,6 @@ export interface TaskFormData {
   recurring_days: string[];
   is_schedule?: boolean;
 }
-
-// Create a type for the possible values
-type TaskFormDataValue = string | boolean | string[] | 'daily' | 'today' | 'upcoming' | 'none';
 
 interface TaskFormFieldsProps {
   task: TaskFormData;

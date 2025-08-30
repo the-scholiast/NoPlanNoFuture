@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TaskData, EditTaskModalProps } from '@/types/todoTypes';
-import { updateTaskData, transformTaskFormDataBackend } from '@/lib/utils/transformers';
+import { transformCreateTaskData, updateTaskData } from '@/lib/utils/transformers';
 import { useTodoMutations, useTaskFormLogic, validateEditTask, getRecurringDescription, isRecurringInstance } from './shared/';
 import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField, TaskFormData } from './shared/components/TaskFormComponents';
 
@@ -85,7 +85,7 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
       }
 
       // Prepare the task data with proper formatting
-      let taskDataToUpdate: Partial<TaskData> = transformTaskFormDataBackend(editableTask);
+      let taskDataToUpdate: Partial<TaskData> = transformCreateTaskData(editableTask);
 
       // If not recurring, explicitly set recurring fields to their default values
       if (!editableTask.is_recurring) {
