@@ -2,15 +2,15 @@ import { apiCall } from './client';
 import { todoCompletionsApi } from './todoCompletions';
 
 export const todoStatsApi = {
-  // Get daily task statistics
-  getDailyTaskStats: async (startDate?: string, endDate?: string): Promise<any[]> => {
-    const params = new URLSearchParams();
-    if (startDate) params.append('startDate', startDate);
-    if (endDate) params.append('endDate', endDate);
+  // Get daily task statistics - Change any when actually using api call
+  // getDailyTaskStats: async (startDate?: string, endDate?: string): Promise<any[]> => {
+  //   const params = new URLSearchParams();
+  //   if (startDate) params.append('startDate', startDate);
+  //   if (endDate) params.append('endDate', endDate);
 
-    const query = params.toString() ? `?${params.toString()}` : '';
-    return apiCall(`/todos/daily/stats${query}`);
-  },
+  //   const query = params.toString() ? `?${params.toString()}` : '';
+  //   return apiCall(`/todos/daily/stats${query}`);
+  // },
 
   // Get statistics for a recurring task
   getTaskStats: async (
