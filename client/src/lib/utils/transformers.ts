@@ -29,7 +29,7 @@ export interface RawTaskApiResponse {
 }
 
 // Transform raw API response to WorkoutTemplate. Handles potential data inconsistencies from backend
-export function transformWorkoutTemplate(data: any): WorkoutTemplate {
+export function transformWorkoutTemplate(data: WorkoutTemplate): WorkoutTemplate {
   return {
     id: data.id,
     name: data.name || '',
@@ -43,7 +43,7 @@ export function transformWorkoutTemplate(data: any): WorkoutTemplate {
 }
 
 // Transform raw API response to CompletedWorkout
-export function transformCompletedWorkout(data: any): CompletedWorkout {
+export function transformCompletedWorkout(data: CompletedWorkout): CompletedWorkout {
   return {
     id: data.id,
     name: data.name || '',
@@ -57,7 +57,7 @@ export function transformCompletedWorkout(data: any): CompletedWorkout {
 }
 
 // Transform raw API response to ExerciseDatabase
-export function transformExerciseDatabase(data: any): ExerciseDatabase {
+export function transformExerciseDatabase(data: ExerciseDatabase): ExerciseDatabase {
   return {
     id: data.id,
     name: data.name || '',
