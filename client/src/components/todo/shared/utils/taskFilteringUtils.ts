@@ -1,7 +1,7 @@
 import { parseToLocalDate } from "@/lib/utils/dateUtils";
 import { shouldTaskAppearOnDate } from "./recurringTasksUtils"; 
 import { TaskData } from "@/types/todoTypes";
-import { DateRangeFilter } from "../types";
+import { CompletedTaskWithCompletion, DateRangeFilter, TodoCompletion } from "../types";
 
 export const filterDailyTasksByDate = (
   tasks: TaskData[], 
@@ -92,7 +92,7 @@ export const applySearchFilter = <T extends { title: string; description?: strin
   );
 };
 
-export const applyDateFilter = <T extends Record<string, any>>(
+export const applyDateFilter = <T>(
   tasks: T[],
   dateFilter: DateRangeFilter,
   getDateField: (task: T) => string | null | undefined
