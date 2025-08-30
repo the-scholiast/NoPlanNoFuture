@@ -35,7 +35,7 @@ export function useWorkoutTemplates(authReady: boolean) {
     } finally {
       setIsRefreshingTemplates(false);
     }
-  }, []);
+  }, [authReady]);
 
   // Load user templates once auth is ready
   useEffect(() => {
