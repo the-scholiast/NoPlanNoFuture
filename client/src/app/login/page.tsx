@@ -3,9 +3,10 @@
 import GoogleAuthButton from '@/components/login/GoogleAuthButton'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, Suspense } from 'react'
 
-export default function LoginPage() {
+// Separate component that uses useSearchParams
+function LoginContent() {
   const { user, loading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -48,5 +49,34 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+// Loading fallback component
+function LoginLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="max-w-md w-full space-y-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            Sign in to NoPlanNoFuture
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Stop being lazy! 💪
+          </p>
+        </div>
+        <div className="mt-8 space-y-6 flex flex-col items-center justify-center">
+          <div>Loading...</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginLoading />}>
+      <LoginContent />
+    </Suspense>
   )
 }

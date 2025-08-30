@@ -1,10 +1,10 @@
 'use client'
 
 import { useParams, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import SharedTimeTable from '@/components/calendar/SharedTimeTable'
 
-export default function SharedCalendarPage() {
+function SharedCalendarContent() {
   const params = useParams()
   const searchParams = useSearchParams()
   const shareToken = params.shareToken as string
@@ -28,5 +28,21 @@ export default function SharedCalendarPage() {
     <>
       <SharedTimeTable selectedDate={selectedDate} shareToken={shareToken} />
     </>
+  )
+}
+
+function SharedCalendarLoading() {
+  return (
+    <div className="flex items-center justify-center p-4">
+      <div>Loading shared calendar...</div>
+    </div>
+  )
+}
+
+export default function SharedCalendarPage() {
+  return (
+    <Suspense fallback={<SharedCalendarLoading />}>
+      <SharedCalendarContent />
+    </Suspense>
   )
 }
