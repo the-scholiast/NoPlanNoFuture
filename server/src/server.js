@@ -17,7 +17,9 @@ app.use(cors({
   origin: [
     process.env.CLIENT_URL || 'http://localhost:3000',
     'http://localhost:3000',
-    'http://localhost:3001' // Allow requests between frontend and backend
+    'http://localhost:3001', // Allow requests between frontend and backend
+    `https://no-plan-no-future.vercel.app/`,
+    'https://*.vercel.app'
   ],
   credentials: true, // Allow cookies and auth headers
   optionsSuccessStatus: 200,
@@ -109,7 +111,6 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log('\n🚀 Server started successfully!')
-  console.log(` 📡 API available at http://localhost:${PORT}/api`)
   console.log(` 🌍 Environment: ${process.env.NODE_ENV || 'development'}`)
   console.log(` ⏰ Started at: ${new Date().toISOString()}`)
 
