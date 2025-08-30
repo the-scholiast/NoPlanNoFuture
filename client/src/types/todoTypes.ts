@@ -1,6 +1,6 @@
 export interface TaskData {
   instance_date?: string;
-  updated_at: string;
+  updated_at?: string;
   id: string;
   title: string;
   completed: boolean;
@@ -25,7 +25,7 @@ export interface TaskData {
 export interface CreateTaskData {
   title: string;
   section: 'daily' | 'today' | 'upcoming' | 'none';
-  priority?: 'low' | 'medium' | 'high';
+  priority: 'low' | 'medium' | 'high';
   description?: string;
   start_date?: string;
   end_date?: string;

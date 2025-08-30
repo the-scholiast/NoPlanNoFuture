@@ -1,7 +1,9 @@
-import React from 'react';
+'use client'
+
+import React, { Suspense } from 'react';
 import RadialPlanner from '../../../components/RadialPlanner/RadialPlanner';
 
-function App() {
+function PlannerContent() {
     return (
         <div className="App">
             <RadialPlanner />
@@ -9,4 +11,18 @@ function App() {
     );
 }
 
-export default App;
+function PlannerLoading() {
+    return (
+        <div className="flex items-center justify-center p-4">
+            <div>Loading planner...</div>
+        </div>
+    );
+}
+
+export default function PlannerPage() {
+    return (
+        <Suspense fallback={<PlannerLoading />}>
+            <PlannerContent />
+        </Suspense>
+    );
+}

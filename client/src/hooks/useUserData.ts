@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   getUserProfile,
   updateUserProfile,
@@ -15,7 +15,6 @@ import {
   getExerciseDatabase,
   searchExercises,
   createCustomExercise,
-  getWorkoutStats,
   getSimpleWorkoutStats,
   type UserProfile,
 } from '@/lib/api'
@@ -31,11 +30,7 @@ export function useExercises() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadExercises()
-  }, [])
-
-  const loadExercises = async () => {
+  const loadExercises = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -46,7 +41,11 @@ export function useExercises() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    loadExercises()
+  }, [loadExercises])
 
   const searchExercisesByName = async (searchTerm: string) => {
     try {
@@ -278,16 +277,8 @@ export function useCompletedWorkouts(limit?: number) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (user) {
-      loadWorkouts()
-    } else {
-      setWorkouts([])
-      setLoading(false)
-    }
-  }, [user, limit])
 
-  const loadWorkouts = async () => {
+  const loadWorkouts = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -298,7 +289,16 @@ export function useCompletedWorkouts(limit?: number) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [limit])
+
+  useEffect(() => {
+    if (user) {
+      loadWorkouts()
+    } else {
+      setWorkouts([])
+      setLoading(false)
+    }
+  }, [user, limit, loadWorkouts])
 
   const saveWorkout = async (workout: Omit<CompletedWorkout, 'id' | 'user_id' | 'created_at'>) => {
     try {

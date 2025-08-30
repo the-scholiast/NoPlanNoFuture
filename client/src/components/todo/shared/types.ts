@@ -6,6 +6,8 @@ export interface TodoSection {
   tasks: TaskData[];
 }
 
+export type TaskFormDataValue = string | boolean | string[] | 'daily' | 'today' | 'upcoming' | 'none';
+
 export interface TodoBoardProps {
   onAddTasks?: (tasks: TaskData[]) => void;
 }
@@ -54,13 +56,6 @@ export type FormatDateFunction = (dateString?: string) => string | null;
 export type FormatTimeFunction = (timeString?: string) => string | null;
 export type GetSectionLabelFunction = (section: string) => string;
 export type GetPriorityColorFunction = (priority: string) => string;
-
-// Mutation result types
-export interface MutationResult<T = any> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
 
 // Bulk operation types
 export interface BulkDeleteOptions {

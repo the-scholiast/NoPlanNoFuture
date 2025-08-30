@@ -16,7 +16,7 @@ export async function getExerciseDatabase(): Promise<ExerciseDatabase[]> {
 // Search exercises by name
 export async function searchExercises(searchTerm: string): Promise<ExerciseDatabase[]> {
   try {
-    const data = await apiCall(`/exercises/search?q=${encodeURIComponent(searchTerm)}`)
+    const data = await apiCall(`/exercises?search=${encodeURIComponent(searchTerm)}`)
     return Array.isArray(data) ? data.map(transformExerciseDatabase) : []
   } catch (error) {
     console.error('Error searching exercises:', error)

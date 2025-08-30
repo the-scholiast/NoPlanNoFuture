@@ -92,7 +92,7 @@ export const applySearchFilter = <T extends { title: string; description?: strin
   );
 };
 
-export const applyDateFilter = <T extends Record<string, any>>(
+export const applyDateFilter = <T>(
   tasks: T[],
   dateFilter: DateRangeFilter,
   getDateField: (task: T) => string | null | undefined

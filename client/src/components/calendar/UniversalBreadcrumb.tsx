@@ -11,6 +11,7 @@ import {
 import { SlashIcon } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
+import { Suspense } from "react"
 
 /**
  * Get the base path for navigation (calendar or gym)
@@ -55,7 +56,7 @@ function getWeekDateRange(date: Date): string {
   }
 }
 
-export default function UniversalBreadcrumb() {
+function BreadcrumbContent() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
@@ -163,5 +164,19 @@ export default function UniversalBreadcrumb() {
         )}
       </BreadcrumbList>
     </Breadcrumb>
+  )
+}
+
+function BreadcrumbFallback() {
+  return (
+    <div className="h-6 bg-gray-100 animate-pulse rounded"></div>
+  )
+}
+
+export default function UniversalBreadcrumb() {
+  return (
+    <Suspense fallback={<BreadcrumbFallback />}>
+      <BreadcrumbContent />
+    </Suspense>
   )
 }

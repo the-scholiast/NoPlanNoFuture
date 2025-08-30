@@ -44,11 +44,9 @@ export const CompactTaskSorting = <T extends TaskData = TaskData>({
     if (!onTasksChange) {
       return
     }
-    let sortedTasks: T[];
 
     // Use generic field sorting for other fields
-    sortedTasks = sortTasksByField(tasks, config.field, config.order);
-
+    const sortedTasks = sortTasksByField(tasks, config.field, config.order);
 
     onTasksChange(sortedTasks);
   };

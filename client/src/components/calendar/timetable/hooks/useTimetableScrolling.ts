@@ -73,7 +73,7 @@ export const useTimetableScrolling = () => {
 
     const timer = setTimeout(initializePosition, 500);
     return () => clearTimeout(timer);
-  }, [hasInitialized]);
+  }, [hasInitialized, restoreScrollPosition]);
 
   useEffect(() => {
     const scrollContainer = getScrollContainer();
@@ -88,7 +88,7 @@ export const useTimetableScrolling = () => {
     return () => {
       scrollContainer.removeEventListener('scroll', handleScroll);
     };
-  }, [hasInitialized]);
+  }, [hasInitialized, saveCurrentScrollPosition]);
 
   return {
     tableRef,

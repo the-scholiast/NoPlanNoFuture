@@ -1,11 +1,11 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import YearView from '@/components/calendar/yearView'
 import { useCalendarLastVisited } from '../hooks/useCalendarLastVisited'
 
-export default function YearPage() {
+function YearContent() {
     useCalendarLastVisited();
     const searchParams = useSearchParams()
     const [selectedDate, setSelectedDate] = useState(new Date())
@@ -34,5 +34,21 @@ export default function YearPage() {
         <>
             <YearView selectedDate={selectedDate} />
         </>
+    )
+}
+
+function YearLoading() {
+    return (
+        <div className="flex items-center justify-center p-4">
+            <div>Loading year view...</div>
+        </div>
+    )
+}
+
+export default function YearPage() {
+    return (
+        <Suspense fallback={<YearLoading />}>
+            <YearContent />
+        </Suspense>
     )
 }

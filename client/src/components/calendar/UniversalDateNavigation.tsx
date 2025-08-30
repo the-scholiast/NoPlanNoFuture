@@ -21,7 +21,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
@@ -78,7 +78,7 @@ function createDateFromParams(searchParams: URLSearchParams): Date {
   return new Date(year, month, day)
 }
 
-export default function UniversalDateNavigation({ className }: UniversalDateNavigationProps) {
+function DateNavigationContent({ className }: UniversalDateNavigationProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -251,5 +251,27 @@ export default function UniversalDateNavigation({ className }: UniversalDateNavi
         <ChevronRight className="h-4 w-4" />
       </Button>
     </div>
+  )
+}
+
+function DateNavigationFallback({ className }: UniversalDateNavigationProps) {
+  return (
+    <div className={cn("flex items-center justify-center gap-2 mb-6", className)}>
+      <Button variant="ghost" size="sm" disabled>
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      <span className="font-medium text-center min-w-[200px] bg-gray-100 animate-pulse rounded h-6"></span>
+      <Button variant="ghost" size="sm" disabled>
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    </div>
+  )
+}
+
+export default function UniversalDateNavigation(props: UniversalDateNavigationProps) {
+  return (
+    <Suspense fallback={<DateNavigationFallback {...props} />}>
+      <DateNavigationContent {...props} />
+    </Suspense>
   )
 }

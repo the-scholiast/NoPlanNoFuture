@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { todoApi } from '@/lib/api/todos';
-import { todoCompletionsApi } from '@/lib/api/todoCompletions';
-import { TaskData } from '@/types/todoTypes';
+import { CompletedTaskWithDetails, todoCompletionsApi } from '@/lib/api/todoCompletions';
+import { CreateTaskData, TaskData } from '@/types/todoTypes';
 import { getTodayString } from '@/lib/utils/dateUtils';
 import { transformTaskData } from '@/lib/utils/transformers';
 import { todoKeys } from '@/lib/queryKeys';
@@ -80,7 +80,7 @@ export const useTodoMutations = () => {
       const currentTodos = queryClient.getQueryData<TaskData[]>(todoKeys.all);
       const currentTodayRecurring = queryClient.getQueryData<TaskData[]>(todoKeys.today);
       const currentUpcomingRecurring = queryClient.getQueryData<TaskData[]>(todoKeys.upcoming);
-      const currentCompletedTasks = queryClient.getQueryData<any[]>(todoKeys.completed);
+      const currentCompletedTasks = queryClient.getQueryData<CompletedTaskWithDetails[]>(todoKeys.completed);
 
       // Find the task to toggle
       const task = allTasks.find(t => t.id === taskId) || allTasks.find(t => t.id === taskId.split('_')[0]);
@@ -171,14 +171,14 @@ export const useTodoMutations = () => {
 
   // Create the function that components will call
   const createToggleTaskFunction = () => {
-    return (taskId: string, allTasks: TaskData[], isRecurringInstanceFn: (task: TaskData) => boolean) => {
+    return (taskId: string, allTasks: TaskData[] ) => {
       toggleTaskMutation.mutate({ taskId, allTasks });
     };
   };
 
   // Basic CRUD mutations with data refresh
   const createTaskMutation = useMutation({
-    mutationFn: (taskData: any) => todoApi.create(taskData),
+    mutationFn: (taskData: CreateTaskData) => todoApi.create(taskData),
     onSuccess: refreshAllData,
   });
   const updateTaskMutation = useMutation({

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useWorkoutAuth } from '@/hooks/useWorkoutAuth';
 import { useWorkoutTemplates } from '@/hooks/useWorkoutTemplates';
@@ -13,7 +13,7 @@ import type { WorkoutSheetProps } from '@/types/workoutTypes';
 import { getTodayString } from '@/lib/utils/dateUtils';
 
 // Main container component that orchestrates the workout tracking experience
-export default function WorkoutSheet({ className }: WorkoutSheetProps) {
+function WorkoutSheetContent({ className }: WorkoutSheetProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -169,5 +169,26 @@ export default function WorkoutSheet({ className }: WorkoutSheetProps) {
       onStartNewWorkout={handleStartNewWorkout}
       className={className}
     />
+  );
+}
+
+function WorkoutSheetFallback() {
+  return (
+    <div className="min-h-screen">
+      <LoadingSpinner
+        size="lg"
+        centered
+        text="Loading workout..."
+        className="min-h-screen"
+      />
+    </div>
+  );
+}
+
+export default function WorkoutSheet(props: WorkoutSheetProps) {
+  return (
+    <Suspense fallback={<WorkoutSheetFallback/>}>
+      <WorkoutSheetContent {...props} />
+    </Suspense>
   );
 }

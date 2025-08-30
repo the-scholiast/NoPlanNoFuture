@@ -1,11 +1,11 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import MonthView from '@/components/calendar/monthView'
 import { useCalendarLastVisited } from '../hooks/useCalendarLastVisited'
 
-export default function MonthPage() {
+function MonthContent() {
   useCalendarLastVisited();
   const searchParams = useSearchParams();
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -30,5 +30,21 @@ export default function MonthPage() {
     <>
       <MonthView selectedDate={selectedDate} />
     </>
+  )
+}
+
+function MonthLoading() {
+  return (
+    <div className="flex items-center justify-center p-4">
+      <div>Loading calendar...</div>
+    </div>
+  )
+}
+
+export default function MonthPage() {
+  return (
+    <Suspense fallback={<MonthLoading />}>
+      <MonthContent />
+    </Suspense>
   )
 }

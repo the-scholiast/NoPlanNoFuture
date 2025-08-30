@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { DAYS_OF_WEEK } from '@/lib/utils/constants';
 import { formatDateString, getTodayString } from '@/lib/utils/dateUtils';
-import { TaskFormData } from '../components';
+import { TaskFormData } from '../components/TaskFormComponents';
+import { TaskFormDataValue } from '../types';
 
 /**
  * Core logic for task form management
@@ -15,17 +16,17 @@ class TaskLogicHelper {
    * Central update method that applies rules when any task field changes
    * Ensures data consistency across the entire form (e.g., section changes affect dates/recurring)
    */
-  static updateTaskField<T extends TaskFormData>(task: T, field: keyof TaskFormData, value: any): T {
+  static updateTaskField<T extends TaskFormData>(task: T, field: keyof TaskFormData, value: TaskFormDataValue): T {
     const updatedTask = { ...task, [field]: value };
     // Apply rules based on which field changed
     if (field === 'section') {
-      this.applySectionLogic(updatedTask, value);
+      this.applySectionLogic(updatedTask, value as string);
     }
     if (field === 'start_date' && value) {
-      this.validateStartDate(updatedTask, value);
+      this.validateStartDate(updatedTask, value as string);
     }
     if (field === 'start_time' && value) {
-      this.validateStartTime(updatedTask, value);
+      this.validateStartTime(updatedTask, value as string);
     }
     if (field === 'is_recurring' && value !== true) {
       updatedTask.recurring_days = [];
@@ -92,7 +93,7 @@ class TaskHelpers {
  */
   static createDayHelpers<T extends TaskFormData>(
     task: T,
-    updateCallback: (field: keyof TaskFormData, value: any) => void
+    updateCallback: (field: keyof TaskFormData, value: TaskFormDataValue) => void
   ) {
     return {
       // Toggle individual days for recurring tasks
@@ -138,7 +139,7 @@ class TaskHelpers {
         return formatDateString(startDate);
       },
       // Validate end date when user finishes editing
-      handleEndDateBlur: (value: string, updateCallback: (field: keyof TaskFormData, value: any) => void) => {
+      handleEndDateBlur: (value: string, updateCallback: (field: keyof TaskFormData, value: TaskFormDataValue) => void) => {
         if (!task.start_date || !value) return;
         // Clear invalid end dates (same day or before start date)
         if (value <= task.start_date) {
@@ -170,7 +171,7 @@ export function useTaskFormLogic(initialTask?: Partial<TaskFormData>) {
     ...initialTask
   });
   // Central update function that applies all rules
-  const updateField = (field: keyof TaskFormData, value: any) => {
+  const updateField = (field: keyof TaskFormData, value: TaskFormDataValue) => {
     setTask(prev => TaskLogicHelper.updateTaskField(prev, field, value));
   };
   // Create helper functions bound to this specific task
@@ -193,7 +194,7 @@ export function useTaskFormLogic(initialTask?: Partial<TaskFormData>) {
  */
 export function useMultiTaskFormLogic() {
   // Default task template for new tasks (daily recurring by default)
-  const placeholderTask: TaskFormData = {
+  const placeholderTask: TaskFormData = useMemo(() => ({
     title: '',
     section: 'daily',
     priority: 'low',
@@ -205,7 +206,7 @@ export function useMultiTaskFormLogic() {
     is_recurring: true,
     recurring_days: [...DAYS_OF_WEEK],
     is_schedule: false,
-  };
+  }), []);
 
   // Array of tasks, each with unique ID for React key prop
   const [tasks, setTasks] = useState<(TaskFormData & { id: string })[]>([
@@ -213,7 +214,7 @@ export function useMultiTaskFormLogic() {
   ]);
 
   // Add new task to the list (used by "Add Another Task" button)
-  const addNewTask = () => {
+  const addNewTask = useCallback(() => {
     const newTask = {
       ...placeholderTask,
       id: Date.now().toString(),
@@ -221,24 +222,24 @@ export function useMultiTaskFormLogic() {
       recurring_days: [...DAYS_OF_WEEK],
     };
     setTasks(prev => [...prev, newTask]);
-  };
+  }, [placeholderTask]);
 
   // Remove task from list (minimum 1 task required)
-  const removeTask = (id: string) => {
+  const removeTask = useCallback((id: string) => {
     if (tasks.length > 1) {
       setTasks(prev => prev.filter(task => task.id !== id));
     }
-  };
+  }, [tasks.length]);
 
   // Update specific task field with logic applied
-  const updateTask = (id: string, field: keyof TaskFormData, value: any) => {
+  const updateTask = useCallback((id: string, field: keyof TaskFormData, value: TaskFormDataValue) => {
     setTasks(prev => prev.map(task => {
       if (task.id === id) {
         return TaskLogicHelper.updateTaskField(task, field, value);
       }
       return task;
     }));
-  };
+  }, []);
 
   /**
    * Get task-specific helper functions for individual tasks in the array
@@ -249,7 +250,7 @@ export function useMultiTaskFormLogic() {
     const task = tasks.find(t => t.id === taskId);
     if (!task) throw new Error(`Task with id ${taskId} not found`);
     // Create update callback bound to this specific task
-    const updateCallback = (field: keyof TaskFormData, value: any) => {
+    const updateCallback = (field: keyof TaskFormData, value: TaskFormDataValue) => {
       updateTask(taskId, field, value);
     };
 
@@ -268,7 +269,7 @@ export function useMultiTaskFormLogic() {
   };
 
   // Reset to single default task (used when modal closes/resets)
-  const resetTasks = () => {
+  const resetTasks = useCallback(() => {
     const resetTask = {
       ...placeholderTask,
       id: '1',
@@ -276,20 +277,20 @@ export function useMultiTaskFormLogic() {
       recurring_days: [...DAYS_OF_WEEK],
     };
     setTasks([resetTask]);
-  };
+  }, [placeholderTask]);
 
   // Initialize with pre-filled data (used when adding scheduled tasks from calendar)
-  const initializeWithData = (initialData: Partial<TaskFormData>) => {
+  const initializeWithData = useCallback((initialData: Partial<TaskFormData>) => {
     const initialTask = {
       ...placeholderTask,
       ...initialData,
       id: '1',
     };
     setTasks([initialTask]);
-  };
+  }, [placeholderTask]);
 
   // Copy task to create a duplicate with new ID (used by "Copy Task" button)
-  const copyTask = (id: string) => {
+  const copyTask = useCallback((id: string) => {
     const taskToCopy = tasks.find(t => t.id === id);
     if (!taskToCopy) return;
 
@@ -299,7 +300,7 @@ export function useMultiTaskFormLogic() {
       title: taskToCopy.title ? `${taskToCopy.title} (Copy)` : '',
     };
     setTasks(prev => [...prev, copiedTask]);
-  };
+  }, [tasks]);
 
   return {
     tasks,

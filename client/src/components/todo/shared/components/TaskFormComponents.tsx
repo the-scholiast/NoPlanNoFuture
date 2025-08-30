@@ -3,11 +3,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { DAYS_OF_WEEK, DAY_ABBREVIATIONS } from '@/lib/utils/constants';
+import { TaskFormDataValue } from '../types';
 
 export interface TaskFormData {
   title: string;
   section: 'daily' | 'today' | 'upcoming' | 'none';
-  priority: string;
+  priority: 'low' | 'medium' | 'high';
   description: string;
   start_date: string;
   end_date: string;
@@ -20,7 +21,7 @@ export interface TaskFormData {
 
 interface TaskFormFieldsProps {
   task: TaskFormData;
-  updateField: (field: keyof TaskFormData, value: any) => void;
+  updateField: (field: keyof TaskFormData, value: TaskFormDataValue) => void;
   isSubmitting: boolean;
   showScheduleField?: boolean;
   fieldPrefix?: string; // For unique IDs in multi-task forms
@@ -100,7 +101,7 @@ export function TaskBasicFields({ task, updateField, isSubmitting }: TaskFormFie
 // Recurring section component
 interface RecurringSectionProps {
   task: TaskFormData;
-  updateField: (field: keyof TaskFormData, value: any) => void;
+  updateField: (field: keyof TaskFormData, value: TaskFormDataValue) => void;
   isSubmitting: boolean;
   fieldPrefix?: string;
   showRecurringToggle?: boolean; // For edit modal
@@ -189,7 +190,7 @@ export function RecurringSection({
 // Date and time fields component
 interface DateTimeFieldsProps {
   task: TaskFormData;
-  updateField: (field: keyof TaskFormData, value: any) => void;
+  updateField: (field: keyof TaskFormData, value: TaskFormDataValue) => void;
   isSubmitting: boolean;
   isEndDateDisabled?: boolean;
   getMinEndDate?: () => string;
@@ -265,7 +266,7 @@ export function DateTimeFields({
 // Schedule checkbox component
 interface ScheduleFieldProps {
   task: TaskFormData;
-  updateField: (field: keyof TaskFormData, value: any) => void;
+  updateField: (field: keyof TaskFormData, value: TaskFormDataValue) => void;
   isSubmitting: boolean;
   fieldPrefix?: string;
   forceChecked?: boolean;

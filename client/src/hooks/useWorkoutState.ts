@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react';
-import type { Exercise, Set } from '@/types/workoutTypes';
+import type { Exercise, Set, WorkoutTemplate } from '@/types/workoutTypes';
 
 // Custom hook for managing workout state
 // Handles exercises, sets, and workout completion logic
@@ -87,7 +87,7 @@ export function useWorkoutState() {
   };
 
   // Load a template into the current workout
-  const loadTemplate = (template: any) => {
+  const loadTemplate = (template: WorkoutTemplate) => {
     if (!template) return;
 
     // Create new exercises with default sets

@@ -2,7 +2,7 @@
 
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card } from '../ui/card';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { TaskData } from '@/types/todoTypes';
 import { todoKeys } from '@/lib/queryKeys';
@@ -131,7 +131,7 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
    * Returns an array of Date objects (length = 7 * number_of_weeks).
    * You can detect overlay cells by checking date.getMonth() !== currentMonth.
    */
-  const getMonthCellsWithOverlay = (base: Date) => {
+  const getMonthCellsWithOverlay = useCallback((base: Date) => {
     const year = base.getFullYear();
     const month = base.getMonth();
 
@@ -180,7 +180,7 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
     }
 
     return cells;
-  };
+  }, [weekStartsOn]);
 
   const isSameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
   const isSameMonth = (a: Date, b: Date) =>
@@ -189,7 +189,7 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
   // Build cells only when mounted (to avoid hydration mismatch)
   const cells = useMemo(
     () => (isMounted ? getMonthCellsWithOverlay(currentDate) : []),
-    [currentDate, isMounted, weekStartsOn, getMonthCellsWithOverlay]
+    [currentDate, isMounted, getMonthCellsWithOverlay]
   );
 
   // Split into weeks

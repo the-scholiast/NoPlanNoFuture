@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Search, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,8 +19,8 @@ interface ExerciseDatabase {
   created_by?: string;
 }
 
-export default function ExerciseInput({ 
-  onExerciseAdd, 
+export default function ExerciseInput({
+  onExerciseAdd,
   disabled = false,
   placeholder = "Search for an exercise..."
 }: ExerciseInputProps) {
@@ -30,7 +30,7 @@ export default function ExerciseInput({
   const [isCreating, setIsCreating] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  
+
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
@@ -65,16 +65,16 @@ export default function ExerciseInput({
   };
 
   // Select an exercise from suggestions
-  const selectExercise = (exerciseName: string) => {
+  const selectExercise = useCallback((exerciseName: string) => {
     onExerciseAdd(exerciseName);
     setInputValue('');
     setSuggestions([]);
     setShowSuggestions(false);
     setHighlightedIndex(-1);
-  };
+  }, [onExerciseAdd]);
 
   // Add new exercise (create if doesn't exist)
-  const handleAddExercise = async () => {
+  const handleAddExercise = useCallback(async () => {
     const trimmedName = inputValue.trim();
     if (!trimmedName) return;
 
@@ -91,7 +91,7 @@ export default function ExerciseInput({
     // Create new custom exercise
     try {
       setIsCreating(true);
-      
+
       const newExercise = await createCustomExercise({
         name: trimmedName,
       });
@@ -101,7 +101,7 @@ export default function ExerciseInput({
         setInputValue('');
         setSuggestions([]);
         setShowSuggestions(false);
-        
+
         // Show success feedback
         console.log(`✅ Created new exercise: ${newExercise.name}`);
       } else {
@@ -117,9 +117,9 @@ export default function ExerciseInput({
     } finally {
       setIsCreating(false);
     }
-  };
+  }, [inputValue, onExerciseAdd, selectExercise, suggestions]);
 
-    // Handle keyboard navigation
+  // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!showSuggestions) return;
@@ -127,7 +127,7 @@ export default function ExerciseInput({
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
-          setHighlightedIndex(prev => 
+          setHighlightedIndex(prev =>
             prev < suggestions.length - 1 ? prev + 1 : prev
           );
           break;
@@ -160,7 +160,7 @@ export default function ExerciseInput({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setInputValue(value);
-    
+
     if (value.trim().length <= 1) {
       setSuggestions([]);
       setShowSuggestions(false);
@@ -178,9 +178,9 @@ export default function ExerciseInput({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        inputRef.current && 
+        inputRef.current &&
         !inputRef.current.contains(event.target as Node) &&
-        suggestionsRef.current && 
+        suggestionsRef.current &&
         !suggestionsRef.current.contains(event.target as Node)
       ) {
         setShowSuggestions(false);
@@ -218,26 +218,25 @@ export default function ExerciseInput({
               </div>
             )}
           </div>
-          
+
           {/* Suggestions Dropdown */}
           {showSuggestions && suggestions.length > 0 && (
-            <div 
+            <div
               ref={suggestionsRef}
-              className="absolute top-full left-0 right-0 bg-background border border-gray-200 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto mt-1"
+              className="absolute top-full left-0 right-0 bg-background dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto mt-1"
             >
               {suggestions.map((exercise, index) => (
                 <button
                   key={exercise.id}
-                  className={`w-full text-left px-3 py-2 hover:bg-gray-100 border-b border-gray-100 last:border-b-0 transition-colors ${
-                    index === highlightedIndex ? 'bg-blue-50 border-blue-200' : ''
-                  }`}
+                  className={`w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-600 last:border-b-0 transition-colors ${index === highlightedIndex ? 'bg-blue-50 dark:bg-blue-900/50 border-blue-200 dark:border-blue-700' : ''
+                    }`}
                   onClick={() => selectExercise(exercise.name)}
                   onMouseEnter={() => setHighlightedIndex(index)}
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-medium">{exercise.name}</span>
                     {exercise.is_custom && (
-                      <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                      <span className="text-xs text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded">
                         Custom
                       </span>
                     )}
@@ -249,12 +248,12 @@ export default function ExerciseInput({
 
           {/* No results / Create new option */}
           {showSuggestions && suggestions.length === 0 && inputValue.trim().length > 1 && !isLoading && (
-            <div 
+            <div
               ref={suggestionsRef}
-              className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg z-50 mt-1"
+              className="absolute top-full left-0 right-0 bg-background dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg z-50 mt-1"
             >
               <button
-                className="w-full text-left px-3 py-2 hover:bg-gray-100 border-b border-gray-100"
+                className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-600"
                 onClick={handleAddExercise}
                 disabled={isCreating}
               >

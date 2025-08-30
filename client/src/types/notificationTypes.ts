@@ -1,3 +1,5 @@
+import { TaskData } from "./todoTypes";
+
 export interface Notification {
   id: string;
   user_id: string;
@@ -40,7 +42,7 @@ export interface UpdateNotificationData {
 }
 
 export interface NotificationPreview {
-  tasks: any[];
+  tasks: TaskData[];
   preview: boolean;
 }
 
