@@ -30,10 +30,6 @@ export function useExercises() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadExercises()
-  }, [])
-
   const loadExercises = useCallback(async () => {
     try {
       setLoading(true)
@@ -46,6 +42,10 @@ export function useExercises() {
       setLoading(false)
     }
   }, [])
+
+  useEffect(() => {
+    loadExercises()
+  }, [loadExercises])
 
   const searchExercisesByName = async (searchTerm: string) => {
     try {
@@ -289,7 +289,7 @@ export function useCompletedWorkouts(limit?: number) {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [limit])
 
   useEffect(() => {
     if (user) {
