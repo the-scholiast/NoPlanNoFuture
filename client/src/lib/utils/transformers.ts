@@ -138,11 +138,11 @@ export function formatCreateTaskData(data: CreateTaskData, user: string) {
 
 // Obtain only the updated keys and values
 export function updateTaskData(updates: Partial<Omit<TaskData, 'id' | 'created_at'>>) {
-  const dbUpdates: any = {}
+  const dbUpdates: Partial<Omit<TaskData, 'id' | 'created_at'>> = {}
 
   Object.entries(updates).forEach(([key, value]) => {
     if (value !== undefined) {
-      dbUpdates[key] = value
+      (dbUpdates as Record<string, unknown>)[key] = value
     }
   })
 
