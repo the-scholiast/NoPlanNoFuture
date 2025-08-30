@@ -88,7 +88,9 @@ export function NavSidebar() {
             // Force the consent screen to appear
             prompt: 'consent',
           },
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: process.env.NODE_ENV === 'production'
+            ? `${process.env.NEXT_PUBLIC_VERCEL_URL}/auth/callback`
+            : `${window.location.origin}/auth/callback`
         }
       })
 

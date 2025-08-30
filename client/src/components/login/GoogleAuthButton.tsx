@@ -21,7 +21,9 @@ export default function GoogleAuthButton() {
             // Ensures we get a refresh token even if user previously authorized
             prompt: 'consent',
           },
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: process.env.NODE_ENV === 'production'
+            ? `${process.env.NEXT_PUBLIC_VERCEL_URL}/auth/callback`
+            : `${window.location.origin}/auth/callback`
         }
       })
 
