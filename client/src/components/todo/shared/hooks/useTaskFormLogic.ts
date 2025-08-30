@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { DAYS_OF_WEEK } from '@/lib/utils/constants';
 import { formatDateString, getTodayString } from '@/lib/utils/dateUtils';
 import { TaskFormData } from '../components/TaskFormComponents';
@@ -194,7 +194,7 @@ export function useTaskFormLogic(initialTask?: Partial<TaskFormData>) {
  */
 export function useMultiTaskFormLogic() {
   // Default task template for new tasks (daily recurring by default)
-  const placeholderTask: TaskFormData = {
+  const placeholderTask: TaskFormData = useMemo(() => ({
     title: '',
     section: 'daily',
     priority: 'low',
@@ -206,7 +206,7 @@ export function useMultiTaskFormLogic() {
     is_recurring: true,
     recurring_days: [...DAYS_OF_WEEK],
     is_schedule: false,
-  };
+  }), []);
 
   // Array of tasks, each with unique ID for React key prop
   const [tasks, setTasks] = useState<(TaskFormData & { id: string })[]>([
