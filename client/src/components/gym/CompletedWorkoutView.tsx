@@ -22,12 +22,7 @@ export default function CompletedWorkoutView({
 
   // Formats a date string into a readable format
   const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    return dateString.split('T')[0];;
   };
 
   // Formats duration from minutes to readable format
@@ -61,16 +56,6 @@ export default function CompletedWorkoutView({
       {/* Header Section */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          {/* Back Navigation Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push('/gym/workout')}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Workout
-          </Button>
 
           {/* Success Title */}
           <div>

@@ -83,7 +83,7 @@ export const createWorkout = async (userId, workoutData) => {
       user_id: userId,
       name,
       exercises,
-      date: date || new Date().toISOString().split('T')[0], // Default to today if no date provided
+      date: date || formatDateString(new Date()),
       duration,
       notes
     })
