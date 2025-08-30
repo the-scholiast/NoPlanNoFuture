@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getWorkoutTemplates, createWorkoutTemplate } from '@/lib/api/';
 import type { WorkoutTemplate, Exercise } from '@/types/workoutTypes';
 
@@ -13,15 +13,8 @@ export function useWorkoutTemplates(authReady: boolean) {
   const [isRefreshingTemplates, setIsRefreshingTemplates] = useState(false);
   const [templatesLoaded, setTemplatesLoaded] = useState(false);
 
-  // Load user templates once auth is ready
-  useEffect(() => {
-    if (authReady && !templatesLoaded) {
-      refreshTemplates();
-    }
-  }, [authReady, templatesLoaded]);
-
   // Refresh templates from API
-  const refreshTemplates = async () => {
+  const refreshTemplates = useCallback(async () => {
     if (!authReady) {
       console.log('Auth not ready, skipping template refresh');
       return;
@@ -42,8 +35,14 @@ export function useWorkoutTemplates(authReady: boolean) {
     } finally {
       setIsRefreshingTemplates(false);
     }
-  };
+  }, []);
 
+  // Load user templates once auth is ready
+  useEffect(() => {
+    if (authReady && !templatesLoaded) {
+      refreshTemplates();
+    }
+  }, [authReady, templatesLoaded, refreshTemplates]);
   // Save current workout as a template
   const saveAsTemplate = async (workoutName: string, exercises: Exercise[]) => {
     if (!authReady) {
