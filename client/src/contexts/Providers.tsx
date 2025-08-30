@@ -14,6 +14,7 @@ import UniversalBreadcrumb from "@/components/calendar/UniversalBreadcrumb";
 import { usePathname } from "next/navigation";
 import TodoModalButton from "@/components/todo/global/TodoModalButton";
 import { useAuth } from '@/hooks/useAuth';
+import { TaskData } from '@/types/todoTypes';
 
 // Create a client with optimized settings
 const queryClient = new QueryClient({
@@ -39,7 +40,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user } = useAuth();
 
-  const handleAddTasks = (tasks: any[]) => {
+  const handleAddTasks = (tasks: TaskData[]) => {
     console.log('Tasks added:', tasks);
   };
 
