@@ -107,7 +107,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilled
       // Reset when opening without pre-filled data
       resetTasks();
     }
-  }, [open, preFilledData?.selectedDate, preFilledData?.selectedTime, initializeWithData, resetTasks]);
+  }, [open, preFilledData, initializeWithData, resetTasks]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
