@@ -71,7 +71,7 @@ export default function ExerciseInput({
     setSuggestions([]);
     setShowSuggestions(false);
     setHighlightedIndex(-1);
-  }, []);
+  }, [onExerciseAdd]);
 
   // Add new exercise (create if doesn't exist)
   const handleAddExercise = useCallback(async () => {
@@ -117,7 +117,7 @@ export default function ExerciseInput({
     } finally {
       setIsCreating(false);
     }
-  }, []);
+  }, [inputValue, onExerciseAdd, selectExercise, suggestions]);
 
   // Handle keyboard navigation
   useEffect(() => {
