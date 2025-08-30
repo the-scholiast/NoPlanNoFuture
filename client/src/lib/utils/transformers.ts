@@ -3,6 +3,15 @@ import { TaskData, CreateTaskData } from '@/types/todoTypes'
 import { getTodayString } from './dateUtils'
 import { TaskFormData } from '@/components/todo/shared/components/TaskFormComponents'
 
+interface RawWorkoutTemplateResponse {
+  id: string;
+  name: string;
+  exercises: (string | { name: string; [key: string]: string })[];
+  is_public?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // Add this new interface to your existing todoTypes.ts file
 export interface RawTaskApiResponse {
   id: string;
@@ -29,12 +38,12 @@ export interface RawTaskApiResponse {
 }
 
 // Transform raw API response to WorkoutTemplate. Handles potential data inconsistencies from backend
-export function transformWorkoutTemplate(data: WorkoutTemplate): WorkoutTemplate {
+export function transformWorkoutTemplate(data: RawWorkoutTemplateResponse): WorkoutTemplate {
   return {
     id: data.id,
     name: data.name || '',
     exercises: Array.isArray(data.exercises)
-      ? data.exercises.map((ex: any) => typeof ex === 'string' ? ex : ex.name || '')
+      ? data.exercises.map((ex) => typeof ex === 'string' ? ex : ex.name || '')
       : [],
     is_public: Boolean(data.is_public),
     created_at: data.created_at,
