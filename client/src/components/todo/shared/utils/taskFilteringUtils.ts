@@ -1,7 +1,7 @@
 import { parseToLocalDate } from "@/lib/utils/dateUtils";
 import { shouldTaskAppearOnDate } from "./recurringTasksUtils"; 
 import { TaskData } from "@/types/todoTypes";
-import { CompletedTaskWithCompletion, DateRangeFilter, TodoCompletion } from "../types";
+import { DateRangeFilter } from "../types";
 
 export const filterDailyTasksByDate = (
   tasks: TaskData[], 
