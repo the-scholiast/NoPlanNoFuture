@@ -32,20 +32,13 @@ export const shouldTaskAppearOnDate = (task, date) => {
 
 // Get tasks for a specific date (including recurring tasks)
 export const getTodosForDate = async (userId, date) => {
-  const dayName = getDayName(date);
-
-  const orCondition =
-    `and(is_recurring.eq.false,start_date.eq.${date}),` +
-    `and(is_recurring.eq.true,recurring_days.cs.{${dayName}},` +
-    `or(start_date.is.null,start_date.lte.${date}),` +
-    `or(end_date.is.null,end_date.gte.${date}))`;
 
   const { data, error } = await supabase
     .from('todos')
     .select('*')
     .eq('user_id', userId)
     .is('deleted_at', null)
-    .or(orCondition)
+    .eq('start_date', date)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
