@@ -19,7 +19,7 @@ router.get('/upcoming-week', authenticateUser, async (req, res, next) => {
 // Get today's tasks (including recurring instances)
 router.get('/today', authenticateUser, async (req, res, next) => {
   try {
-    const today = req.query.date;
+    const today = req.query.date || getTodayString();
     const tasks = await getTodosForDate(req.user.id, today);
     res.json(tasks);
   } catch (error) {
