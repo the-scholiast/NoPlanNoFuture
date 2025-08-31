@@ -7,458 +7,440 @@ interface RadialClockProps {
   outerRadius: number;
   innerRadius: number;
   center: number;
-  tasks: Task[];
+  tasks: Task[];        // kept for compatibility
   use24Hour: boolean;
 }
 
-const RadialClock: React.FC<RadialClockProps> = ({ 
-  isDarkMode, 
-  outerRadius, 
-  innerRadius, 
-  center, 
+const RadialClock: React.FC<RadialClockProps> = ({
+  isDarkMode,
+  outerRadius,
+  innerRadius,
+  center,
   tasks,
-  use24Hour
+  use24Hour,
 }) => {
-  // 24-hour mode: Three rings design - REORDERED
-  const render24HourInnermostRing = () => {
-    const marks = [];
-    const offset = -Math.PI / 2; // Start from top (00:00)
-    const innermostRadius = outerRadius - 40; // 40px from outer edge
+  // ----- visual constants -----
+  const RIM_SW = 2;                   // clock rim stroke width
+  const HOUR_LEN_OUTER = 24;          // outer ring hour tick length
+  const MIN5_LEN_OUTER = 14;          // outer ring 5-min tick length
+  const HOUR_LEN_MID = 20;
+  const MIN10_LEN_MID = 12;
+  const HOUR_LEN_INNER = 18;
 
-    for (let hour = 0; hour < 24; hour++) {
-      const angle = (hour / 12) * Math.PI + offset;
-      
-      const markLength = 20; // Unified tick length for all rings
-      const strokeWidth = 1.5; // Thinner marks
+  const HOUR_SW_OUTER = 2.0;
+  const MIN5_SW_OUTER = 1.4;
+  const HOUR_SW_MID = 1.9;
+  const MIN10_SW_MID = 1.3;
+  const HOUR_SW_INNER = 1.8;
 
-      const outerX = center + innermostRadius * Math.cos(angle);
-      const outerY = center + innermostRadius * Math.sin(angle);
-      const innerX = center + (innermostRadius - markLength) * Math.cos(angle);
-      const innerY = center + (innermostRadius - markLength) * Math.sin(angle);
+  const offset = -Math.PI / 2;        // start at 12 o'clock (top)
+
+  // Rim (reference circle). Ticks will "kiss" this line exactly.
+  const Outline = () => (
+    <circle
+      cx={center}
+      cy={center}
+      r={outerRadius - RIM_SW / 2}
+      fill="none"
+      stroke={isDarkMode ? '#e2e8f0' : '#2d3748'}
+      strokeWidth={RIM_SW}
+      opacity={0.28}
+      vectorEffect="non-scaling-stroke"
+      strokeLinecap="round"
+    />
+  );
+
+  // ===== 24H mode =====
+  const render24HourInnermostRing = (): React.ReactElement[] => {
+    const marks: React.ReactElement[] = [];
+    const r = outerRadius - 40;
+
+    for (let h = 0; h < 24; h++) {
+      const a = (h / 12) * Math.PI + offset;
+
+      const x1 = center + r * Math.cos(a);
+      const y1 = center + r * Math.sin(a);
+      const x2 = center + (r - HOUR_LEN_INNER) * Math.cos(a);
+      const y2 = center + (r - HOUR_LEN_INNER) * Math.sin(a);
 
       marks.push(
         <line
-          key={`24h-innermost-hour-${hour}`}
-          x1={outerX}
-          y1={outerY}
-          x2={innerX}
-          y2={innerY}
-          stroke={isDarkMode ? "#e2e8f0" : "#2d3748"}
-          strokeWidth={strokeWidth}
-          opacity="0.9"
-        />
+          key={`24-in-${h}`}
+          x1={x1}
+          y1={y1}
+          x2={x2}
+          y2={y2}
+          stroke={isDarkMode ? '#e2e8f0' : '#2d3748'}
+          strokeWidth={HOUR_SW_INNER}
+          opacity={0.9}
+          vectorEffect="non-scaling-stroke"
+          strokeLinecap="round"
+        />,
       );
     }
-
     return marks;
   };
 
-  const render24HourMiddleRing = () => {
-    const marks = [];
-    const offset = -Math.PI / 2;
-    const middleRadius = outerRadius - 20; // 20px from outer edge
+  const render24HourMiddleRing = (): React.ReactElement[] => {
+    const marks: React.ReactElement[] = [];
+    const r = outerRadius - 20;
 
-    for (let hour = 0; hour < 24; hour++) {
-      // Add hour marks (整點刻度) to middle ring
-      const hourAngle = (hour / 12) * Math.PI + offset;
-      const hourMarkLength = 20; // Unified tick length for all rings
-      const hourStrokeWidth = 1.5; // Thinner marks
+    for (let h = 0; h < 24; h++) {
+      const ha = (h / 12) * Math.PI + offset;
 
-      const hourOuterX = center + middleRadius * Math.cos(hourAngle);
-      const hourOuterY = center + middleRadius * Math.sin(hourAngle);
-      const hourInnerX = center + (middleRadius - hourMarkLength) * Math.cos(hourAngle);
-      const hourInnerY = center + (middleRadius - hourMarkLength) * Math.sin(hourAngle);
-
-      marks.push(
-        <line
-          key={`24h-middle-hour-${hour}`}
-          x1={hourOuterX}
-          y1={hourOuterY}
-          x2={hourInnerX}
-          y2={hourInnerY}
-          stroke={isDarkMode ? "#e2e8f0" : "#2d3748"}
-          strokeWidth={hourStrokeWidth}
-          opacity="0.8"
-        />
-      );
-
-      // Add 10-minute marks
-      for (let minute = 1; minute < 6; minute++) {
-        const angle = ((hour + minute / 6) / 12) * Math.PI + offset;
-        
-        const markLength = 20; // Unified tick length for all rings
-        const strokeWidth = 1.2; // Thinner marks
-
-        const outerX = center + middleRadius * Math.cos(angle);
-        const outerY = center + middleRadius * Math.sin(angle);
-        const innerX = center + (middleRadius - markLength) * Math.cos(angle);
-        const innerY = center + (middleRadius - markLength) * Math.sin(angle);
+      // hour tick
+      {
+        const x1 = center + r * Math.cos(ha);
+        const y1 = center + r * Math.sin(ha);
+        const x2 = center + (r - HOUR_LEN_MID) * Math.cos(ha);
+        const y2 = center + (r - HOUR_LEN_MID) * Math.sin(ha);
 
         marks.push(
           <line
-            key={`24h-middle-10min-${hour}-${minute}`}
-            x1={outerX}
-            y1={outerY}
-            x2={innerX}
-            y2={innerY}
-            stroke={isDarkMode ? "#a0aec0" : "#718096"}
-            strokeWidth={strokeWidth}
-            opacity="0.6"
-          />
+            key={`24-mid-h-${h}`}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke={isDarkMode ? '#e2e8f0' : '#2d3748'}
+            strokeWidth={HOUR_SW_MID}
+            opacity={0.85}
+            vectorEffect="non-scaling-stroke"
+            strokeLinecap="round"
+          />,
         );
       }
-    }
 
-    return marks;
-  };
+      // 10-minute ticks (6 between each hour)
+      for (let m = 1; m < 6; m++) {
+        const a = ((h + m / 6) / 12) * Math.PI + offset;
 
-  const render24HourOutermostRing = () => {
-    const marks = [];
-    const offset = -Math.PI / 2;
-    const outermostRadius = outerRadius; // Right at the clock edge
-
-    for (let hour = 0; hour < 24; hour++) {
-      // Add hour marks (整點刻度) to outermost ring
-      const hourAngle = (hour / 12) * Math.PI + offset;
-      const hourMarkLength = 20; // Unified tick length for all rings
-      const hourStrokeWidth = 1.5; // Thinner marks
-
-      const hourOuterX = center + outermostRadius * Math.cos(hourAngle);
-      const hourOuterY = center + outermostRadius * Math.sin(hourAngle);
-      const hourInnerX = center + (outermostRadius - hourMarkLength) * Math.cos(hourAngle);
-      const hourInnerY = center + (outermostRadius - hourMarkLength) * Math.sin(hourAngle);
-
-      marks.push(
-        <line
-          key={`24h-outermost-hour-${hour}`}
-          x1={hourOuterX}
-          y1={hourOuterY}
-          x2={hourInnerX}
-          y2={hourInnerY}
-          stroke={isDarkMode ? "#e2e8f0" : "#2d3748"}
-          strokeWidth={hourStrokeWidth}
-          opacity="0.8"
-        />
-      );
-
-      // Add 5-minute marks
-      for (let minute = 1; minute < 12; minute++) {
-        const angle = ((hour + minute / 12) / 12) * Math.PI + offset;
-        
-        const markLength = 20; // Unified tick length for all rings
-        const strokeWidth = 1; // Thinner marks
-
-        const outerX = center + outermostRadius * Math.cos(angle);
-        const outerY = center + outermostRadius * Math.sin(angle);
-        const innerX = center + (outermostRadius - markLength) * Math.cos(angle);
-        const innerY = center + (outermostRadius - markLength) * Math.sin(angle);
+        const x1 = center + r * Math.cos(a);
+        const y1 = center + r * Math.sin(a);
+        const x2 = center + (r - MIN10_LEN_MID) * Math.cos(a);
+        const y2 = center + (r - MIN10_LEN_MID) * Math.sin(a);
 
         marks.push(
           <line
-            key={`24h-outermost-5min-${hour}-${minute}`}
-            x1={outerX}
-            y1={outerY}
-            x2={innerX}
-            y2={innerY}
-            stroke={isDarkMode ? "#cbd5e0" : "#a0aec0"}
-            strokeWidth={strokeWidth}
-            opacity="0.4"
-          />
+            key={`24-mid-10-${h}-${m}`}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke={isDarkMode ? '#b8c2cc' : '#4a5568'}
+            strokeWidth={MIN10_SW_MID}
+            opacity={0.7}
+            vectorEffect="non-scaling-stroke"
+            strokeLinecap="round"
+          />,
         );
       }
     }
-
     return marks;
   };
 
-  // 24-hour numbers around the circle - MOVED OUTSIDE
-  const render24HourNumbers = () => {
-    const numbers = [];
-    const offset = -Math.PI / 2;
-    const numberRadius = outerRadius + 45; // Moved further outside
+  const render24HourOutermostRing = (): React.ReactElement[] => {
+    const marks: React.ReactElement[] = [];
+    // 刻度起点完全贴住时钟边缘 (从outerRadius开始)
+    const r = outerRadius;
 
-    for (let hour = 0; hour < 24; hour++) {
-      const angle = (hour / 12) * Math.PI + offset;
-      const x = center + numberRadius * Math.cos(angle);
-      const y = center + numberRadius * Math.sin(angle);
+    for (let h = 0; h < 24; h++) {
+      const ha = (h / 12) * Math.PI + offset;
 
-      const displayHour = hour.toString().padStart(2, '0');
+      // hour tick - 从边缘开始向内
+      {
+        const x1 = center + r * Math.cos(ha);
+        const y1 = center + r * Math.sin(ha);
+        const x2 = center + (r - HOUR_LEN_OUTER) * Math.cos(ha);
+        const y2 = center + (r - HOUR_LEN_OUTER) * Math.sin(ha);
 
-      numbers.push(
+        marks.push(
+          <line
+            key={`24-out-h-${h}`}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke={isDarkMode ? '#e2e8f0' : '#2d3748'}
+            strokeWidth={HOUR_SW_OUTER}
+            opacity={0.95}
+            vectorEffect="non-scaling-stroke"
+            strokeLinecap="round"
+          />,
+        );
+      }
+
+      // 5-minute ticks (12 between each hour) - 从边缘开始向内
+      for (let m = 1; m < 12; m++) {
+        const a = ((h + m / 12) / 12) * Math.PI + offset;
+
+        const x1 = center + r * Math.cos(a);
+        const y1 = center + r * Math.sin(a);
+        const x2 = center + (r - MIN5_LEN_OUTER) * Math.cos(a);
+        const y2 = center + (r - MIN5_LEN_OUTER) * Math.sin(a);
+
+        marks.push(
+          <line
+            key={`24-out-5-${h}-${m}`}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke={isDarkMode ? '#cbd5e0' : '#718096'}
+            strokeWidth={MIN5_SW_OUTER}
+            opacity={0.62}
+            vectorEffect="non-scaling-stroke"
+            strokeLinecap="round"
+          />,
+        );
+      }
+    }
+    return marks;
+  };
+
+  // 数字1-24放在外圈 (在时钟边缘外侧)
+  const render24HourNumbers = (): React.ReactElement[] => {
+    const nodes: React.ReactElement[] = [];
+    const r = outerRadius + 16; // 数字位置在边缘外侧
+
+    for (let h = 0; h < 24; h++) {
+      const a = (h / 12) * Math.PI + offset;
+      const x = center + r * Math.cos(a);
+      const y = center + r * Math.sin(a);
+
+      // 显示1-24而不是0-23
+      const displayHour = h === 0 ? 24 : h;
+
+      nodes.push(
         <text
-          key={`24h-number-${hour}`}
+          key={`24-num-${h}`}
           x={x}
           y={y}
           textAnchor="middle"
-          dominantBaseline="middle"
-          fontSize="14"
+          dominantBaseline="central"
+          fontSize={12}
           fill={isDarkMode ? '#e2e8f0' : '#2d3748'}
-          fontWeight="600"
-          opacity="0.9"
+          fontWeight={600}
+          opacity={0.9}
+          style={{ userSelect: 'none' }}
         >
           {displayHour}
-        </text>
+        </text>,
       );
     }
-
-    return numbers;
+    return nodes;
   };
 
-  // 12-hour mode: Double layer design
-  const render12HourOuterMarks = () => {
-    const marks = [];
-    const offset = -Math.PI / 2; // Start from top (12 AM)
+  // ===== 12H mode (三环布局，与24H相同) =====
+  const render12HourInnermostRing = (): React.ReactElement[] => {
+    const marks: React.ReactElement[] = [];
+    const r = outerRadius - 40;
 
-    for (let hour = 0; hour < 12; hour++) {
-      const angle = (hour / 6) * Math.PI + offset;
-      const isMainHour = hour % 3 === 0; // Every 3 hours a main mark
+    for (let h = 0; h < 12; h++) {
+      const a = (h / 6) * Math.PI + offset;
 
-      const markLength = 20; // Unified tick length for all rings
-      const strokeWidth = 1.5; // Thinner marks
-
-      const outerX = center + outerRadius * Math.cos(angle);
-      const outerY = center + outerRadius * Math.sin(angle);
-      const innerX = center + (outerRadius - markLength) * Math.cos(angle);
-      const innerY = center + (outerRadius - markLength) * Math.sin(angle);
+      const x1 = center + r * Math.cos(a);
+      const y1 = center + r * Math.sin(a);
+      const x2 = center + (r - HOUR_LEN_INNER) * Math.cos(a);
+      const y2 = center + (r - HOUR_LEN_INNER) * Math.sin(a);
 
       marks.push(
         <line
-          key={`12h-outer-hour-mark-${hour}`}
-          x1={outerX}
-          y1={outerY}
-          x2={innerX}
-          y2={innerY}
-          stroke={isDarkMode ? "#e2e8f0" : "#2d3748"}
-          strokeWidth={strokeWidth}
-          opacity="0.8"
-        />
+          key={`12-in-${h}`}
+          x1={x1}
+          y1={y1}
+          x2={x2}
+          y2={y2}
+          stroke={isDarkMode ? '#e2e8f0' : '#2d3748'}
+          strokeWidth={HOUR_SW_INNER}
+          opacity={0.9}
+          vectorEffect="non-scaling-stroke"
+          strokeLinecap="round"
+        />,
       );
     }
-
     return marks;
   };
 
-  const render12HourOuterMinuteMarks = () => {
-    const marks = [];
-    const offset = -Math.PI / 2;
+  const render12HourMiddleRing = (): React.ReactElement[] => {
+    const marks: React.ReactElement[] = [];
+    const r = outerRadius - 20;
 
-    for (let hour = 0; hour < 12; hour++) {
-      for (let minute = 1; minute < 2; minute++) { // Only 30-minute mark
-        const angle = ((hour + minute / 2) / 6) * Math.PI + offset;
-        
-        const markLength = 20; // Unified tick length for all rings
-        const strokeWidth = 1.2; // Thinner marks
+    for (let h = 0; h < 12; h++) {
+      const ha = (h / 6) * Math.PI + offset;
 
-        const outerX = center + outerRadius * Math.cos(angle);
-        const outerY = center + outerRadius * Math.sin(angle);
-        const innerX = center + (outerRadius - markLength) * Math.cos(angle);
-        const innerY = center + (outerRadius - markLength) * Math.sin(angle);
+      // hour tick
+      {
+        const x1 = center + r * Math.cos(ha);
+        const y1 = center + r * Math.sin(ha);
+        const x2 = center + (r - HOUR_LEN_MID) * Math.cos(ha);
+        const y2 = center + (r - HOUR_LEN_MID) * Math.sin(ha);
 
         marks.push(
           <line
-            key={`12h-outer-minute-mark-${hour}-${minute}`}
-            x1={outerX}
-            y1={outerY}
-            x2={innerX}
-            y2={innerY}
-            stroke={isDarkMode ? "#a0aec0" : "#718096"}
-            strokeWidth={strokeWidth}
-            opacity="0.6"
-          />
+            key={`12-mid-h-${h}`}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke={isDarkMode ? '#e2e8f0' : '#2d3748'}
+            strokeWidth={HOUR_SW_MID}
+            opacity={0.85}
+            vectorEffect="non-scaling-stroke"
+            strokeLinecap="round"
+          />,
+        );
+      }
+
+      // 10-minute ticks (6 between each hour)
+      for (let m = 1; m < 6; m++) {
+        const a = ((h + m / 6) / 6) * Math.PI + offset;
+
+        const x1 = center + r * Math.cos(a);
+        const y1 = center + r * Math.sin(a);
+        const x2 = center + (r - MIN10_LEN_MID) * Math.cos(a);
+        const y2 = center + (r - MIN10_LEN_MID) * Math.sin(a);
+
+        marks.push(
+          <line
+            key={`12-mid-10-${h}-${m}`}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke={isDarkMode ? '#b8c2cc' : '#4a5568'}
+            strokeWidth={MIN10_SW_MID}
+            opacity={0.7}
+            vectorEffect="non-scaling-stroke"
+            strokeLinecap="round"
+          />,
         );
       }
     }
-
     return marks;
   };
 
-  const render12HourOuterNumbers = () => {
-    const numbers = [];
-    const offset = -Math.PI / 2;
-    const numberRadius = outerRadius + 50; // Moved further outside
+  const render12HourOutermostRing = (): React.ReactElement[] => {
+    const marks: React.ReactElement[] = [];
+    // 刻度完全贴住时钟边缘
+    const r = outerRadius;
 
-    for (let hour = 0; hour < 12; hour++) {
-      const angle = (hour / 6) * Math.PI + offset;
-      const x = center + numberRadius * Math.cos(angle);
-      const y = center + numberRadius * Math.sin(angle);
+    for (let h = 0; h < 12; h++) {
+      const ha = (h / 6) * Math.PI + offset;
 
-      const displayHour = hour === 0 ? 12 : hour;
-      const ampm = hour === 0 ? 'AM' : hour < 6 ? 'AM' : 'PM';
+      // hour tick - 从边缘开始向内
+      {
+        const x1 = center + r * Math.cos(ha);
+        const y1 = center + r * Math.sin(ha);
+        const x2 = center + (r - HOUR_LEN_OUTER) * Math.cos(ha);
+        const y2 = center + (r - HOUR_LEN_OUTER) * Math.sin(ha);
 
-      numbers.push(
-        <g key={`12h-outer-hour-${hour}`}>
-          <text
-            x={x}
-            y={y - 8}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fontSize="16"
-            fill={isDarkMode ? '#e2e8f0' : '#2d3748'}
-            fontWeight="700"
-            opacity="0.9"
-          >
-            {displayHour}
-          </text>
-          <text
-            x={x}
-            y={y + 8}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fontSize="10"
-            fill={isDarkMode ? '#a0aec0' : '#718096'}
-            fontWeight="500"
-            opacity="0.8"
-          >
-            {ampm}
-          </text>
-        </g>
-      );
+        marks.push(
+          <line
+            key={`12-out-h-${h}`}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke={isDarkMode ? '#e2e8f0' : '#2d3748'}
+            strokeWidth={HOUR_SW_OUTER}
+            opacity={0.95}
+            vectorEffect="non-scaling-stroke"
+            strokeLinecap="round"
+          />,
+        );
+      }
+
+      // 5-minute ticks (12 between each hour)
+      for (let m = 1; m < 12; m++) {
+        const a = ((h + m / 12) / 6) * Math.PI + offset;
+
+        const x1 = center + r * Math.cos(a);
+        const y1 = center + r * Math.sin(a);
+        const x2 = center + (r - MIN5_LEN_OUTER) * Math.cos(a);
+        const y2 = center + (r - MIN5_LEN_OUTER) * Math.sin(a);
+
+        marks.push(
+          <line
+            key={`12-out-5-${h}-${m}`}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke={isDarkMode ? '#cbd5e0' : '#718096'}
+            strokeWidth={MIN5_SW_OUTER}
+            opacity={0.62}
+            vectorEffect="non-scaling-stroke"
+            strokeLinecap="round"
+          />,
+        );
+      }
     }
-
-    return numbers;
-  };
-
-  const render12HourInnerMarks = () => {
-    const marks = [];
-    const offset = -Math.PI / 2;
-
-    for (let hour = 0; hour < 12; hour++) {
-      const angle = (hour / 6) * Math.PI + offset;
-      
-      const markLength = 20; // Unified tick length for all rings
-      const strokeWidth = 1.5; // Thinner marks
-
-      const outerX = center + innerRadius * Math.cos(angle);
-      const outerY = center + innerRadius * Math.sin(angle);
-      const innerX = center + (innerRadius - markLength) * Math.cos(angle);
-      const innerY = center + (innerRadius - markLength) * Math.sin(angle);
-
-      marks.push(
-        <line
-          key={`12h-inner-hour-mark-${hour}`}
-          x1={outerX}
-          y1={outerY}
-          x2={innerX}
-          y2={innerY}
-          stroke={isDarkMode ? "#a0aec0" : "#718096"}
-          strokeWidth={strokeWidth}
-          opacity="0.7"
-        />
-      );
-    }
-
     return marks;
   };
 
-  const render12HourInnerNumbers = () => {
-    const numbers = [];
-    const offset = -Math.PI / 2;
-    const numberRadius = innerRadius - 35;
+  // 数字1-12显示在外圈
+  const render12HourNumbers = (): React.ReactElement[] => {
+    const nodes: React.ReactElement[] = [];
+    const r = outerRadius + 16;
 
-    for (let hour = 0; hour < 12; hour++) {
-      const angle = (hour / 6) * Math.PI + offset;
-      const x = center + numberRadius * Math.cos(angle);
-      const y = center + numberRadius * Math.sin(angle);
+    for (let h = 0; h < 12; h++) {
+      const a = (h / 6) * Math.PI + offset;
+      const x = center + r * Math.cos(a);
+      const y = center + r * Math.sin(a);
 
-      const displayHour = hour === 0 ? 12 : hour;
+      // 显示1-12
+      const displayHour = h === 0 ? 12 : h;
 
-      numbers.push(
+      nodes.push(
         <text
-          key={`12h-inner-hour-${hour}`}
+          key={`12-num-${h}`}
           x={x}
           y={y}
           textAnchor="middle"
-          dominantBaseline="middle"
-          fontSize="12"
+          dominantBaseline="central"
+          fontSize={12}
           fill={isDarkMode ? '#e2e8f0' : '#2d3748'}
-          fontWeight="600"
-          opacity="0.8"
+          fontWeight={600}
+          opacity={0.9}
+          style={{ userSelect: 'none' }}
         >
           {displayHour}
-        </text>
+        </text>,
       );
     }
-
-    return numbers;
+    return nodes;
   };
 
   return (
     <>
+      {/* anchor rim - 时钟边框 */}
+      <Outline />
+
       {use24Hour ? (
-        // 24-hour mode - three rings REORDERED
         <>
-          {/* Innermost ring - Hour marks (was outer ring) */}
-          <circle
-            cx={center}
-            cy={center}
-            r={outerRadius - 40}
-            fill="transparent"
-            stroke="none"
-          />
-          
-          {/* Middle ring - 10-minute marks */}
-          <circle
-            cx={center}
-            cy={center}
-            r={outerRadius - 20}
-            fill="transparent"
-            stroke="none"
-          />
-          
-          {/* Outermost ring - 5-minute marks (was inner ring) */}
-          <circle
-            cx={center}
-            cy={center}
-            r={outerRadius}
-            fill="transparent"
-            stroke="none"
-          />
-          
-          {/* Time marks and numbers - REORDERED */}
+          {/* guide circles to reserve layout (no stroke) */}
+          <circle cx={center} cy={center} r={outerRadius - 40} fill="transparent" />
+          <circle cx={center} cy={center} r={outerRadius - 20} fill="transparent" />
+          <circle cx={center} cy={center} r={outerRadius} fill="transparent" />
+
           {render24HourInnermostRing()}
           {render24HourMiddleRing()}
           {render24HourOutermostRing()}
           {render24HourNumbers()}
         </>
       ) : (
-        // 12-hour mode - double layer
         <>
-          {/* Outer ring - Donut shape for 12am-12pm - no fill, no border */}
-          <circle
-            cx={center}
-            cy={center}
-            r={outerRadius}
-            fill="transparent"
-            stroke="none"
-          />
-          
-          {/* Inner ring - Pie chart style - no fill, no border */}
-          <circle
-            cx={center}
-            cy={center}
-            r={innerRadius}
-            fill="transparent"
-            stroke="none"
-          />
-          
-          {/* 12-hour time marks and numbers */}
-          {render12HourOuterMinuteMarks()}
-          {render12HourOuterMarks()}
-          {render12HourOuterNumbers()}
-          {render12HourInnerMarks()}
-          {render12HourInnerNumbers()}
+          {/* guide circles to reserve layout (no stroke) */}
+          <circle cx={center} cy={center} r={outerRadius - 40} fill="transparent" />
+          <circle cx={center} cy={center} r={outerRadius - 20} fill="transparent" />
+          <circle cx={center} cy={center} r={outerRadius} fill="transparent" />
+
+          {render12HourInnermostRing()}
+          {render12HourMiddleRing()}
+          {render12HourOutermostRing()}
+          {render12HourNumbers()}
         </>
-      )}
-      
-      {/* Center point - REMOVED for 24-hour mode */}
-      {!use24Hour && (
-        <circle
-          cx={center}
-          cy={center}
-          r="8"
-          fill={isDarkMode ? '#e2e8f0' : '#2d3748'}
-          stroke="none"
-        />
       )}
     </>
   );

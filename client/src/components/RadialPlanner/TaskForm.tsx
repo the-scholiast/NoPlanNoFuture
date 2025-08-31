@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { Task } from './types';
 import { validateTimeString, parseTimeString, formatTimeInput } from './utils';
 
@@ -7,80 +7,120 @@ interface TaskFormProps {
   isVisible: boolean;
   onClose: () => void;
   onAddTask: (task: Task) => void;
+  editingTask?: Task | null;
+  onSaveTask?: (task: Task) => void;
 }
 
-const TaskForm: React.FC<TaskFormProps> = ({ isVisible, onClose, onAddTask }) => {
-  const [newTask, setNewTask] = useState<Task>({ 
-    title: '', 
-    start: 0, 
-    end: 1, 
-    remarks: '', 
-    hourGroup: 'AM', 
-    source: 'planner' 
-  });
-  const [startTime, setStartTime] = useState<string>("12:00");
-  const [endTime, setEndTime] = useState<string>("1:00");
-  const [timeError, setTimeError] = useState<string>("");
+const defaultTask: Task = {
+  title: '',
+  start: 0,
+  end: 1,
+  remarks: '',
+  hourGroup: 'AM',
+  source: 'planner',
+};
+
+// color palette + hour→24h helper
+const COLORS = ['#60a5fa','#34d399','#fbbf24','#fb923c','#f87171','#a78bfa','#ec4899'];
+const to24 = (h: number, g: 'AM' | 'PM') =>
+  g === 'PM' && h !== 12 ? h + 12 : g === 'AM' && h === 12 ? 0 : h;
+
+const TaskForm: React.FC<TaskFormProps> = ({
+  isVisible,
+  onClose,
+  onAddTask,
+  editingTask,
+  onSaveTask,
+}) => {
+  const [newTask, setNewTask] = useState<Task>(editingTask ?? defaultTask);
+  const [startTime, setStartTime] = useState<string>(
+    editingTask ? `${editingTask.start}:00` : '12:00'
+  );
+  const [endTime, setEndTime] = useState<string>(
+    editingTask ? `${editingTask.end}:00` : '1:00'
+  );
+  const [timeError, setTimeError] = useState<string>('');
+
+  useEffect(() => {
+    if (editingTask) {
+      setNewTask(editingTask);
+      setStartTime(`${editingTask.start}:00`);
+      setEndTime(`${editingTask.end}:00`);
+      setTimeError('');
+    } else {
+      setNewTask(defaultTask);
+      setStartTime('12:00');
+      setEndTime('1:00');
+      setTimeError('');
+    }
+  }, [editingTask]);
+
+  const handleTimeInput = (value: string, setter: (v: string) => void) => {
+    setter(formatTimeInput(value));
+    setTimeError('');
+  };
 
   const validateTimes = (): boolean => {
-    setTimeError("");
-
+    setTimeError('');
     if (!validateTimeString(startTime)) {
-      setTimeError("Start time must be 1-12 (e.g., 9 or 9:30)");
+      setTimeError('Start time must be 1-12 (e.g., 9 or 9:30)');
       return false;
     }
-
     if (!validateTimeString(endTime)) {
-      setTimeError("End time must be 1-12 (e.g., 10 or 10:30)");
+      setTimeError('End time must be 1-12 (e.g., 10 or 10:30)');
       return false;
     }
-
-    const start = parseTimeString(startTime);
-    const end = parseTimeString(endTime);
-
-    if (newTask.hourGroup === 'PM' && end <= start) {
-      setTimeError("End time must be after start time for PM tasks");
+    const s = parseTimeString(startTime);
+    const e = parseTimeString(endTime);
+    if (newTask.hourGroup === 'PM' && e <= s) {
+      setTimeError('End time must be after start time for PM tasks');
       return false;
     }
-
     return true;
   };
 
-  const handleTimeInput = (value: string, setter: (val: string) => void) => {
-    const formatted = formatTimeInput(value);
-    setter(formatted);
-    setTimeError("");
-  };
-
   const handleSubmit = () => {
-    if (!validateTimes() || !newTask.title.trim()) {
-      return;
-    }
+    if (!validateTimes() || !newTask.title.trim()) return;
 
-    const taskToAdd: Task = {
+    const s = parseTimeString(startTime);
+    const e = parseTimeString(endTime);
+
+    const taskBase: Task = {
       ...newTask,
-      start: parseTimeString(startTime),
-      end: parseTimeString(endTime),
+      start: s,
+      end: e,
       source: 'planner',
-      id: `planner_${Date.now()}`,
+      id: editingTask?.id ?? `planner_${Date.now()}`,
     };
 
-    onAddTask(taskToAdd);
-    
-    // Reset form
-    setNewTask({ title: '', start: 0, end: 1, remarks: '', hourGroup: 'AM', source: 'planner' });
-    setStartTime("12:00");
-    setEndTime("1:00");
-    setTimeError("");
+    if (editingTask && onSaveTask) {
+      // Editing: preserve existing color if any
+      onSaveTask(taskBase);
+    } else {
+      // Assign a stable color bucket by start time (24h)
+      const s24 = to24(taskBase.start, taskBase.hourGroup);
+      let idx = Math.floor(s24 / 3.5);
+      if (idx >= COLORS.length) idx = COLORS.length - 1;
+      (taskBase as any).color = COLORS[idx];
+      onAddTask(taskBase);
+    }
+
+    // reset
+    setNewTask(defaultTask);
+    setStartTime('12:00');
+    setEndTime('1:00');
+    setTimeError('');
     onClose();
   };
 
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
       <div className="bg-white text-black p-6 rounded-lg shadow-lg w-96">
-        <h3 className="text-lg font-bold mb-4">Add New Task</h3>
+        <h3 className="text-lg font-bold mb-4">
+          {editingTask ? 'Edit Task' : 'Add New Task'}
+        </h3>
 
         <label className="block mb-2 font-semibold">Title</label>
         <input
@@ -95,7 +135,9 @@ const TaskForm: React.FC<TaskFormProps> = ({ isVisible, onClose, onAddTask }) =>
         <select
           className="w-full border px-3 py-2 mb-3 rounded"
           value={newTask.hourGroup}
-          onChange={(e) => setNewTask({ ...newTask, hourGroup: e.target.value as 'AM' | 'PM' })}
+          onChange={(e) =>
+            setNewTask({ ...newTask, hourGroup: e.target.value as 'AM' | 'PM' })
+          }
         >
           <option value="AM">AM (Morning)</option>
           <option value="PM">PM (Afternoon/Evening)</option>
@@ -147,12 +189,12 @@ const TaskForm: React.FC<TaskFormProps> = ({ isVisible, onClose, onAddTask }) =>
             onClick={handleSubmit}
             disabled={!newTask.title.trim()}
           >
-            Add Task
+            {editingTask ? 'Save' : 'Add Task'}
           </button>
           <button
             className="bg-red-500 px-4 py-2 rounded hover:bg-red-600 text-white font-semibold flex-1 transition-colors"
             onClick={() => {
-              setTimeError("");
+              setTimeError('');
               onClose();
             }}
           >
