@@ -1,56 +1,94 @@
 'use client';
 import React from 'react';
 import type { Task } from './types';
-import { formatTime } from './utils';
+
+const fmt12 = (h: number) => {
+  const whole = Math.floor(h);
+  const min = Math.round((h - whole) * 60);
+  const mm = min.toString().padStart(2, '0');
+  return `${whole}:${mm}`;
+};
 
 interface TaskListProps {
   tasks: Task[];
-  isDarkMode: boolean;
-  onDeleteTask: (id?: string) => void;
+  isDarkMode?: boolean;
+  onEdit?: (task: Task) => void;
+  onDelete?: (task: Task) => void;
+  onDeleteTask?: (id?: string) => void; // 可用現有刪除邏輯
 }
 
-const TaskList: React.FC<TaskListProps> = ({ tasks, isDarkMode, onDeleteTask }) => {
-  if (tasks.length === 0) return null;
-
+const TaskList: React.FC<TaskListProps> = ({
+  tasks,
+  isDarkMode,
+  onEdit,
+  onDelete,
+  onDeleteTask,
+}) => {
   return (
-    <div className={`p-4 rounded-lg shadow-lg min-w-[500px] ${isDarkMode ? 'bg-gray-800' : 'bg-white border border-gray-300'}`}>
-      <h3 className="text-lg font-bold mb-3">Tasks</h3>
-      <div className="space-y-1">
-        {tasks.map((task, index) => (
-          <div key={task.id || index} className={`p-3 rounded flex items-center transition-colors ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'}`}>
-            <div className="flex-shrink-0 w-32 text-sm font-medium">
-              {formatTime(task.start, task.hourGroup)}
-            </div>
-            <div className="flex-shrink-0 w-32 text-sm font-medium">
-              {task.end < task.start && task.hourGroup === 'AM' ?
-                formatTime(task.end, 'PM') :
-                formatTime(task.end, task.hourGroup)
-              }
-            </div>
-            <div className="font-medium flex-1 min-w-0 mx-3" title={task.title}>
-              {task.title}
-            </div>
-            <div className={`text-xs px-2 py-1 rounded-full mr-2 ${task.source === 'timetable' ? (isDarkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-700') : (isDarkMode ? 'bg-green-900 text-green-200' : 'bg-green-100 text-green-700')}`}>
-              {task.source === 'timetable' ? 'Timetable' : 'Planner'}{task.isRecurring ? ' • Recurring' : ''}
-            </div>
-            {task.remarks && (
-              <div className={`text-sm flex-1 min-w-0 mx-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} title={task.remarks}>
-                {task.remarks}
+    <div className="space-y-2">
+      {tasks.map((task, index) => {
+        const key = task.id || `t_${index}`;
+        const color = (task as any).color ?? '#60a5fa';
+        const timeStr = `${fmt12(task.start)}–${fmt12(task.end)} ${task.hourGroup}`;
+        const isPlanner = task.source === 'planner';
+        const isTimetable = task.source === 'timetable';
+
+        return (
+          <div
+            key={key}
+            className={[
+              'p-3 rounded flex items-center justify-between transition-colors border',
+              isDarkMode
+                ? 'bg-zinc-900/60 hover:bg-zinc-800 border-zinc-700'
+                : 'bg-white/70 hover:bg-white border-black/5',
+            ].join(' ')}
+          >
+            <div className="flex items-center min-w-0">
+              <span
+                className="inline-block w-3.5 h-3.5 rounded-full mr-2 ring-2 ring-black/10 shrink-0"
+                style={{ background: color }}
+                title="Task color"
+              />
+              <div className="min-w-0">
+                <div className={isDarkMode ? 'text-xs text-zinc-400' : 'text-xs text-zinc-600'}>
+                  {timeStr}
+                </div>
+                <div className="font-medium truncate">{task.title}</div>
+                {task.remarks ? (
+                  <div className={isDarkMode ? 'text-xs text-zinc-400 truncate' : 'text-xs text-zinc-500 truncate'}>
+                    {task.remarks}
+                  </div>
+                ) : null}
               </div>
-            )}
-            {task.source === 'planner' ? (
-              <button
-                onClick={() => onDeleteTask(task.id)}
-                className={`ml-3 flex-shrink-0 ${isDarkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-500'}`}
-              >
-                ✕
-              </button>
-            ) : (
-              <span className={`ml-3 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Read-only</span>
-            )}
+            </div>
+
+            {/* 按鈕：planner 顯示；timetable 隱藏 */}
+            <div className="ml-3 shrink-0 flex gap-2">
+              {isPlanner && (
+                <>
+                  <button
+                    className={[
+                      'px-2 py-1 text-xs rounded border hover:bg-zinc-100 dark:hover:bg-zinc-700',
+                      isDarkMode ? 'border-zinc-600' : 'border-zinc-300',
+                    ].join(' ')}
+                    onClick={() => onEdit?.(task)}
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    className="px-2 py-1 text-xs rounded border border-rose-300 dark:border-rose-600 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                    onClick={() => (onDelete ? onDelete(task) : onDeleteTask?.(task.id))}
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
+              {isTimetable ? null : null}
+            </div>
           </div>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 };
