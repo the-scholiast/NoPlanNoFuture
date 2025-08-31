@@ -1,7 +1,7 @@
 // Contains the keys of all query keys for caches
 export const todoKeys = {
   all: ['todos'] as const,
-  today: ['recurring-todos', 'today'] as const,
+  today: ['today'] as const,
   upcoming: ['upcoming'] as const,
   completed: ['completed-tasks'] as const,
   incomplete: ['incomplete-tasks'] as const,
