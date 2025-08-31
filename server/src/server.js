@@ -18,8 +18,7 @@ app.use(cors({
     process.env.CLIENT_URL || 'http://localhost:3000',
     'http://localhost:3000',
     'http://localhost:3001', // Allow requests between frontend and backend
-    `https://no-plan-no-future.vercel.app/`,
-    'https://*.vercel.app'
+    `https://no-plan-no-future.vercel.app`,
   ],
   credentials: true, // Allow cookies and auth headers
   optionsSuccessStatus: 200,
