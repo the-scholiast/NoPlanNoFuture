@@ -62,18 +62,19 @@ const TaskForm: React.FC<TaskFormProps> = ({
 
   const validateTimes = (): boolean => {
     setTimeError('');
-    if (!validateTimeString(startTime)) {
-      setTimeError('Start time must be 1-12 (e.g., 9 or 9:30)');
-      return false;
-    }
-    if (!validateTimeString(endTime)) {
-      setTimeError('End time must be 1-12 (e.g., 10 or 10:30)');
-      return false;
-    }
+    if (!validateTimeString(startTime)) { setTimeError('Start time must be 1-12 (e.g., 9 or 9:30)'); return false; }
+    if (!validateTimeString(endTime))   { setTimeError('End time must be 1-12 (e.g., 10 or 10:30)'); return false; }
+  
     const s = parseTimeString(startTime);
     const e = parseTimeString(endTime);
-    if (newTask.hourGroup === 'PM' && e <= s) {
-      setTimeError('End time must be after start time for PM tasks');
+  
+    // Normalize 12 -> 0 for comparison within the same AM/PM period
+    const norm = (h: number) => (h === 12 ? 0 : h);
+    const sN = norm(s);
+    const eN = norm(e);
+  
+    if (eN <= sN) {
+      setTimeError('End time must be after start time');
       return false;
     }
     return true;

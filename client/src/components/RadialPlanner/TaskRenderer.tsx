@@ -27,13 +27,13 @@ const TaskRenderer: React.FC<TaskRendererProps> = ({
 
   const convertToDisplayHour = (hour: number, hourGroup: 'AM' | 'PM'): number => {
     if (use24Hour) {
+      // 24h stays exact: 12 AM -> 0, 1 PM -> 13, 12 PM -> 12
       if (hourGroup === 'PM' && hour !== 12) return hour + 12;
       if (hourGroup === 'AM' && hour === 12) return 0;
       return hour;
     }
-    // 12h full-circle
-    if (hourGroup === 'AM' && hour === 12) return 0;
-    return hour;
+    // 12h mode: ALWAYS normalize 12 -> 0 so 12:xx sits at top and never overflows.
+    return hour === 12 ? 0 : hour;
   };
 
   const pickTaskColor = (task: Task, startHour: number): string => {
