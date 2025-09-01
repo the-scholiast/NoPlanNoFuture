@@ -77,7 +77,8 @@ export const todoApi = {
   },
 
   // Reset daily tasks
-  resetDailyTasks: async (timezone: string): Promise<TaskData[]> => {
+  resetDailyTasks: async (): Promise<TaskData[]> => {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     return apiCall(`/todos/daily/reset?timezone=${timezone}`, {
       method: 'POST',
     });

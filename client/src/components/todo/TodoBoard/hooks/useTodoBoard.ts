@@ -46,8 +46,7 @@ export const useTodoBoard = () => {
   useEffect(() => {
     const checkAndResetDailyTasks = async () => {
       try {
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        await todoApi.resetDailyTasks(timezone);
+        await todoApi.resetDailyTasks();
         refreshAllData();
       } catch (error) {
         console.error('Failed to reset daily tasks:', error);
