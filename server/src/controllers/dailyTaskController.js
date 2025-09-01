@@ -1,4 +1,5 @@
 import supabase from '../supabaseAdmin.js';
+import { todayNoonUTC } from '../utils/dateUtils.js'
 
 // Reset daily tasks for new day (only active tasks)
 export const resetDailyTasks = async (userId, userTimezone) => {
@@ -18,8 +19,7 @@ export const resetDailyTasks = async (userId, userTimezone) => {
     return [];
   }
 
-  const todayNoon = new Date();
-  todayNoon.setUTCHours(12, 0, 0, 0);
+  const todayNoon = todayNoonUTC();
 
   let query = supabase
     .from('todos')

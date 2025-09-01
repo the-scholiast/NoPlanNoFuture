@@ -1,6 +1,7 @@
 import express from 'express';
 import { authenticateUser } from '../middleware/auth.js';
 import { errorHandler } from '../middleware/errorHandler.js';
+import { ValidationError } from '../utils/errors.js';
 import {
   getAllTodos,
   getIncompletedTodos,
@@ -126,6 +127,13 @@ router.get('/completions', authenticateUser, async (req, res, next) => {
 // Endpoint resets daily tasks for a new day
 router.post('/daily/reset', authenticateUser, async (req, res, next) => {
   try {
+    const timezone = req.query.timezone;
+
+    // Validate timezone parameter is required
+    if (!timezone) {
+      throw new ValidationError('timezone parameter is required. Please provide timezone as a query parameter (e.g., ?timezone=America/New_York)');
+    }
+
     const resetTasks = await resetDailyTasks(req.user.id, req.query.timezone);
     res.json({
       message: `Reset ${resetTasks.length} daily tasks for new day`,
