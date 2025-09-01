@@ -126,7 +126,7 @@ router.get('/completions', authenticateUser, async (req, res, next) => {
 // Endpoint resets daily tasks for a new day
 router.post('/daily/reset', authenticateUser, async (req, res, next) => {
   try {
-    const resetTasks = await resetDailyTasks(req.user.id);
+    const resetTasks = await resetDailyTasks(req.user.id, req.query.timezone);
     res.json({
       message: `Reset ${resetTasks.length} daily tasks for new day`,
       resetCount: resetTasks.length,

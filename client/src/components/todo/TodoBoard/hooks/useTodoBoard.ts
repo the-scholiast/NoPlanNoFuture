@@ -46,14 +46,35 @@ export const useTodoBoard = () => {
   useEffect(() => {
     const checkAndResetDailyTasks = async () => {
       try {
-        await todoApi.resetDailyTasks();
-        // Refresh all task queries after reset
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        await todoApi.resetDailyTasks(timezone);
         refreshAllData();
       } catch (error) {
         console.error('Failed to reset daily tasks:', error);
       }
     };
-    checkAndResetDailyTasks();
+
+    // Create a timeout to run reset at midnight
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0); // Set to midnight
+
+    const timeUntilMidnight = tomorrow.getTime() - now.getTime();
+
+    // Schedule next reset at midnight
+    const midnightTimer = setTimeout(() => {
+      checkAndResetDailyTasks();
+
+      // Set up daily interval after first midnight reset
+      const dailyInterval = setInterval(checkAndResetDailyTasks, 24 * 60 * 60 * 1000);
+
+      return () => clearInterval(dailyInterval);
+    }, timeUntilMidnight);
+
+    return () => {
+      clearTimeout(midnightTimer);
+    };
   }, [refreshAllData]);
 
   // Computed tasks from direct queries
