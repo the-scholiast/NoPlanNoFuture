@@ -65,3 +65,10 @@ export const localDateToUTC = (dateString: string): string => {
   utcDate.setUTCHours(12, 0, 0, 0); // UTC noon
   return utcDate.toISOString();
 }
+
+// Get today's noon UTC date
+export const todayNoonUTC = (): Date => {
+  const todayNoon = new Date();
+  todayNoon.setUTCHours(12, 0, 0, 0);
+  return todayNoon;
+}
