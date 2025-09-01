@@ -1,11 +1,11 @@
 import supabase from '../supabaseAdmin.js';
-import { formatDateString, ensureLocalDate } from '../utils/dateUtils.js';
+import { formatDateString } from '../utils/dateUtils.js';
 
 const DAYS_OF_WEEK = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
 // Get the day name from a date
 export const getDayName = (date) => {
-  const dayIndex = new Date(ensureLocalDate(date)).getDay();
+  const dayIndex = new Date(date).getDay();
   return DAYS_OF_WEEK[dayIndex];
 };
 
@@ -105,9 +105,8 @@ export const getRecurringTaskInstances = async (userId, startDate, endDate) => {
 
   const instances = [];
 
-  // Convert to Date objects for iteration, avoiding UTC issues
-  const startDateObj = ensureLocalDate(startDate);
-  const endDateObj = ensureLocalDate(endDate);
+  const startDateObj = new Date(startDate);
+  const endDateObj = new Date(endDate);
 
   for (const task of recurringTasks || []) {
     // Create a new Date object to avoid mutating the original

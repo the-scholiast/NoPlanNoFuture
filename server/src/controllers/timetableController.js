@@ -1,5 +1,5 @@
 import supabase from '../supabaseAdmin.js';
-import { formatDateString, ensureLocalDate } from '../utils/dateUtils.js';
+import { formatDateString } from '../utils/dateUtils.js';
 import { shouldTaskAppearOnDate } from './recurringTaskController.js';
 
 // Get all scheduled tasks (is_schedule = true) for a date range
@@ -37,8 +37,8 @@ export const getScheduledTasksForDateRange = async (userId, startDate, endDate) 
 
   // Generate instances for recurring tasks
   const recurringInstances = [];
-  const startDateObj = ensureLocalDate(startDate);
-  const endDateObj = ensureLocalDate(endDate);
+  const startDateObj = new Date(startDate);
+  const endDateObj = new Date(endDate);
 
   for (const task of recurringTasks || []) {
     const currentDate = new Date(startDateObj);
@@ -81,7 +81,7 @@ export const getScheduledTasksForDateRange = async (userId, startDate, endDate) 
 // Get scheduled tasks for a specific week (Monday to Sunday)
 export const getScheduledTasksForWeek = async (userId, weekStartDate) => {
   // Calculate end date (6 days after start)
-  const startDateObj = ensureLocalDate(weekStartDate);
+  const startDateObj = new Date(weekStartDate);
   const endDateObj = new Date(startDateObj);
   endDateObj.setDate(startDateObj.getDate() + 6);
 

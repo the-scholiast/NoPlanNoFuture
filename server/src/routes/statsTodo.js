@@ -27,8 +27,8 @@ router.get('/stats/:id', authenticateUser, async (req, res, next) => {
     }
 
     // Calculate statistics
-    const start = startDate ? ensureLocalDate(startDate) : new Date(task.created_at);
-    const end = endDate ? ensureLocalDate(endDate) : new Date();
+    const start = startDate ? new Date(startDate) : new Date(task.created_at);
+    const end = endDate ? new Date(endDate) : new Date();
 
     let totalPossibleOccurrences = 0;
     let completedOccurrences = task.completion_count || 0;
@@ -40,8 +40,8 @@ router.get('/stats/:id', authenticateUser, async (req, res, next) => {
 
       if (task.recurring_days && task.recurring_days.includes(dayName)) {
         // Check if within task's date range
-        if ((!task.start_date || currentDate >= ensureLocalDate(task.start_date)) &&
-          (!task.end_date || currentDate <= ensureLocalDate(task.end_date))) {
+        if ((!task.start_date || currentDate >= new Date(task.start_date)) &&
+          (!task.end_date || currentDate <= new Date(task.end_date))) {
           totalPossibleOccurrences++;
         }
       }
