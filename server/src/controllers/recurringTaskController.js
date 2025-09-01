@@ -9,12 +9,6 @@ export const getDayName = (date) => {
   return DAYS_OF_WEEK[dayIndex];
 };
 
-// Update the existing getTodayTasks to include recurring tasks
-export const getTodayTasks = async (userId) => {
-  const today = formatDateString(new Date);
-  return getTodosForDate(userId, today);
-};
-
 // Check if a task should appear on a specific date
 export const shouldTaskAppearOnDate = (task, date) => {
   if (!task.is_recurring || !task.recurring_days || task.recurring_days.length === 0) {

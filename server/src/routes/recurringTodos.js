@@ -1,8 +1,8 @@
 import express from 'express';
 import { getTodosForDate, getUpcomingWeekTasks } from '../controllers/index.js';
 import { authenticateUser } from '../middleware/auth.js';
-import { getTodayString } from '../utils/dateUtils.js';
 import { getTasksMonth, getRecurringTaskInstances } from '../controllers/index.js';
+import { ValidationError } from '../utils/errors.js';
 
 const router = express.Router();
 
@@ -19,7 +19,12 @@ router.get('/upcoming-week', authenticateUser, async (req, res, next) => {
 // Get today's tasks (including recurring instances)
 router.get('/today', authenticateUser, async (req, res, next) => {
   try {
-    const today = req.query.date || getTodayString();
+    const today = req.query.date
+
+    if (!today) {
+      throw new ValidationError("date parameter is required to get today's tasks")
+    }
+
     const tasks = await getTodosForDate(req.user.id, today);
     res.json(tasks);
   } catch (error) {
