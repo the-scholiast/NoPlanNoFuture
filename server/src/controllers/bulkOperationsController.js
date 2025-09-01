@@ -1,5 +1,4 @@
 import supabase from '../supabaseAdmin.js';
-import { formatDateString } from "../utils/dateUtils.js";
 
 // Bulk hard delete (only deletes based on section and completed keys) -> EXPAND FOR MORE COMPREHENSIVE BULK DELETION
 export const bulkDeleteTodos = async (userId, { section, completed, filter }) => {
@@ -34,11 +33,11 @@ export const bulkDeleteTodos = async (userId, { section, completed, filter }) =>
 export const deleteCompletedTodos = async (userId, section) => {
   const { data, error } = await supabase
     .from('todos')
-    .update({ deleted_at: formatDateString(new Date()) })
+    .update({ deleted_at: new Date() })
     .eq('user_id', userId)
     .eq('section', section)
     .eq('completed', true)
-    .is('deleted_at', null) // Only delete non-deleted tasks
+    .is('deleted_at', null)
     .select();
 
   if (error) throw error;
@@ -49,27 +48,10 @@ export const deleteCompletedTodos = async (userId, section) => {
 export const deleteAllTodos = async (userId, section) => {
   const { data, error } = await supabase
     .from('todos')
-    .update({ deleted_at: formatDateString(new Date()) })
+    .update({ deleted_at: new Date() })
     .eq('user_id', userId)
     .eq('section', section)
-    .is('deleted_at', null) // Only delete non-deleted tasks
-    .select();
-
-  if (error) throw error;
-  return data || [];
-};
-
-// Permanently delete old soft-deleted todos at 30 days (cleanup function) -> Not sure if it will be implemented
-export const permanentlyDeleteOldTodos = async (userId, daysOld = 30) => {
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - daysOld);
-
-  const { data, error } = await supabase
-    .from('todos')
-    .delete()
-    .eq('user_id', userId)
-    .not('deleted_at', 'is', null)
-    .lt('deleted_at', formatDateString(cutoffDate))
+    .is('deleted_at', null)
     .select();
 
   if (error) throw error;
