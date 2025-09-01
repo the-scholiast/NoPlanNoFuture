@@ -27,16 +27,16 @@ export const ensureLocalDate = (date: Date | string): Date => {
 
 export const isToday = (dateString?: string): boolean => {
   if (!dateString) return false;
-  
+
   const todayStr = getTodayString(); // Get today in local timezone
   const taskDateStr = dateString.split('T')[0]; // Remove time if present
-  
+
   return todayStr === taskDateStr;
 };
 
 export const isUpcoming = (dateString?: string): boolean => {
   if (!dateString) return false;
-  
+
   const todayStr = getTodayString(); // Get today in local timezone
   const taskDate = dateString.split('T')[0];
 
@@ -45,7 +45,7 @@ export const isUpcoming = (dateString?: string): boolean => {
 
 export const isPast = (dateString?: string): boolean => {
   if (!dateString) return false;
-  
+
   const todayStr = getTodayString(); // Get today in local timezone
   const taskDateStr = dateString.split('T')[0];
 
@@ -56,3 +56,12 @@ export const isPast = (dateString?: string): boolean => {
 export const isDailyTask = (task: { section?: string }): boolean => {
   return task.section === 'daily';
 };
+
+// UTC noon conversion for local timezone for start_date and end_date
+export const localDateToUTC = (dateString: string): string => {
+  const [year, month, day] = dateString.split('-').map(Number);
+  const utcDate = new Date();
+  utcDate.setUTCFullYear(year, month - 1, day);
+  utcDate.setUTCHours(12, 0, 0, 0); // UTC noon
+  return utcDate.toISOString();
+}
