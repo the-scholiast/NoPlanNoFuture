@@ -1,20 +1,10 @@
 import express from 'express';
-import { getTodosForDate, getUpcomingWeekTasks } from '../controllers/index.js';
+import { getTodosForDate } from '../controllers/index.js';
 import { authenticateUser } from '../middleware/auth.js';
 import { getUserTodayDateString } from '../utils/dateUtils.js';
 import { getTasksMonth, getRecurringTaskInstances } from '../controllers/index.js';
 
 const router = express.Router();
-
-// Get upcoming week tasks (including recurring instances)
-router.get('/upcoming-week', authenticateUser, async (req, res, next) => {
-  try {
-    const tasks = await getUpcomingWeekTasks(req.user.id);
-    res.json(tasks);
-  } catch (error) {
-    next(error);
-  }
-});
 
 // Get today's tasks 
 router.get('/today', authenticateUser, async (req, res, next) => {
