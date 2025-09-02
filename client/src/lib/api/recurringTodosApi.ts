@@ -3,15 +3,10 @@ import { apiCall } from './client';
 import { getTodayString } from '../utils/dateUtils';
 
 export const recurringTodoApi = {
-  // Get today's tasks including recurring instances
+  // Get today's tasks 
   getTodayTasks: async (): Promise<TaskData[]> => {
     const today = getTodayString();
     return apiCall(`/recurring-todos/today?date=${today}`);
-  },
-
-  // Get upcoming week tasks including recurring instances
-  getUpcomingTasks: async (): Promise<TaskData[]> => {
-    return apiCall('/recurring-todos/upcoming-week');
   },
 
   // Get tasks for a month including recurring instances
