@@ -3,6 +3,7 @@ import { getTodosForDate } from '../controllers/index.js';
 import { authenticateUser } from '../middleware/auth.js';
 import { getTasksMonth, getRecurringTaskInstances } from '../controllers/index.js';
 import { ValidationError } from '../utils/errors.js';
+import { localDateToUTC } from '../utils/dateUtils.js';
 
 const router = express.Router();
 
@@ -28,18 +29,22 @@ router.get('/month', authenticateUser, async (req, res, next) => {
     const { year, month } = req.query;
 
     if (!year || !month) {
-      return res.status(400).json({ error: 'Both year and month are required' });
+      throw new ValidationError("Both year and month are required");
     }
 
-    // Calculate first and last day of month
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    // Calculate first and last day of month as local date strings
+    const startDateLocal = `${year}-${String(month).padStart(2, '0')}-01`;
     const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
-    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    const endDateLocal = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-    const tasks = await getRecurringTaskInstances(req.user.id, startDate, endDate);
+    // Convert to UTC noon timestamps for database queries
+    const startDateUTC = localDateToUTC(startDateLocal);
+    const endDateUTC = localDateToUTC(endDateLocal);
+
+    const tasks = await getRecurringTaskInstances(req.user.id, startDateUTC, endDateUTC);
 
     // Also get non-recurring tasks for the month
-    const regularTasks = await getTasksMonth(req.user.id, startDate, endDate);
+    const regularTasks = await getTasksMonth(req.user.id, startDateUTC, endDateUTC);
 
     // Combine recurring instances and regular tasks
     const allTasks = [...tasks, ...(regularTasks || [])];

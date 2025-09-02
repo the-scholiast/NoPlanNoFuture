@@ -1,11 +1,10 @@
 import supabase from '../supabaseAdmin.js';
-import { formatDateString } from '../utils/dateUtils.js';
 
 const DAYS_OF_WEEK = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
-// Get the day name from a date
-export const getDayName = (date) => {
-  const dayIndex = new Date(date).getDay();
+// Get the day name from a date using UTC
+export const getDayNameUTC = (date) => {
+  const dayIndex = new Date(date).getUTCDay();
   return DAYS_OF_WEEK[dayIndex];
 };
 
@@ -15,12 +14,24 @@ export const shouldTaskAppearOnDate = (task, date) => {
     return false;
   }
 
+  // Convert the input date to UTC noon timestamp for comparison
+  const targetDateUTC = new Date(date);
+  targetDateUTC.setUTCHours(12, 0, 0, 0);
+  const targetTimestamp = targetDateUTC.getTime();
+
   // Check date range
-  if (task.start_date && formatDateString(date) < task.start_date) return false;
-  if (task.end_date && formatDateString(date) > task.end_date) return false;
+  if (task.start_date) {
+    const taskStartTimestamp = new Date(task.start_date).getTime();
+    if (targetTimestamp < taskStartTimestamp) return false;
+  }
+  
+  if (task.end_date) {
+    const taskEndTimestamp = new Date(task.end_date).getTime();
+    if (targetTimestamp > taskEndTimestamp) return false;
+  }
 
   // Check if day is included
-  const dayName = getDayName(date);
+  const dayName = getDayNameUTC(date);
   return task.recurring_days.includes(dayName);
 };
 
@@ -40,40 +51,48 @@ export const getTodosForDate = async (userId, date) => {
 };
 
 // Get upcoming recurring task instances for a date range
-export const getRecurringTaskInstances = async (userId, startDate, endDate) => {
-  // Get all recurring tasks
+export const getRecurringTaskInstances = async (userId, startDateUTC, endDateUTC) => {
+  // Query database with UTC timestamps for start_date/end_date comparisons
   const { data: recurringTasks, error } = await supabase
     .from('todos')
     .select('*')
     .eq('user_id', userId)
     .eq('is_recurring', true)
     .is('deleted_at', null)
-    .not('recurring_days', 'is', null);
+    .not('recurring_days', 'is', null)
+    // Use UTC timestamps for database date range filtering
+    .or(`start_date.is.null,start_date.lte.${startDateUTC}`)
+    .or(`end_date.is.null,end_date.gte.${endDateUTC}`);
 
   if (error) throw error;
 
   const instances = [];
 
-  const startDateObj = new Date(startDate);
-  const endDateObj = new Date(endDate);
+  // Extract date portion from UTC timestamps for iteration
+  const startDateLocal = startDateUTC.split('T')[0];
+  const endDateLocal = endDateUTC.split('T')[0];
+  
+  const startDateObj = new Date(startDateLocal + 'T00:00:00Z');
+  const endDateObj = new Date(endDateLocal + 'T00:00:00Z');
 
   for (const task of recurringTasks || []) {
-    // Create a new Date object to avoid mutating the original
     const currentDate = new Date(startDateObj);
 
     while (currentDate <= endDateObj) {
-      // shouldTaskAppearOnDate expects a Date object, not a string
       if (shouldTaskAppearOnDate(task, currentDate)) {
-        const currentDateString = formatDateString(currentDate);
+        // Convert current date to UTC noon timestamp for instance_date
+        const instanceDateUTC = new Date(currentDate);
+        instanceDateUTC.setUTCHours(12, 0, 0, 0);
+        
         instances.push({
           ...task,
-          id: `${task.id}_${currentDateString}`,
-          instance_date: currentDateString,
-          start_date: currentDateString,
+          id: `${task.id}_${currentDate.toISOString().split('T')[0]}`,
+          instance_date: instanceDateUTC.toISOString(), 
+          start_date: instanceDateUTC.toISOString(),  
           parent_task_id: task.id
         });
       }
-      currentDate.setDate(currentDate.getDate() + 1);
+      currentDate.setUTCDate(currentDate.getUTCDate() + 1);
     }
   }
 

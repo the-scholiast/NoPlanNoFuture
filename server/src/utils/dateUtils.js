@@ -17,3 +17,12 @@ export const formatDateString = (date) => {
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
+
+// UTC noon conversion
+export const localDateToUTC = (dateString) => {
+  const [year, month, day] = dateString.split('-').map(Number);
+  const utcDate = new Date();
+  utcDate.setUTCFullYear(year, month - 1, day);
+  utcDate.setUTCHours(12, 0, 0, 0);
+  return utcDate.toISOString();
+};

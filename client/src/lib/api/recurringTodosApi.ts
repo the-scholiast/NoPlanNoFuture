@@ -5,7 +5,7 @@ import { todayNoonUTC } from '../utils/dateUtils';
 export const recurringTodoApi = {
   // Get today's tasks including recurring instances
   getTodayTasks: async (): Promise<TaskData[]> => {
-    const today = todayNoonUTC();
+    const today = todayNoonUTC().toISOString();
     return apiCall(`/recurring-todos/today?date=${today}`);
   },
 
