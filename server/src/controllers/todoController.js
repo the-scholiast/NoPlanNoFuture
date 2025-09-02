@@ -1,6 +1,6 @@
 import supabase from '../supabaseAdmin.js';
 import { ValidationError } from '../utils/errors.js';
-import { formatDateString } from '../utils/dateUtils.js';
+import { getUserDateString } from '../utils/dateUtils.js';
 
 const DAYS_OF_WEEK = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
@@ -27,7 +27,7 @@ export const getTasksMonth = async (userId, startDate, endDate) => {
     .is('deleted_at', null)
     .gte('start_date', startDate)
     .lte('start_date', endDate)
-    .order('start_date', {ascending: false});
+    .order('start_date', { ascending: false });
   if (error) throw error;
   return data || [];
 }
@@ -37,7 +37,7 @@ export const getCalendarTodos = async (userId, year) => {
   const startOfYear = new Date(year, 0, 1);
   const endOfYear = new Date(year, 11, 31);
   const today = new Date();
-  
+
   const { data, error } = await supabase
     .from('todos')
     .select('*')
@@ -46,7 +46,7 @@ export const getCalendarTodos = async (userId, year) => {
     .neq('section', 'daily')
     .or(`section.eq.today,section.eq.upcoming`)
     .or(
-      `start_date.gte.${formatDateString(startOfYear)},start_date.lte.${formatDateString(endOfYear)},start_date.gte.${formatDateString(today)}`
+      `start_date.gte.${await getUserDateString(userId, startOfYear)},start_date.lte.${await getUserDateString(userId, endOfYear)},start_date.gte.${await getUserDateString(userId, today)}`
     )
     .order('start_date', { ascending: true });
 
@@ -66,7 +66,7 @@ export const getUpcomingTodos = async (userId) => {
     .eq('user_id', userId)
     .eq('section', 'upcoming')
     .is('deleted_at', null)
-    .or(`start_date.gte.${formatDateString(tomorrow)},start_date.is.${null}`)
+    .or(`start_date.gte.${await getUserDateString(userId, tomorrow)},start_date.is.${null}`)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -134,7 +134,7 @@ export const createTodo = async (userId, todoData) => {
 
 // Get active incompleted tasks
 export const getIncompletedTodos = async (userId) => {
-  const currentDate = formatDateString(new Date());
+  const currentDate = await getUserDateString(userId, new Date());
   const { data, error } = await supabase
     .from('todos')
     .select('*')
@@ -178,7 +178,7 @@ export const updateTodo = async (userId, todoId, updates) => {
     if (updates.completed) {
       // Only set completed_at if it's not already provided from frontend
       if (!updates.completed_at) {
-        updates.completed_at = updates.completed_at || formatDateString(new Date());
+        updates.completed_at = updates.completed_at || await getUserDateString(userId, new Date());
       }
 
       // If it's a daily task, increment completion count (if column exists)
@@ -193,8 +193,7 @@ export const updateTodo = async (userId, todoId, updates) => {
 
         if (existingTask && existingTask.section === 'daily') {
           // Use the same timezone-aware date format as frontend
-          const now = new Date();
-          const today = formatDateString(now);
+          const today = await getUserDateString(userId, new Date());
 
           // Only increment if not already completed today
           if (existingTask.last_completed_date !== today) {
@@ -255,7 +254,7 @@ export const deleteTodo = async (userId, todoId) => {
 export const softDeleteTodo = async (userId, todoId) => {
   const { data, error } = await supabase
     .from('todos')
-    .update({ deleted_at: formatDateString(new Date()) })
+    .update({ deleted_at: await getUserDateString(userId, new Date()) })
     .eq('id', todoId)
     .eq('user_id', userId)
     .is('deleted_at', null) // Only delete non-deleted tasks
@@ -334,15 +333,12 @@ export const getCompletionTasksByOriginalTask = async (userId, startDate, endDat
 
   // Apply date filter if provided
   if (startDate && endDate) {
-    const startDateTime = `${startDate}T00:00:00`;
-    const endDate_obj = new Date(endDate);
-    endDate_obj.setDate(endDate_obj.getDate() + 1);
-    const nextDay = formatDateString(endDate_obj);
-    const endDateTime = `${nextDay}T00:00:00`;
+    const startUTC = new Date(`${startDate}T00:00:00`).toISOString();
+    const endUTC = new Date(`${endDate}T23:59:59.999`).toISOString();
 
     query = query
-      .gte('completed_at', startDateTime)
-      .lt('completed_at', endDateTime);
+      .gte('completed_at', startUTC)
+      .lt('completed_at', endUTC);
   }
 
   const { data: completions, error } = await query;
@@ -386,8 +382,7 @@ export const createTodoCompletion = async (userId, taskId, instanceDate) => {
   }
 
   // Create timestamp in local timezone instead of UTC
-  const now = new Date();
-  const localISOString = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString();
+  const localISOString = new Date().toISOString();
 
   const { data, error } = await supabase
     .from('todo_completions')
