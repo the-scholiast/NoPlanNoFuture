@@ -44,16 +44,61 @@ export const useTodoBoard = () => {
 
   // Reset Daily Tasks' completion status after the day ends
   useEffect(() => {
-    const checkAndResetDailyTasks = async () => {
+    const scheduleResetCheck = () => {
+      const now = new Date();
+
+      // Calculate milliseconds until next midnight in local timezone
+      const nextMidnight = new Date(now);
+      nextMidnight.setDate(now.getDate() + 1);
+      nextMidnight.setHours(0, 0, 0, 0);
+
+      const msUntilMidnight = nextMidnight.getTime() - now.getTime();
+
+      // Set timeout to run at midnight
+      const timeoutId = setTimeout(async () => {
+        try {
+          await todoApi.resetDailyTasks();
+          refreshAllData();
+
+          // Schedule the next check for 24 hours later
+          scheduleResetCheck();
+        } catch (error) {
+          console.error('Failed to reset daily tasks:', error);
+        }
+      }, msUntilMidnight);
+
+      return timeoutId;
+    };
+
+    // Initial check - only reset if we're past midnight and haven't reset today
+    const checkInitialReset = async () => {
       try {
-        await todoApi.resetDailyTasks();
-        // Refresh all task queries after reset
-        refreshAllData();
+        const today = getTodayString();
+
+        // Check if any daily tasks were completed yesterday or earlier
+        const hasTasksNeedingReset = dailyTasks.some(task =>
+          task.completed && (!task.last_completed_date || task.last_completed_date < today)
+        );
+
+        if (hasTasksNeedingReset) {
+          await todoApi.resetDailyTasks();
+          refreshAllData();
+        }
       } catch (error) {
-        console.error('Failed to reset daily tasks:', error);
+        console.error('Failed to initial reset check:', error);
       }
     };
-    checkAndResetDailyTasks();
+
+    // Run initial check on mount
+    checkInitialReset();
+
+    // Schedule midnight check
+    const timeoutId = scheduleResetCheck();
+
+    // Cleanup timeout on unmount
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [refreshAllData]);
 
   // Computed tasks from direct queries
