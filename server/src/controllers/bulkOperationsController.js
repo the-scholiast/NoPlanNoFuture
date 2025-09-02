@@ -1,5 +1,5 @@
 import supabase from '../supabaseAdmin.js';
-import { formatDateString } from "../utils/dateUtils.js";
+import { formatDateString, getUserDateString } from "../utils/dateUtils.js";
 
 // Bulk hard delete (only deletes based on section and completed keys) -> EXPAND FOR MORE COMPREHENSIVE BULK DELETION
 export const bulkDeleteTodos = async (userId, { section, completed, filter }) => {
@@ -47,9 +47,10 @@ export const deleteCompletedTodos = async (userId, section) => {
 
 // Soft delete all tasks from a specific section
 export const deleteAllTodos = async (userId, section) => {
+  const deleted_at = getUserDateString(userId, new Date());
   const { data, error } = await supabase
     .from('todos')
-    .update({ deleted_at: formatDateString(new Date()) })
+    .update({ deleted_at })
     .eq('user_id', userId)
     .eq('section', section)
     .is('deleted_at', null) // Only delete non-deleted tasks

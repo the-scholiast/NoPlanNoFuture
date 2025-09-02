@@ -1,7 +1,7 @@
 import express from 'express';
 import { getTodosForDate } from '../controllers/index.js';
 import { authenticateUser } from '../middleware/auth.js';
-import { getUserTodayDateString } from '../utils/dateUtils.js';
+import { getUserDateString } from '../utils/dateUtils.js';
 import { getTasksMonth, getRecurringTaskInstances } from '../controllers/index.js';
 
 const router = express.Router();
@@ -9,7 +9,7 @@ const router = express.Router();
 // Get today's tasks 
 router.get('/today', authenticateUser, async (req, res, next) => {
   try {
-    const today = req.query.date || await getUserTodayDateString(req.user.id);
+    const today = req.query.date || await getUserDateString(req.user.id, new Date());
     const tasks = await getTodosForDate(req.user.id, today);
     res.json(tasks);
   } catch (error) {

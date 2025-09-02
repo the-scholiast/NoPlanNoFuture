@@ -1,9 +1,9 @@
 import supabase from '../supabaseAdmin.js';
-import { getUserTodayDateString} from '../utils/dateUtils.js';
+import { getUserDateString } from '../utils/dateUtils.js';
 
 // Reset daily tasks for new day (only active tasks)
 export const resetDailyTasks = async (userId) => {
-  const today = await getUserTodayDateString(userId);
+  const today = await getUserDateString(userId, new Date());
 
   let query = supabase
     .from('todos')

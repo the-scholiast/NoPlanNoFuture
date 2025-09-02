@@ -43,7 +43,7 @@ export const isValidDateFormat = (dateString) => {
 };
 
 // Get user's today date from their timezone
-export const getUserTodayDateString = async (userId) => {
+export const getUserDateString = async (userId, date) => {
   const { data } = await supabase
     .from('user_profiles')
     .select('timezone')
@@ -52,8 +52,7 @@ export const getUserTodayDateString = async (userId) => {
   
   const userTimezone = data?.timezone || 'UTC';
   
-  const now = new Date();
-  return now.toLocaleDateString('en-CA', {
+  return date.toLocaleDateString('en-CA', {
     timeZone: userTimezone
   });
 };
