@@ -16,7 +16,6 @@ const BASES = ['#60a5fa', '#34d399', '#fbbf24', '#fb923c', '#f87171', '#a78bfa',
 
 const TaskRenderer: React.FC<TaskRendererProps> = ({
   tasks,
-  isDarkMode,
   outerRadius,
   innerRadius,
   center,
@@ -37,7 +36,7 @@ const TaskRenderer: React.FC<TaskRendererProps> = ({
   };
 
   const pickTaskColor = (task: Task, startHour: number): string => {
-    if ((task as any).color) return (task as any).color as string;
+    if (task.color) return task.color;
     let idx = use24Hour ? Math.floor(startHour / 3.5) : Math.floor(startHour / 1.75);
     if (idx >= BASES.length) idx = BASES.length - 1;
     return BASES[idx];
@@ -58,8 +57,8 @@ const TaskRenderer: React.FC<TaskRendererProps> = ({
     const denom = use24Hour ? 24 : 12;
     const toAngle = (val: number) => (val / denom) * Math.PI * 2 + offset;
 
-    let startAngle = toAngle(start);
-    let endAngle = toAngle(end);
+    const startAngle = toAngle(start);
+    const endAngle = toAngle(end);
     const sweep = Math.abs(endAngle - startAngle);
     if (sweep === 0) return null;
 
