@@ -1,26 +1,19 @@
 import supabase from '../supabaseAdmin.js';
-import { formatDateString, } from '../utils/dateUtils.js';
+import { getUserDateString } from '../utils/dateUtils.js';
 
 // Reset daily tasks for new day (only active tasks)
 export const resetDailyTasks = async (userId) => {
-  const today = formatDateString(new Date());
+  const today = await getUserDateString(userId, new Date());
 
-  // Build the query step by step for clarity
-  let query = supabase
+  const { data: tasksToReset, error: selectError } = await supabase
     .from('todos')
     .select('*')
     .eq('user_id', userId)
     .eq('section', 'daily')
     .eq('completed', true)
-    .is('deleted_at', null);
-
-  // Add end_date filter: either no end_date OR end_date >= today (task hasn't ended)
-  query = query.or(`end_date.is.null,end_date.gte.${today}`);
-
-  // Add last_completed_date filter: either no last_completed_date OR last_completed_date != today
-  query = query.or(`last_completed_date.is.null,last_completed_date.neq.${today}`);
-
-  const { data: tasksToReset, error: selectError } = await query;
+    .is('deleted_at', null)
+    .or(`end_date.is.null,end_date.gte.${today}`)
+    .not('last_completed_date', 'eq', today);
 
   if (selectError) {
     console.error('Query error:', selectError);

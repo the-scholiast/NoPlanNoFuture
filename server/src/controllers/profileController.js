@@ -28,7 +28,8 @@ export const getProfile = async (userId) => {
       id: userId,
       email: '',  // User can fill this in later
       full_name: '',
-      avatar_url: ''
+      avatar_url: '',
+      timezone: 'UTC'
     };
 
     console.log('Creating basic profile with data:', profileData);

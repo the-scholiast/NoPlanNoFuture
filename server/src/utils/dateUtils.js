@@ -1,3 +1,5 @@
+import supabase from '../supabaseAdmin.js';
+
 // Get today's date in server's local timezone
 export const getTodayString = () => {
   const now = new Date();
@@ -38,4 +40,40 @@ export const ensureLocalDate = (dateInput) => {
 // Validate YYYY-MM-DD date format
 export const isValidDateFormat = (dateString) => {
   return typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString);
+};
+
+// Get user's today date from their timezone
+export const getUserDateString = async (userId, date) => {
+  const { data } = await supabase
+    .from('user_profiles')
+    .select('timezone')
+    .eq('id', userId)
+    .single();
+  
+  const userTimezone = data?.timezone || 'UTC';
+  
+  return date.toLocaleDateString('en-CA', {
+    timeZone: userTimezone
+  });
+};
+
+// Get user's timezone from database
+export const getUserTimezone = async (userId) => {
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('timezone')
+      .eq('id', userId)
+      .single();
+    
+    if (error) {
+      console.log('Could not get user timezone, defaulting to UTC');
+      return 'UTC';
+    }
+    
+    return data?.timezone || 'UTC';
+  } catch (error) {
+    console.log('Error getting user timezone:', error);
+    return 'UTC';
+  }
 };

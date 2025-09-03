@@ -1,5 +1,6 @@
 import supabase from '../supabaseAdmin.js';
 import { ValidationError } from '../utils/errors.js';
+import { getUserDateString } from '../utils/dateUtils.js';
 
 // Validation functions
 const validateWebhookUrl = (url) => {
@@ -230,7 +231,7 @@ const getTasksForNotification = async (userId, notification) => {
   
   // Calculate date range based on period using local time
   const now = new Date();
-  const localISOString = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString();
+  const localISOString = getUserDateString(userId, new Date());
   
   let endDate = new Date();
   switch (period) {
@@ -244,7 +245,7 @@ const getTasksForNotification = async (userId, notification) => {
       endDate.setMonth(now.getMonth() + 1);
       break;
   }
-  const endDateLocalISO = new Date(endDate.getTime() - (endDate.getTimezoneOffset() * 60000)).toISOString();
+  const endDateLocalISO = getUserDateString(userId, endDate);
 
   // Build separate queries for each condition and combine results
   let allTasks = [];
@@ -255,8 +256,8 @@ const getTasksForNotification = async (userId, notification) => {
       .select('*')
       .eq('user_id', userId)
       .is('deleted_at', null)
-      .gte('start_date', localISOString.split('T')[0])
-      .lte('start_date', endDateLocalISO.split('T')[0])
+      .gte('start_date', localISOString)
+      .lte('start_date', endDateLocalISO)
       .order('start_date', { ascending: true });
     
     if (upcomingError) throw upcomingError;
