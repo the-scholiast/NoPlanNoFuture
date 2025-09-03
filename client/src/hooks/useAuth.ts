@@ -16,7 +16,7 @@ export function useAuth() {
   )
 
   // Save user timezone to profile on login
-  const saveUserTimezone = async (userId: string) => {
+  const saveUserTimezone = async () => {
     try {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -49,7 +49,7 @@ export function useAuth() {
       // Save timezone for existing session
       if (session?.user && !hasProcessedLogin) {
         hasProcessedLogin = true;
-        saveUserTimezone(session.user.id);
+        saveUserTimezone();
       }
     })
 
@@ -61,7 +61,7 @@ export function useAuth() {
         // Save timezone when user signs in
         if (event === 'SIGNED_IN' && session?.user && !hasProcessedLogin) {
           hasProcessedLogin = true;
-          await saveUserTimezone(session.user.id);
+          await saveUserTimezone();
         }
 
         // Reset flag when user signs out
