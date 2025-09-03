@@ -8,13 +8,17 @@ import TaskRenderer from './TaskRenderer';
 import TaskList from './TaskList';
 import type { Task } from './types';
 
+interface PlannerWithSetter {
+  setAllTasks?: (updater: (prev: Task[]) => Task[]) => void;
+}
+
 // ===== Color helpers (keeps list + clock in sync even for old tasks) =====
-const COLORS = ['#60a5fa','#34d399','#fbbf24','#fb923c','#f87171','#a78bfa','#ec4899'];
+const COLORS = ['#60a5fa', '#34d399', '#fbbf24', '#fb923c', '#f87171', '#a78bfa', '#ec4899'];
 const to24 = (h: number, g: 'AM' | 'PM') =>
   g === 'PM' && h !== 12 ? h + 12 : g === 'AM' && h === 12 ? 0 : h;
 
-function repairTaskColor<T extends { start: number; hourGroup: 'AM'|'PM'; color?: string }>(t: T): T {
-  if ((t as any).color) return t;
+function repairTaskColor<T extends { start: number; hourGroup: 'AM' | 'PM'; color?: string }>(t: T): T {
+  if (t.color) return t;
   const s24 = to24(t.start, t.hourGroup);
   let idx = Math.floor(s24 / 3.5);
   if (idx >= COLORS.length) idx = COLORS.length - 1;
@@ -40,9 +44,7 @@ const RadialPlanner: React.FC = () => {
 
   // Try to persist repaired colors if the hook exposes a setter
   useEffect(() => {
-    const maybeSetter = (planner as any)?.setAllTasks as
-      | ((updater: (prev: Task[]) => Task[]) => void)
-      | undefined;
+    const maybeSetter = (planner as PlannerWithSetter)?.setAllTasks;
     if (maybeSetter) {
       maybeSetter(prev => prev.map(repairTaskColor));
     }
@@ -64,21 +66,19 @@ const RadialPlanner: React.FC = () => {
 
   // NEW: save an edited task
   const handleSaveTask = (updated: Task) => {
-    const maybeSetter = (planner as any)?.setAllTasks as
-      | ((updater: (prev: Task[]) => Task[]) => void)
-      | undefined;
+    const maybeSetter = (planner as PlannerWithSetter)?.setAllTasks;
 
-      if (maybeSetter) {
-        // replace in-place
-        maybeSetter(prev => prev.map(t => (t.id === updated.id ? { ...updated } : t)));
-      } else {
-        // fallback (keeps color/id already on `updated`)
-        deletePlannerTask(updated.id);
-        addPlannerTask(updated);
-      }
-      setEditingTask(null);
-      setFormVisible(false);
-    };
+    if (maybeSetter) {
+      // replace in-place
+      maybeSetter(prev => prev.map(t => (t.id === updated.id ? { ...updated } : t)));
+    } else {
+      // fallback (keeps color/id already on `updated`)
+      deletePlannerTask(updated.id);
+      addPlannerTask(updated);
+    }
+    setEditingTask(null);
+    setFormVisible(false);
+  };
 
   if (!isMounted) {
     return (
