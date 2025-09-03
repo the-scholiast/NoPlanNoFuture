@@ -42,6 +42,12 @@ export const useTodoBoard = () => {
 
   const { deleteTaskMutation, refreshAllData } = useTodoMutations();
 
+  // Computed tasks from direct queries
+  const dailyTasks = useMemo(() =>
+    allTasks.filter(task => task.section === 'daily'),
+    [allTasks]
+  );
+
   // Reset Daily Tasks' completion status after the day ends
   useEffect(() => {
     const scheduleResetCheck = () => {
@@ -99,13 +105,7 @@ export const useTodoBoard = () => {
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [refreshAllData]);
-
-  // Computed tasks from direct queries
-  const dailyTasks = useMemo(() =>
-    allTasks.filter(task => task.section === 'daily'),
-    [allTasks]
-  );
+  }, [refreshAllData, dailyTasks]);
 
   // UI interaction states
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
