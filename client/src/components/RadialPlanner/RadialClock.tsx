@@ -14,9 +14,7 @@ interface RadialClockProps {
 const RadialClock: React.FC<RadialClockProps> = ({
   isDarkMode,
   outerRadius,
-  innerRadius,
   center,
-  tasks,
   use24Hour,
 }) => {
   // ----- visual constants -----
