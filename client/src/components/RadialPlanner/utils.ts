@@ -1,6 +1,7 @@
-import type { Task, TextPosition, TaskPortion } from './types';
+import type { Task, TextPosition } from './types';
+import type { TaskData } from '@/types/todoTypes';
 
-export const convertTimetableTaskToRadial = (task: any): Task | null => {
+export const convertTimetableTaskToRadial = (task: TaskData): Task | null => {
   if (!task.start_time || !task.end_time) return null;
 
   const [sh, sm] = task.start_time.split(':').map(Number);
