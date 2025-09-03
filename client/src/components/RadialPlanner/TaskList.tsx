@@ -28,7 +28,7 @@ const TaskList: React.FC<TaskListProps> = ({
     <div className="space-y-2">
       {tasks.map((task, index) => {
         const key = task.id || `t_${index}`;
-        const color = (task as any).color ?? '#60a5fa';
+        const color = task.color ?? '#60a5fa';
         const timeStr = `${fmt12(task.start)}–${fmt12(task.end)} ${task.hourGroup}`;
         const isPlanner = task.source === 'planner';
         const isTimetable = task.source === 'timetable';
