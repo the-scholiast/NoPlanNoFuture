@@ -8,6 +8,7 @@ export interface Task {
   id?: string;
   source: 'planner' | 'timetable';
   isRecurring?: boolean;
+  color?: string;
 }
 
 export interface TextPosition {

@@ -102,8 +102,8 @@ const TaskForm: React.FC<TaskFormProps> = ({
       const s24 = to24(taskBase.start, taskBase.hourGroup);
       let idx = Math.floor(s24 / 3.5);
       if (idx >= COLORS.length) idx = COLORS.length - 1;
-      (taskBase as any).color = COLORS[idx];
-      onAddTask(taskBase);
+      const taskWithColor: Task = { ...taskBase, color: COLORS[idx] };
+      onAddTask(taskWithColor);
     }
 
     // reset
