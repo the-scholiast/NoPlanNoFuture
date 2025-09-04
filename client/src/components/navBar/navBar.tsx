@@ -19,6 +19,11 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabaseClient";
 
+// NEW: imports for hours
+import { Badge } from "@/components/ui/badge";
+import { useTimetableData } from "@/components/calendar/timetable/hooks";
+import { useWorkHourTotals } from "@/components/calendar/timetable/hooks/useWorkHourTotals";
+
 interface MenuItem {
   title: string;
   url: string;
@@ -108,6 +113,10 @@ export function NavSidebar() {
     }
   }
 
+  // NEW: load timetable data and compute hours
+  const { weekDates, scheduledTasks } = useTimetableData({});
+  const { todayHours, weekHours, monthHours } = useWorkHourTotals(weekDates, scheduledTasks);
+
   return (
     <Sidebar>
       {/* Replace with app icon */}
@@ -130,6 +139,13 @@ export function NavSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
+        {/* NEW: Work hour stats */}
+        <div className="flex flex-col gap-1 px-3 py-2 border-t">
+          <Badge variant="secondary">Today: {todayHours.toFixed(1)}h</Badge>
+          <Badge variant="secondary">This Week: {weekHours.toFixed(1)}h</Badge>
+          <Badge variant="secondary">This Month: {monthHours.toFixed(1)}h</Badge>
+        </div>
+
         {/* Theme Toggle */}
         <div className="flex items-center justify-between px-3 py-2 border-t">
           <div className="flex items-center gap-2">
