@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import {
     generateTimeSlots,
     getTasksForTimeSlot,
@@ -30,7 +30,6 @@ export function useWorkHourTotals(
     opts?: { monthTasks?: ReadonlyArray<TaskData>; monthRefDate?: Date }
 ) {
     const timeSlots = useMemo(() => generateTimeSlots(), []);
-    const monthRef = opts?.monthRefDate ?? new Date();
 
     // Clone to mutable arrays in case your utils require mutable params
     const weekDates = useMemo(() => [...weekDatesRO], [weekDatesRO]);
@@ -43,23 +42,21 @@ export function useWorkHourTotals(
     );
 
     // Unique tasks per day column so a multi-slot task is counted once
-    const getUniqueTasksForDay = (dayIndex: number): TimetableTask[] => {
-        const byId = new Map<string, TimetableTask>();
-        for (const time of timeSlots) {
-            const tasksAtTime = getTasksForTimeSlot(
-                dayIndex,
-                time,
-                weekDates,
-                safeTasks
-            ) as TimetableTask[];
-            for (const t of tasksAtTime) {
-                if (isFirstSlotForTask(t, time) && !byId.has(t.id)) {
-                    byId.set(t.id, t);
+    const getUniqueTasksForDay = useCallback(
+        (dayIndex: number) => {
+            const byId = new Map<string, TimetableTask>();
+            for (const time of timeSlots) {
+                const tasksAtTime = getTasksForTimeSlot(dayIndex, time, weekDates, safeTasks) as TimetableTask[];
+                for (const t of tasksAtTime) {
+                    if (isFirstSlotForTask(t, time) && !byId.has(t.id)) {
+                        byId.set(t.id, t);
+                    }
                 }
             }
-        }
-        return [...byId.values()];
-    };
+            return [...byId.values()];
+        },
+        [timeSlots, weekDates, safeTasks]
+    );
 
     const sumHours = (tasks: TimetableTask[]) =>
         tasks.reduce((acc, t) => acc + getTaskDurationSlots(t) * SLOTS_TO_HOURS, 0);
@@ -67,7 +64,7 @@ export function useWorkHourTotals(
     // Per-day (this week)
     const perDayThisWeek = useMemo(
         () => weekDates.map((_, i) => sumHours(getUniqueTasksForDay(i))),
-        [weekDates, timeSlots, safeTasks]
+        [weekDates, getUniqueTasksForDay]
     );
 
     // Today
@@ -86,15 +83,12 @@ export function useWorkHourTotals(
     const monthHours = useMemo(() => {
         if (opts?.monthTasks && opts.monthTasks.length > 0) {
             const monthSafe = opts.monthTasks.filter(hasTimeFields);
-            // Dedupe by id to avoid counting the same task multiple times
             const unique = new Map<string, TimetableTask>();
-            for (const t of monthSafe) {
-                if (!unique.has(t.id)) unique.set(t.id, t);
-            }
+            for (const t of monthSafe) if (!unique.has(t.id)) unique.set(t.id, t);
             return sumHours([...unique.values()]);
         }
         return weekHours;
-    }, [opts?.monthTasks, weekHours, monthRef]);
+    }, [opts?.monthTasks, weekHours]);
 
     return { todayHours, weekHours, monthHours, perDayThisWeek };
 }
