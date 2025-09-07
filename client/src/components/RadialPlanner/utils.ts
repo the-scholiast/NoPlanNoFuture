@@ -8,7 +8,6 @@ export const convertTimetableTaskToRadial = (task: TaskData): Task | null => {
   const [eh, em] = task.end_time.split(':').map(Number);
 
   const startIsPM = sh >= 12;
-  const endIsPM = eh >= 12;
   const to12Hour = (h: number) => {
     const hh = h % 12;
     return hh === 0 ? 12 : hh;
