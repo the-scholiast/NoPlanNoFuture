@@ -2,49 +2,64 @@
 export const postToDiscord = async (webhookUrl, tasks) => {
   // Group tasks by actual dates
   const tasksByDate = {};
+  const today = new Date();
+  const oneWeekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
   
   tasks.forEach(task => {
     if (task.start_date) {
       // Regular dated task
-      const dateKey = formatDate(new Date(task.start_date));
-      if (!tasksByDate[dateKey]) {
-        tasksByDate[dateKey] = [];
+      const taskDate = new Date(task.start_date);
+      const dateKey = formatDate(taskDate);
+      
+      // Only include tasks within the next week
+      if (taskDate >= today && taskDate <= oneWeekFromNow) {
+        if (!tasksByDate[dateKey]) {
+          tasksByDate[dateKey] = [];
+        }
+        tasksByDate[dateKey].push({
+          ...task,
+          type: 'dated',
+          displayDate: dateKey
+        });
       }
-      tasksByDate[dateKey].push({
-        ...task,
-        type: 'dated',
-        displayDate: dateKey
-      });
     } else if (task.is_recurring && task.recurring_days) {
-      // Recurring task - calculate next occurrence for each recurring day
+      // Recurring task - calculate next occurrence for each recurring day within the next week
       task.recurring_days.forEach(dayNumber => {
         const nextDate = getNextOccurrence(dayNumber);
-        const dateKey = formatDate(nextDate);
-        if (!tasksByDate[dateKey]) {
-          tasksByDate[dateKey] = [];
+        
+        // Only include if within the next week
+        if (nextDate <= oneWeekFromNow) {
+          const dateKey = formatDate(nextDate);
+          if (!tasksByDate[dateKey]) {
+            tasksByDate[dateKey] = [];
+          }
+          tasksByDate[dateKey].push({
+            ...task,
+            type: 'recurring',
+            displayDate: dateKey
+          });
         }
-        tasksByDate[dateKey].push({
-          ...task,
-          type: 'recurring',
-          displayDate: dateKey
-        });
       });
     } else if (task.section === 'daily') {
-      // Daily task - calculate next occurrence for each day of the week
+      // Daily task - calculate next occurrence for each day of the week within the next week
       for (let i = 1; i <= 7; i++) {
         const nextDate = getNextOccurrence(i);
-        const dateKey = formatDate(nextDate);
-        if (!tasksByDate[dateKey]) {
-          tasksByDate[dateKey] = [];
+        
+        // Only include if within the next week
+        if (nextDate <= oneWeekFromNow) {
+          const dateKey = formatDate(nextDate);
+          if (!tasksByDate[dateKey]) {
+            tasksByDate[dateKey] = [];
+          }
+          tasksByDate[dateKey].push({
+            ...task,
+            type: 'daily',
+            displayDate: dateKey
+          });
         }
-        tasksByDate[dateKey].push({
-          ...task,
-          type: 'daily',
-          displayDate: dateKey
-        });
       }
     } else {
-      // No date task
+      // No date task - only include if it's a general task without specific timing
       const dateKey = 'No Date';
       if (!tasksByDate[dateKey]) {
         tasksByDate[dateKey] = [];
@@ -70,7 +85,7 @@ export const postToDiscord = async (webhookUrl, tasks) => {
   const dateRange = calculateDateRange(sortedDates);
 
   // Build text message
-  let messageContent = `📅 **Your Upcoming Tasks${dateRange}**\n\n`;
+  let messageContent = `📅 **Your Tasks for the Next Week${dateRange}**\n\n`;
   
   if (sortedDates.length === 0) {
     messageContent += 'No tasks match your notification criteria.';
