@@ -1,5 +1,6 @@
 import supabase from '../supabaseAdmin.js';
 import { formatDateString, ensureLocalDate } from '../utils/dateUtils.js';
+import { ValidationError } from '../utils/errors.js';
 
 const DAYS_OF_WEEK = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
@@ -82,4 +83,49 @@ export const getRecurringTaskInstances = async (userId, startDate, endDate) => {
   }
 
   return instances;
+};
+
+// Create or update a task override for a specific instance
+export const createOrUpdateTaskOverride = async (userId, parentTaskId, instanceDate, overrideData) => {
+  // Validate that the parent task exists and belongs to the user
+  const { data: parentTask, error: parentError } = await supabase
+    .from('todos')
+    .select('id, is_recurring')
+    .eq('id', parentTaskId)
+    .eq('user_id', userId)
+    .single();
+
+  if (parentError || !parentTask) {
+    throw new ValidationError('Parent task not found');
+  }
+
+  if (!parentTask.is_recurring) {
+    throw new ValidationError('Cannot create override for non-recurring task');
+  }
+
+  // Prepare override data (only store non-null values)
+  const cleanOverrideData = {};
+  Object.keys(overrideData).forEach(key => {
+    if (overrideData[key] !== null && overrideData[key] !== undefined && overrideData[key] !== '') {
+      cleanOverrideData[key] = overrideData[key];
+    }
+  });
+
+  // Upsert the override
+  const { data, error } = await supabase
+    .from('task_overrides')
+    .upsert({
+      user_id: userId,
+      parent_task_id: parentTaskId,
+      instance_date: instanceDate,
+      ...cleanOverrideData,
+      updated_at: new Date().toISOString()
+    }, {
+      onConflict: 'parent_task_id,instance_date'
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
 };
