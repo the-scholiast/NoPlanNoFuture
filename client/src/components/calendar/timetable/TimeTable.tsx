@@ -275,7 +275,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                         return (
                           <div
                             key={task.id}
-                            className={`absolute inset-0 text-xs rounded cursor-pointer z-10 hover:opacity-80 border ${taskColors}`}
+                            className={`absolute inset-0 text-xs rounded cursor-pointer z-10 opacity-80 hover:opacity-90 border ${taskColors}`}
                             style={{
                               height: `${durationSlots * 32 - 4}px`,
                               minHeight: '28px',
@@ -294,9 +294,9 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                                 <span className="text-[8px] text-yellow-800">!</span>
                               </div>
                             )}
-                            <div className="truncate text-center font-medium text-[10px]">{task.title}</div>
+                            <div className="truncate text-center font-semibold text-[12px] text-gray-900 dark:text-white">{task.title}</div>
                             {tasks.length > 1 && (
-                              <div className="text-[10px] opacity-75 text-center">
+                              <div className="text-[10px] opacity-55 text-center">
                                 {task.start_time}
                               </div>
                             )}
