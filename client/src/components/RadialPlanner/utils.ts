@@ -8,24 +8,31 @@ export const convertTimetableTaskToRadial = (task: TaskData): Task | null => {
   const [eh, em] = task.end_time.split(':').map(Number);
 
   const startIsPM = sh >= 12;
+  const endIsPM = eh >= 12;
   const to12Hour = (h: number) => {
     const hh = h % 12;
     return hh === 0 ? 12 : hh;
   };
   const start12h = to12Hour(sh) + (sm || 0) / 60;
   const end12h = to12Hour(eh) + (em || 0) / 60;
+  
+  // Use start time's hour group as primary
   const hourGroup: 'AM' | 'PM' = startIsPM ? 'PM' : 'AM';
-
+  
+  // Store the original 24-hour times for proper conversion in TaskRenderer
   return {
     id: task.id,
     title: task.title,
-    start: start12h === 12 ? 0 : start12h,
-    end: end12h === 12 ? 0 : end12h,
+    start: start12h,
+    end: end12h,
     remarks: '',
     hourGroup,
     source: 'timetable',
     isRecurring: !!task.is_recurring,
-  };
+    // Add original 24h times for proper conversion
+    start24h: sh + (sm || 0) / 60,
+    end24h: eh + (em || 0) / 60,
+  } as Task & { start24h: number; end24h: number };
 };
 
 export const validateTimeString = (timeStr: string): boolean => {
@@ -42,7 +49,7 @@ export const parseTimeString = (timeStr: string): number => {
   const [hourStr, minuteStr] = parts;
   const hour = parseInt(hourStr);
   const minute = parseInt(minuteStr) || 0;
-  return (hour === 12 ? 0 : hour) + minute / 60;
+  return hour + minute / 60;
 };
 
 export const formatTimeInput = (input: string): string => {

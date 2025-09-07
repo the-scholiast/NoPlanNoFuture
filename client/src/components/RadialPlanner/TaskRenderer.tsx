@@ -26,12 +26,12 @@ const TaskRenderer: React.FC<TaskRendererProps> = ({
 
   const convertToDisplayHour = (hour: number, hourGroup: 'AM' | 'PM'): number => {
     if (use24Hour) {
-      // 24h stays exact: 12 AM -> 0, 1 PM -> 13, 12 PM -> 12
+      // 24h conversion: 12 AM -> 0, 12 PM -> 12, other PM -> hour + 12
       if (hourGroup === 'PM' && hour !== 12) return hour + 12;
       if (hourGroup === 'AM' && hour === 12) return 0;
       return hour;
     }
-    // 12h mode: ALWAYS normalize 12 -> 0 so 12:xx sits at top and never overflows.
+    // 12h mode: normalize 12 -> 0 for consistent positioning at top
     return hour === 12 ? 0 : hour;
   };
 
@@ -49,13 +49,48 @@ const TaskRenderer: React.FC<TaskRendererProps> = ({
   };
 
   const renderTask = (task: Task, index: number) => {
-    let start = convertToDisplayHour(task.start, task.hourGroup);
-    let end = convertToDisplayHour(task.end, task.hourGroup);
+    let start: number, end: number;
+    
+    // For timetable tasks, use original 24h times if available
+    if (task.source === 'timetable' && 'start24h' in task && 'end24h' in task) {
+      const taskWith24h = task as Task & { start24h: number; end24h: number };
+      if (use24Hour) {
+        start = taskWith24h.start24h;
+        end = taskWith24h.end24h;
+      } else {
+        // Convert 24h to 12h for display
+        start = convertToDisplayHour(task.start, task.hourGroup);
+        end = convertToDisplayHour(task.end, task.hourGroup);
+      }
+    } else {
+      // For planner tasks, use normal conversion
+      start = convertToDisplayHour(task.start, task.hourGroup);
+      end = convertToDisplayHour(task.end, task.hourGroup);
+    }
+    
     start = snapHour(start);
     end = snapHour(end);
 
-    const denom = use24Hour ? 24 : 12;
-    const toAngle = (val: number) => (val / denom) * Math.PI * 2 + offset;
+    // Handle midnight crossing: if end < start, it means the task crosses midnight
+    const crossesMidnight = end < start;
+    if (crossesMidnight) {
+      end += use24Hour ? 24 : 12;
+    }
+
+    // Additional check: if the task spans more than 12 hours in 12h mode or 18 hours in 24h mode,
+    // it's likely a midnight-crossing task that wasn't properly detected
+    const maxReasonableDuration = use24Hour ? 18 : 10;
+    if (!crossesMidnight && (end - start) > maxReasonableDuration) {
+      end -= use24Hour ? 24 : 12;
+    }
+
+    const toAngle = (val: number) => {
+      if (use24Hour) {
+        return (val / 24) * 2 * Math.PI + offset;
+      } else {
+        return (val / 12) * 2 * Math.PI + offset;
+      }
+    };
 
     const startAngle = toAngle(start);
     const endAngle = toAngle(end);
