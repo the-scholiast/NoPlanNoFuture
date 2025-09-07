@@ -4,6 +4,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { DAYS_OF_WEEK, DAY_ABBREVIATIONS } from '@/lib/utils/constants';
 import { TaskFormDataValue } from '../types';
+import { ColorPicker } from './ColorPicker';
 
 export interface TaskFormData {
   title: string;
@@ -17,6 +18,7 @@ export interface TaskFormData {
   is_recurring: boolean;
   recurring_days: string[];
   is_schedule?: boolean;
+  color?: string;
 }
 
 interface TaskFormFieldsProps {
@@ -94,6 +96,13 @@ export function TaskBasicFields({ task, updateField, isSubmitting }: TaskFormFie
           </Select>
         </div>
       </div>
+
+      {/* Color Picker */}
+      <ColorPicker
+        value={task.color}
+        onChange={(color) => updateField('color', color)}
+        disabled={isSubmitting}
+      />
     </>
   );
 }

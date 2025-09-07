@@ -54,7 +54,7 @@ const RadialClock: React.FC<RadialClockProps> = ({
     const r = outerRadius - 40;
 
     for (let h = 0; h < 24; h++) {
-      const a = (h / 12) * Math.PI + offset;
+      const a = (h / 24) * 2 * Math.PI + offset;
 
       const x1 = center + r * Math.cos(a);
       const y1 = center + r * Math.sin(a);
@@ -84,7 +84,7 @@ const RadialClock: React.FC<RadialClockProps> = ({
     const r = outerRadius - 20;
 
     for (let h = 0; h < 24; h++) {
-      const ha = (h / 12) * Math.PI + offset;
+      const ha = (h / 24) * 2 * Math.PI + offset;
 
       // hour tick
       {
@@ -111,7 +111,7 @@ const RadialClock: React.FC<RadialClockProps> = ({
 
       // 10-minute ticks (6 between each hour)
       for (let m = 1; m < 6; m++) {
-        const a = ((h + m / 6) / 12) * Math.PI + offset;
+        const a = ((h + m / 6) / 24) * 2 * Math.PI + offset;
 
         const x1 = center + r * Math.cos(a);
         const y1 = center + r * Math.sin(a);
@@ -139,13 +139,13 @@ const RadialClock: React.FC<RadialClockProps> = ({
 
   const render24HourOutermostRing = (): React.ReactElement[] => {
     const marks: React.ReactElement[] = [];
-    // 刻度起点完全贴住时钟边缘 (从outerRadius开始)
+    // Tick marks start exactly at the clock edge (from outerRadius)
     const r = outerRadius;
 
     for (let h = 0; h < 24; h++) {
-      const ha = (h / 12) * Math.PI + offset;
+      const ha = (h / 24) * 2 * Math.PI + offset;
 
-      // hour tick - 从边缘开始向内
+      // hour tick - starts from edge and goes inward
       {
         const x1 = center + r * Math.cos(ha);
         const y1 = center + r * Math.sin(ha);
@@ -168,9 +168,9 @@ const RadialClock: React.FC<RadialClockProps> = ({
         );
       }
 
-      // 5-minute ticks (12 between each hour) - 从边缘开始向内
+      // 5-minute ticks (12 between each hour) - starts from edge and goes inward
       for (let m = 1; m < 12; m++) {
-        const a = ((h + m / 12) / 12) * Math.PI + offset;
+        const a = ((h + m / 12) / 24) * 2 * Math.PI + offset;
 
         const x1 = center + r * Math.cos(a);
         const y1 = center + r * Math.sin(a);
@@ -196,17 +196,17 @@ const RadialClock: React.FC<RadialClockProps> = ({
     return marks;
   };
 
-  // 数字1-24放在外圈 (在时钟边缘外侧)
+  // Numbers 1-24 placed outside the ring (outside the clock edge)
   const render24HourNumbers = (): React.ReactElement[] => {
     const nodes: React.ReactElement[] = [];
-    const r = outerRadius + 16; // 数字位置在边缘外侧
+    const r = outerRadius + 16; // Number position outside the edge
 
     for (let h = 0; h < 24; h++) {
-      const a = (h / 12) * Math.PI + offset;
+      const a = (h / 24) * 2 * Math.PI + offset;
       const x = center + r * Math.cos(a);
       const y = center + r * Math.sin(a);
 
-      // 显示1-24而不是0-23
+      // Display 1-24 instead of 0-23
       const displayHour = h === 0 ? 24 : h;
 
       nodes.push(
@@ -229,7 +229,7 @@ const RadialClock: React.FC<RadialClockProps> = ({
     return nodes;
   };
 
-  // ===== 12H mode (三环布局，与24H相同) =====
+  // ===== 12H mode (three-ring layout, same as 24H) =====
   const render12HourInnermostRing = (): React.ReactElement[] => {
     const marks: React.ReactElement[] = [];
     const r = outerRadius - 40;
@@ -320,13 +320,13 @@ const RadialClock: React.FC<RadialClockProps> = ({
 
   const render12HourOutermostRing = (): React.ReactElement[] => {
     const marks: React.ReactElement[] = [];
-    // 刻度完全贴住时钟边缘
+    // Tick marks completely touch the clock edge
     const r = outerRadius;
 
     for (let h = 0; h < 12; h++) {
       const ha = (h / 6) * Math.PI + offset;
 
-      // hour tick - 从边缘开始向内
+      // hour tick - starts from edge and goes inward
       {
         const x1 = center + r * Math.cos(ha);
         const y1 = center + r * Math.sin(ha);
@@ -377,7 +377,7 @@ const RadialClock: React.FC<RadialClockProps> = ({
     return marks;
   };
 
-  // 数字1-12显示在外圈
+  // Numbers 1-12 displayed on outer ring
   const render12HourNumbers = (): React.ReactElement[] => {
     const nodes: React.ReactElement[] = [];
     const r = outerRadius + 16;
@@ -387,7 +387,7 @@ const RadialClock: React.FC<RadialClockProps> = ({
       const x = center + r * Math.cos(a);
       const y = center + r * Math.sin(a);
 
-      // 显示1-12
+      // Display 1-12
       const displayHour = h === 0 ? 12 : h;
 
       nodes.push(
@@ -412,7 +412,7 @@ const RadialClock: React.FC<RadialClockProps> = ({
 
   return (
     <>
-      {/* anchor rim - 时钟边框 */}
+      {/* anchor rim - clock border */}
       <Outline />
 
       {use24Hour ? (

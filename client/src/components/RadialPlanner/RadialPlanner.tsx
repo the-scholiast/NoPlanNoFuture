@@ -14,8 +14,11 @@ interface PlannerWithSetter {
 
 // ===== Color helpers (keeps list + clock in sync even for old tasks) =====
 const COLORS = ['#60a5fa', '#34d399', '#fbbf24', '#fb923c', '#f87171', '#a78bfa', '#ec4899'];
-const to24 = (h: number, g: 'AM' | 'PM') =>
-  g === 'PM' && h !== 12 ? h + 12 : g === 'AM' && h === 12 ? 0 : h;
+const to24 = (h: number, g: 'AM' | 'PM') => {
+  if (g === 'PM' && h !== 12) return h + 12;
+  if (g === 'AM' && h === 12) return 0;
+  return h;
+};
 
 function repairTaskColor<T extends { start: number; hourGroup: 'AM' | 'PM'; color?: string }>(t: T): T {
   if (t.color) return t;
@@ -97,7 +100,7 @@ const RadialPlanner: React.FC = () => {
     const r = outerRadius + 18; // distance outside the rim
     if (use24Hour) {
       for (let h = 0; h < 24; h++) {
-        const angle = (h / 12) * Math.PI - Math.PI / 2; // 12 o'clock start
+        const angle = (h / 24) * 2 * Math.PI - Math.PI / 2; // 12 o'clock start
         const x = svgCenter + r * Math.cos(angle);
         const y = svgCenter + r * Math.sin(angle);
         const display = h === 0 ? 24 : h;

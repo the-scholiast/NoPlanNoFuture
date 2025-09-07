@@ -16,13 +16,13 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
   // Helper function to get original task data for recurring instances
   const getOriginalTaskData = (task: TaskData): TaskFormData => {
     if (isRecurringInstance(task)) {
-      // For recurring instances, don't use the instance_date as start_date instead, use the original task's start_date
+      // For recurring instances, use the original task's start_date from the database
       return {
         title: task.title || '',
         section: task.section || 'daily',
         priority: task.priority || 'low',
         description: task.description || '',
-        start_date: '', // Don't inherit instance_date for recurring tasks
+        start_date: task.start_date || '', // Use the actual start_date from database
         end_date: task.end_date || '',
         start_time: task.start_time || '',
         end_time: task.end_time || '',

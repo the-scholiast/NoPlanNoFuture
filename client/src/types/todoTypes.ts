@@ -20,6 +20,7 @@ export interface TaskData {
   last_completed_date?: string;
   deleted_at?: string;
   is_schedule?: boolean;
+  color?: string;
 }
 
 export interface CreateTaskData {
@@ -34,6 +35,7 @@ export interface CreateTaskData {
   is_recurring?: boolean;
   recurring_days?: string[];
   is_schedule?: boolean;
+  color?: string;
 }
 
 export interface AddTaskModalProps {
@@ -59,6 +61,7 @@ export interface InternalTaskData {
   is_recurring?: boolean;
   recurring_days?: string[];
   is_schedule?: boolean;
+  color?: string;
 }
 
 export interface EditTaskModalProps {

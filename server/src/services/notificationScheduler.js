@@ -86,6 +86,7 @@ const getTasksForNotification = async (userId, notification) => {
       .eq('user_id', userId)
       .is('deleted_at', null)
       .eq('is_recurring', true)
+      .lte('start_date', endDateLocalISO.split('T')[0]) // Only include recurring tasks that start within the period
       .order('start_date', { ascending: true });
     
     if (recurringError) throw recurringError;
@@ -118,9 +119,14 @@ const processNotifications = async () => {
   try {
     const now = new Date();
     
-    console.log(`[${now.toISOString()}] Processing notifications...`);
-    
     const notifications = await getActiveNotifications();
+    
+    // Early return if no active notifications
+    if (!notifications || notifications.length === 0) {
+      return;
+    }
+    
+    console.log(`[${now.toISOString()}] Processing ${notifications.length} active notifications...`);
     
     for (const notification of notifications) {
       try {
