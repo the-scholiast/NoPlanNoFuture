@@ -144,3 +144,15 @@ export const getTaskOverride = async (userId, parentTaskId, instanceData) => {
   return data;
 }
 
+// Get all overrides for a parent task
+export const getTaskOverrides = async (userId, parentTaskId) => {
+  const { data, error } = await supabase
+    .from('task_overrides')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('parent_task_id', parentTaskId)
+    .order('instance_date', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+};
