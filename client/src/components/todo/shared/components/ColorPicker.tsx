@@ -8,19 +8,19 @@ interface ColorPickerProps {
 
 
 const COLOR_OPTIONS = [
-    '#93b5cf', 
-    '#7bbd8a', 
-    '#d4b483', 
-    '#e6a57e', 
-    '#d08080', 
-    '#b8a5d3', 
-    '#d292b4', 
-    '#9ca3af', 
-    '#6faea6', 
-    '#c2a96b', 
-    '#a96d6d', 
-    '#8d85c1', 
-  ];
+  '#a5c4dd', 
+  '#a7d3b2', 
+  '#e2c897', 
+  '#e7b8a2', 
+  '#d6a7a7', 
+  '#c0add9', 
+  '#bfa8b6', 
+  '#a7c9c2', 
+  '#d3b8a7', 
+  '#a7b2d3', 
+  '#b0b8c2', 
+  '#c2d3a7', 
+];
 
 export function ColorPicker({ value, onChange, disabled }: ColorPickerProps) {
   return (
