@@ -35,6 +35,7 @@ export interface RawTaskApiResponse {
   is_schedule?: boolean | null;
   updated_at?: string;
   instance_date?: string | null;
+  color?: string | null;
 }
 
 // Transform raw API response to WorkoutTemplate. Handles potential data inconsistencies from backend
@@ -98,6 +99,7 @@ export function transformTaskData(data: RawTaskApiResponse): TaskData {
     deleted_at: data.deleted_at || undefined,
     is_schedule: data.is_schedule || false,
     updated_at: data.updated_at || undefined,
+    color: data.color || undefined,
   }
 }
 
@@ -115,6 +117,7 @@ export function transformCreateTaskData(data: TaskFormData): CreateTaskData {
     is_recurring: data.is_recurring || false,
     recurring_days: data.recurring_days || undefined,
     is_schedule: data.is_schedule || false,
+    color: data.color || undefined,
   }
 }
 
@@ -133,6 +136,7 @@ export function formatCreateTaskData(data: CreateTaskData, user: string) {
     is_recurring: data.is_recurring || false,
     recurring_days: data.recurring_days || null,
     is_schedule: data.is_schedule || false,
+    color: data.color || null,
   }
 }
 
