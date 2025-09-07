@@ -129,3 +129,18 @@ export const createOrUpdateTaskOverride = async (userId, parentTaskId, instanceD
   if (error) throw error;
   return data;
 };
+
+// Get override for a specific task instance
+export const getTaskOverride = async (userId, parentTaskId, instanceData) => {
+  const {data, error} = await supabase
+    .from('task_overrides')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('parent_task_id', parentTaskId)
+    .eq('instance_date', instanceData)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
