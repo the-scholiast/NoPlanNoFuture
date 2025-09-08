@@ -247,6 +247,12 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
               updateField={updateField}
               isSubmitting={isSubmitting}
               fieldPrefix="-edit"
+              disabledFields={{
+                title: editMode === 'instance',
+                description: editMode === 'instance',
+                section: editMode === 'instance',
+                priority: editMode === 'instance'
+              }}
             />
 
             {/* Recurring Section - Only show for series edit mode */}
