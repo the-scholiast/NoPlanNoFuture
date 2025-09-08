@@ -1,6 +1,6 @@
 import supabase from '../supabaseAdmin.js';
 import { formatDateString, ensureLocalDate } from '../utils/dateUtils.js';
-import { shouldTaskAppearOnDate } from './recurringTaskController.js';
+import { shouldTaskAppearOnDate, applyOverridesToInstances } from './recurringTaskController.js';
 
 // Get all scheduled tasks (is_schedule = true) for a date range
 export const getScheduledTasksForDateRange = async (userId, startDate, endDate) => {
@@ -58,8 +58,11 @@ export const getScheduledTasksForDateRange = async (userId, startDate, endDate) 
     }
   }
 
+  // Apply overrides to recurring instances
+  const instancesWithOverrides = await applyOverridesToInstances(userId, recurringInstances);
+
   // Combine and sort all tasks
-  const allTasks = [...(regularTasks || []), ...recurringInstances];
+  const allTasks = [...(regularTasks || []), ...instancesWithOverrides];
 
   // Sort by date and time
   allTasks.sort((a, b) => {
