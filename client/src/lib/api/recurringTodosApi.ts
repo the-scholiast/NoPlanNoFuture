@@ -27,13 +27,20 @@ export const recurringTodoApi = {
 
   // Create or update an override for a specific task instance
   createOrUpdateOverride: async (
-    parentTaskId: string, 
-    instanceDate: string, 
+    parentTaskId: string,
+    instanceDate: string,
     overrideData: TaskOverrideData
   ): Promise<TaskOverride> => {
     return apiCall(`/recurring-todos/${parentTaskId}/${instanceDate}`, {
       method: 'PUT',
       body: JSON.stringify(overrideData),
+    });
+  },
+
+  // Delete an override for a specific task instance
+  deleteOverride: async (parentTaskId: string, instanceDate: string): Promise<{ success: boolean }> => {
+    return apiCall(`/recurring-todos/${parentTaskId}/${instanceDate}`, {
+      method: 'DELETE',
     });
   },
 };
