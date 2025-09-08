@@ -21,6 +21,8 @@ export interface TaskData {
   deleted_at?: string;
   is_schedule?: boolean;
   color?: string;
+  has_override?: boolean;
+  override_id?: string;
 }
 
 export interface CreateTaskData {
@@ -71,23 +73,6 @@ export interface EditTaskModalProps {
   onTaskUpdated: () => void;
 }
 
-export interface TaskOverride {
-  id: string;
-  user_id: string;
-  parent_task_id: string;
-  instance_date: string;
-  title?: string;
-  start_date?: string;
-  end_date?: string;
-  start_time?: string;
-  end_time?: string;
-  description?: string;
-  priority?: string;
-  is_schedule?: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface TaskOverrideData {
   title?: string;
   start_date?: string;
@@ -95,6 +80,15 @@ export interface TaskOverrideData {
   start_time?: string;
   end_time?: string;
   description?: string;
-  priority?: string;
+  priority?: 'low' | 'medium' | 'high';
   is_schedule?: boolean;
+}
+
+export interface TaskOverride extends TaskOverrideData {
+  id: string;
+  user_id: string;
+  parent_task_id: string;
+  instance_date: string;
+  created_at: string;
+  updated_at: string;
 }
