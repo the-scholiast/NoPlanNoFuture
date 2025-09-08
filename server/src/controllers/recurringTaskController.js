@@ -82,7 +82,7 @@ export const getRecurringTaskInstances = async (userId, startDate, endDate) => {
     }
   }
 
-  return instances;
+  return await applyOverridesToInstances(userId, instances);
 };
 
 // Create or update a task override for a specific instance
