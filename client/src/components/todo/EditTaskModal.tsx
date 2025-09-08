@@ -10,8 +10,9 @@ import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField, TaskF
 export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated }: EditTaskModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState<'instance' | 'series'>('instance');
 
-  const { updateTaskMutation, deleteTaskMutation } = useTodoMutations();
+  const { updateTaskMutation, deleteTaskMutation, createTaskOverrideMutation } = useTodoMutations();
 
   // Helper function to get original task data for recurring instances
   const getOriginalTaskData = (task: TaskData): TaskFormData => {
@@ -65,6 +66,8 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
       const taskData = getOriginalTaskData(task);
       setEditableTask(taskData);
       setError(null);
+      // Default to instance mode for recurring task instances
+      setEditMode(isRecurringInstance(task) ? 'instance' : 'series');
     }
   }, [task, open, setEditableTask]);
 
@@ -84,25 +87,48 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
         return;
       }
 
-      // Prepare the task data with proper formatting
-      let taskDataToUpdate: Partial<TaskData> = transformCreateTaskData(editableTask);
-
-      // If not recurring, explicitly set recurring fields to their default values
-      if (!editableTask.is_recurring) {
-        taskDataToUpdate = {
-          ...taskDataToUpdate,
-          is_recurring: false,
-          recurring_days: []
+      if (isRecurringInstance(task) && editMode === 'instance') {
+        // Create override for this specific instance
+        const overrideData = {
+          title: editableTask.title !== task.title ? editableTask.title : undefined,
+          start_date: editableTask.start_date !== task.instance_date ? editableTask.start_date : undefined,
+          end_date: editableTask.end_date !== task.end_date ? editableTask.end_date : undefined,
+          start_time: editableTask.start_time !== task.start_time ? editableTask.start_time : undefined,
+          end_time: editableTask.end_time !== task.end_time ? editableTask.end_time : undefined,
+          description: editableTask.description !== task.description ? editableTask.description : undefined,
+          priority: editableTask.priority !== task.priority ? editableTask.priority : undefined,
+          is_schedule: editableTask.is_schedule !== task.is_schedule ? editableTask.is_schedule : undefined,
         };
+
+        // Remove undefined values
+        const cleanOverrideData = Object.fromEntries(
+          Object.entries(overrideData).filter(([_, value]) => value !== undefined)
+        );
+
+        if (Object.keys(cleanOverrideData).length > 0) {
+          await createTaskOverrideMutation.mutateAsync({
+            parentTaskId: task.parent_task_id!,
+            instanceDate: task.instance_date!,
+            overrideData: cleanOverrideData
+          });
+        }
+      } else {
+
+        let taskDataToUpdate: Partial<TaskData> = transformCreateTaskData(editableTask);
+
+        if (!editableTask.is_recurring) {
+          taskDataToUpdate = {
+            ...taskDataToUpdate,
+            is_recurring: false,
+            recurring_days: []
+          };
+        }
+
+        const taskIdToUpdate = isRecurringInstance(task) ? task.parent_task_id! : task.id;
+        const updates = updateTaskData(taskDataToUpdate);
+
+        await updateTaskMutation.mutateAsync({ id: taskIdToUpdate, updates });
       }
-
-      // Determine which task ID to update
-      const taskIdToUpdate = isRecurringInstance(task) ? task.parent_task_id! : task.id;
-      // Prepare updates (only send fields that actually have values)
-      const updates = updateTaskData(taskDataToUpdate);
-
-      // Use the shared mutation instead of direct API call
-      await updateTaskMutation.mutateAsync({ id: taskIdToUpdate, updates });
 
       // Notify parent component
       onTaskUpdated();
@@ -154,6 +180,8 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
 
   if (!task) return null;
 
+  const isRecurringInstanceTask = isRecurringInstance(task);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
@@ -164,6 +192,37 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
         {error && (
           <div className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 text-sm p-3 rounded-md whitespace-pre-line">
             {error}
+          </div>
+        )}
+
+        {/* Edit Mode Selector for recurring instances */}
+        {isRecurringInstanceTask && (
+          <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-md">
+            <label className="text-sm font-medium mb-2 block">What would you like to edit?</label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="editMode"
+                  value="instance"
+                  checked={editMode === 'instance'}
+                  onChange={(e) => setEditMode(e.target.value as 'instance' | 'series')}
+                  className="text-blue-600"
+                />
+                <span className="text-sm">Only this instance ({task.instance_date})</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="editMode"
+                  value="series"
+                  checked={editMode === 'series'}
+                  onChange={(e) => setEditMode(e.target.value as 'instance' | 'series')}
+                  className="text-blue-600"
+                />
+                <span className="text-sm">Entire recurring series</span>
+              </label>
+            </div>
           </div>
         )}
 
@@ -190,19 +249,21 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
               fieldPrefix="-edit"
             />
 
-            {/* Recurring Section */}
-            <RecurringSection
-              task={editableTask}
-              updateField={updateField}
-              isSubmitting={isSubmitting}
-              fieldPrefix="-edit"
-              showRecurringToggle={editableTask.section === 'none'} // Show toggle for none
-              shouldShowSection={editableTask.section === 'daily' || editableTask.section === 'none'}
-              toggleDay={toggleDay}
-              toggleEveryDay={toggleEveryDay}
-              isEveryDaySelected={isEveryDaySelected}
-              isDaySelected={isDaySelected}
-            />
+            {/* Recurring Section - Only show for series edit mode */}
+            {editMode === 'series' && (
+              <RecurringSection
+                task={editableTask}
+                updateField={updateField}
+                isSubmitting={isSubmitting}
+                fieldPrefix="-edit"
+                showRecurringToggle={editableTask.section === 'none'}
+                shouldShowSection={editableTask.section === 'daily' || editableTask.section === 'none'}
+                toggleDay={toggleDay}
+                toggleEveryDay={toggleEveryDay}
+                isEveryDaySelected={isEveryDaySelected}
+                isDaySelected={isDaySelected}
+              />
+            )}
 
             {/* Date and Time Fields */}
             <DateTimeFields

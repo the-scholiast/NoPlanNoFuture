@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { todoApi } from '@/lib/api/todos';
+import { todoApi, recurringTodoApi } from '@/lib/api/';
 import { CompletedTaskWithDetails, todoCompletionsApi } from '@/lib/api/todoCompletions';
-import { CreateTaskData, TaskData } from '@/types/todoTypes';
+import { CreateTaskData, TaskData, TaskOverrideData } from '@/types/todoTypes';
 import { getTodayString } from '@/lib/utils/dateUtils';
 import { transformTaskData } from '@/lib/utils/transformers';
 import { todoKeys } from '@/lib/queryKeys';
@@ -171,7 +171,7 @@ export const useTodoMutations = () => {
 
   // Create the function that components will call
   const createToggleTaskFunction = () => {
-    return (taskId: string, allTasks: TaskData[] ) => {
+    return (taskId: string, allTasks: TaskData[]) => {
       toggleTaskMutation.mutate({ taskId, allTasks });
     };
   };
@@ -281,6 +281,41 @@ export const useTodoMutations = () => {
     onSuccess: refreshAllData,
   });
 
+  // Task override mutations
+  const createTaskOverrideMutation = useMutation({
+    mutationFn: ({ 
+      parentTaskId, 
+      instanceDate, 
+      overrideData 
+    }: { 
+      parentTaskId: string; 
+      instanceDate: string; 
+      overrideData: TaskOverrideData; 
+    }) => recurringTodoApi.createOrUpdateOverride(parentTaskId, instanceDate, overrideData),
+    onSuccess: () => {
+      refreshAllData();
+    },
+    onError: (error) => {
+      console.error('Error creating task override:', error);
+    },
+  });
+
+  const deleteTaskOverrideMutation = useMutation({
+    mutationFn: ({ 
+      parentTaskId, 
+      instanceDate 
+    }: { 
+      parentTaskId: string; 
+      instanceDate: string; 
+    }) => recurringTodoApi.deleteOverride(parentTaskId, instanceDate),
+    onSuccess: () => {
+      refreshAllData();
+    },
+    onError: (error) => {
+      console.error('Error deleting task override:', error);
+    },
+  });
+
   return {
     // Task operations
     toggleTaskFunction: createToggleTaskFunction(),
@@ -291,6 +326,8 @@ export const useTodoMutations = () => {
     completeTaskMutation,
     restoreTaskMutation,
     permanentDeleteTaskMutation,
+    createTaskOverrideMutation,
+    deleteTaskOverrideMutation,
 
     // Utility
     refreshAllData,
