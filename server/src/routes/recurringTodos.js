@@ -81,7 +81,7 @@ router.get('/:parentTaskId/:instanceDate', authenticateUser, async (req, res, ne
 });
 
 // Create or update an override for a specific task instance
-router.put('/:parentTaskId/:instanceData', authenticateUser, async (req, res, next) => {
+router.put('/:parentTaskId/:instanceDate', authenticateUser, async (req, res, next) => {
   try {
     const { parentTaskId, instanceDate } = req.params;
     const overrideData = req.body;
@@ -106,17 +106,11 @@ router.put('/:parentTaskId/:instanceData', authenticateUser, async (req, res, ne
 })
 
 // Delete an override for a specific task instance
-router.delete('/:parentTaskId/:instanceDate', authenticateUser, async (req, res, next) => {
+router.delete('/:parentTaskId', authenticateUser, async (req, res, next) => {
   try {
-    const { parentTaskId, instanceDate } = req.params;
+    const { parentTaskId } = req.params;
 
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(instanceDate)) {
-      return res.status(400).json({
-        error: 'Invalid instance date format. Use YYYY-MM-DD'
-      });
-    }
-
-    await deleteTaskOverride(req.user.id, parentTaskId, instanceDate);
+    await deleteTaskOverride(req.user.id, parentTaskId);
     res.json({ success: true });
   } catch (error) {
     next(error);

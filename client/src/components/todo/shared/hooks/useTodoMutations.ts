@@ -283,14 +283,14 @@ export const useTodoMutations = () => {
 
   // Task override mutations
   const createTaskOverrideMutation = useMutation({
-    mutationFn: ({ 
-      parentTaskId, 
-      instanceDate, 
-      overrideData 
-    }: { 
-      parentTaskId: string; 
-      instanceDate: string; 
-      overrideData: TaskOverrideData; 
+    mutationFn: ({
+      parentTaskId,
+      instanceDate,
+      overrideData
+    }: {
+      parentTaskId: string;
+      instanceDate: string;
+      overrideData: TaskOverrideData;
     }) => recurringTodoApi.createOrUpdateOverride(parentTaskId, instanceDate, overrideData),
     onSuccess: () => {
       refreshAllData();
@@ -301,13 +301,7 @@ export const useTodoMutations = () => {
   });
 
   const deleteTaskOverrideMutation = useMutation({
-    mutationFn: ({ 
-      parentTaskId, 
-      instanceDate 
-    }: { 
-      parentTaskId: string; 
-      instanceDate: string; 
-    }) => recurringTodoApi.deleteOverride(parentTaskId, instanceDate),
+    mutationFn: (parentTaskId: string) => recurringTodoApi.deleteOverride(parentTaskId),
     onSuccess: () => {
       refreshAllData();
     },

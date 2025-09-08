@@ -18,7 +18,7 @@ export const useDeletedTasks = () => {
 
   const { dateFilter, updateDateFilter } = useDateFilterCurrentMonth();
   const { state, toggleTaskExpansion, toggleTasksExpansion, updateSearchQuery } = useTaskState<DeletedTaskWithInfo>();
-  const { restoreTaskMutation, permanentDeleteTaskMutation } = useTodoMutations();
+  const { restoreTaskMutation, permanentDeleteTaskMutation, deleteTaskOverrideMutation } = useTodoMutations();
 
   // Process deleted tasks to add deleted days calculation
   const processedDeletedTasks = useMemo((): DeletedTaskWithInfo[] => {
@@ -26,7 +26,7 @@ export const useDeletedTasks = () => {
 
     return deletedTasks.map((task): DeletedTaskWithInfo => {
       let deletedDays = 0;
-      
+
       if (task.deleted_at) {
         const deletedDate = new Date(task.deleted_at);
         const today = new Date(currentDate);
@@ -69,6 +69,7 @@ export const useDeletedTasks = () => {
 
   const handlePermanentDeleteTask = (taskId: string) => {
     permanentDeleteTaskMutation.mutate(taskId);
+    deleteTaskOverrideMutation.mutate(taskId);
   };
 
   const handleClearAllTasks = () => {

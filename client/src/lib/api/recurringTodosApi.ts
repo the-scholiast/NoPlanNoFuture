@@ -38,8 +38,8 @@ export const recurringTodoApi = {
   },
 
   // Delete an override for a specific task instance
-  deleteOverride: async (parentTaskId: string, instanceDate: string): Promise<{ success: boolean }> => {
-    return apiCall(`/recurring-todos/${parentTaskId}/${instanceDate}`, {
+  deleteOverride: async (parentTaskId: string ): Promise<{ success: boolean }> => {
+    return apiCall(`/recurring-todos/${parentTaskId}`, {
       method: 'DELETE',
     });
   },

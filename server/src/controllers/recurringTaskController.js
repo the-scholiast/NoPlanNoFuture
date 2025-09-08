@@ -157,14 +157,13 @@ export const getTaskOverrides = async (userId, parentTaskId) => {
   return data || [];
 };
 
-// Delete a task override
-export const deleteTaskOverride = async (userId, parentTaskId, instanceDate) => {
+// Delete all task override data with parent task ID
+export const deleteTaskOverride = async (userId, parentTaskId) => {
   const { error } = await supabase
     .from('task_overrides')
     .delete()
     .eq('user_id', userId)
-    .eq('parent_task_id', parentTaskId)
-    .eq('instance_date', instanceDate);
+    .eq('parent_task_id', parentTaskId);
 
   if (error) throw error;
   return true;
