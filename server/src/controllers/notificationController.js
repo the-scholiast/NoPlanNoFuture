@@ -271,6 +271,7 @@ const getTasksForNotification = async (userId, notification) => {
       .eq('user_id', userId)
       .is('deleted_at', null)
       .eq('is_recurring', true)
+      .lte('start_date', endDateLocalISO) // Only include recurring tasks that start within the period
       .order('start_date', { ascending: true });
     
     if (recurringError) throw recurringError;

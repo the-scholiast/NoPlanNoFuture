@@ -14,7 +14,7 @@ interface TaskListProps {
   isDarkMode?: boolean;
   onEdit?: (task: Task) => void;
   onDelete?: (task: Task) => void;
-  onDeleteTask?: (id?: string) => void; // 可用現有刪除邏輯
+  onDeleteTask?: (id?: string) => void; // Can use existing delete logic
 }
 
 const TaskList: React.FC<TaskListProps> = ({
@@ -62,7 +62,7 @@ const TaskList: React.FC<TaskListProps> = ({
               </div>
             </div>
 
-            {/* 按鈕：planner 顯示；timetable 隱藏 */}
+            {/* Button: show for planner; hide for timetable */}
             <div className="ml-3 shrink-0 flex gap-2">
               {isPlanner && (
                 <>

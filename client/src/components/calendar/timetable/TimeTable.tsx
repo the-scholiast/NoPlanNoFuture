@@ -6,7 +6,7 @@ import { Button } from "../../ui/button"
 import { Settings } from "lucide-react"
 import EditTaskModal from '@/components/todo/EditTaskModal'
 import AddTaskModal from '@/components/todo/global/AddTaskModal'
-import { getTaskColors } from '@/components/todo/shared/utils/sectionUtils'
+import { getTaskColors, getCustomColorStyle } from '@/components/todo/shared/utils/sectionUtils'
 import {
   useTimetableData,
   useTimetableState,
@@ -269,18 +269,20 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
 
                         const taskWidth = tasks.length > 1 ? `${100 / tasks.length}%` : '100%';
                         const taskLeft = tasks.length > 1 ? `${(taskIndex * 100) / tasks.length}%` : '0%';
-                        const taskColors = getTaskColors(task.section, task.priority);
+                        const taskColors = getTaskColors(task.section, task.priority, task.color);
+                        const customColorStyle = getCustomColorStyle(task.color);
 
                         return (
                           <div
                             key={task.id}
-                            className={`absolute inset-0 text-xs rounded cursor-pointer z-10 hover:opacity-80 border ${taskColors}`}
+                            className={`absolute inset-0 text-xs rounded cursor-pointer z-10 opacity-80 hover:opacity-90 border ${taskColors}`}
                             style={{
                               height: `${durationSlots * 32 - 4}px`,
                               minHeight: '28px',
                               width: taskWidth,
                               left: taskLeft,
-                              marginRight: tasks.length > 1 ? '2px' : '0px'
+                              marginRight: tasks.length > 1 ? '2px' : '0px',
+                              ...customColorStyle
                             }}
                             title={`${task.title}\n${task.start_time} - ${task.end_time}${tasks.length > 1 ? '\n⚠️ Overlapping with other tasks' : ''}`}
                             onMouseEnter={() => setHoveredTaskId(task.id)}
@@ -292,9 +294,9 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                                 <span className="text-[8px] text-yellow-800">!</span>
                               </div>
                             )}
-                            <div className="truncate text-center font-medium text-[10px]">{task.title}</div>
+                            <div className="truncate text-center font-semibold text-[12px] text-gray-900 dark:text-white">{task.title}</div>
                             {tasks.length > 1 && (
-                              <div className="text-[10px] opacity-75 text-center">
+                              <div className="text-[10px] opacity-55 text-center">
                                 {task.start_time}
                               </div>
                             )}

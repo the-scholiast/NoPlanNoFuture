@@ -168,6 +168,7 @@ export function useTaskFormLogic(initialTask?: Partial<TaskFormData>) {
     is_recurring: false,
     recurring_days: [],
     is_schedule: false,
+    color: undefined,
     ...initialTask
   });
   // Central update function that applies all rules
@@ -206,6 +207,7 @@ export function useMultiTaskFormLogic() {
     is_recurring: true,
     recurring_days: [...DAYS_OF_WEEK],
     is_schedule: false,
+    color: undefined,
   }), []);
 
   // Array of tasks, each with unique ID for React key prop

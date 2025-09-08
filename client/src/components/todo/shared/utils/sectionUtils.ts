@@ -30,8 +30,24 @@ export const getSectionColor = (section: string): string => {
   }
 };
 
-// Function to get combined task colors based on priority and section
-export const getTaskColors = (section: string, priority?: string): string => {
+// Function to get combined task colors based on priority, section, and custom color
+export const getTaskColors = (section: string, priority?: string, customColor?: string): string => {
+  // If custom color is provided, use it with appropriate text contrast
+  if (customColor) {
+    // Convert hex to RGB to determine if we need light or dark text
+    const hex = customColor.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    
+    // Calculate luminance to determine text color
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    const textColor = luminance > 0.5 ? 'text-gray-800 dark:text-gray-200' : 'text-white';
+    
+    // Return custom color with inline style support
+    return `border-2 ${textColor}`;
+  }
+
   // Priority takes precedence but we keep section as base for subtle distinction
   if (priority === 'high') {
     switch (section) {
@@ -53,4 +69,14 @@ export const getTaskColors = (section: string, priority?: string): string => {
 
   // Low priority or no priority - use section-specific colors for visual distinction
   return getSectionColor(section);
+};
+
+// Function to get custom color style for inline styles
+export const getCustomColorStyle = (customColor?: string): React.CSSProperties => {
+  if (!customColor) return {};
+  
+  return {
+    backgroundColor: customColor,
+    borderColor: customColor,
+  };
 };

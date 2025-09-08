@@ -4,6 +4,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { DAYS_OF_WEEK, DAY_ABBREVIATIONS } from '@/lib/utils/constants';
 import { TaskFormDataValue } from '../types';
+import { ColorPicker } from './ColorPicker';
 
 export interface TaskFormData {
   title: string;
@@ -17,6 +18,7 @@ export interface TaskFormData {
   is_recurring: boolean;
   recurring_days: string[];
   is_schedule?: boolean;
+  color?: string;
 }
 
 interface TaskFormFieldsProps {
@@ -25,10 +27,16 @@ interface TaskFormFieldsProps {
   isSubmitting: boolean;
   showScheduleField?: boolean;
   fieldPrefix?: string; // For unique IDs in multi-task forms
+  disabledFields?: {
+    title?: boolean;
+    description?: boolean;
+    section?: boolean;
+    priority?: boolean;
+  };
 }
 
 // Basic task fields component
-export function TaskBasicFields({ task, updateField, isSubmitting }: TaskFormFieldsProps) {
+export function TaskBasicFields({ task, updateField, isSubmitting, disabledFields = {} }: TaskFormFieldsProps) {
   return (
     <>
       {/* Task Input */}
@@ -39,7 +47,7 @@ export function TaskBasicFields({ task, updateField, isSubmitting }: TaskFormFie
           value={task.title}
           onChange={(e) => updateField('title', e.target.value)}
           className="w-full"
-          disabled={isSubmitting}
+          disabled={isSubmitting || disabledFields.title}
         />
       </div>
 
@@ -51,7 +59,7 @@ export function TaskBasicFields({ task, updateField, isSubmitting }: TaskFormFie
           value={task.description}
           onChange={(e) => updateField('description', e.target.value)}
           className="w-full"
-          disabled={isSubmitting}
+          disabled={isSubmitting || disabledFields.description}
         />
       </div>
 
@@ -62,7 +70,7 @@ export function TaskBasicFields({ task, updateField, isSubmitting }: TaskFormFie
           <Select
             value={task.section}
             onValueChange={(value) => updateField('section', value)}
-            disabled={isSubmitting}
+            disabled={isSubmitting || disabledFields.section}
           >
             <SelectTrigger className="w-full">
               <SelectValue />
@@ -81,7 +89,7 @@ export function TaskBasicFields({ task, updateField, isSubmitting }: TaskFormFie
           <Select
             value={task.priority}
             onValueChange={(value) => updateField('priority', value)}
-            disabled={isSubmitting}
+            disabled={isSubmitting || disabledFields.priority}
           >
             <SelectTrigger className="w-full">
               <SelectValue />
@@ -94,6 +102,13 @@ export function TaskBasicFields({ task, updateField, isSubmitting }: TaskFormFie
           </Select>
         </div>
       </div>
+
+      {/* Color Picker */}
+      <ColorPicker
+        value={task.color}
+        onChange={(color) => updateField('color', color)}
+        disabled={isSubmitting}
+      />
     </>
   );
 }
@@ -272,7 +287,7 @@ interface ScheduleFieldProps {
   forceChecked?: boolean;
 }
 
-export function ScheduleField({ task, updateField, isSubmitting, fieldPrefix = '', forceChecked = false  }: ScheduleFieldProps) {
+export function ScheduleField({ task, updateField, isSubmitting, fieldPrefix = '', forceChecked = false }: ScheduleFieldProps) {
   const isChecked = forceChecked || task.is_schedule || false;
   const isDisabled = forceChecked || isSubmitting;
 
@@ -281,7 +296,7 @@ export function ScheduleField({ task, updateField, isSubmitting, fieldPrefix = '
       <Checkbox
         id={`schedule${fieldPrefix}`}
         checked={isChecked}
-        onCheckedChange={forceChecked ? () => {} : (checked) => updateField('is_schedule', checked === true)}
+        onCheckedChange={forceChecked ? () => { } : (checked) => updateField('is_schedule', checked === true)}
         disabled={isDisabled}
       />
       <Label htmlFor={`schedule${fieldPrefix}`} className="text-sm font-medium">
