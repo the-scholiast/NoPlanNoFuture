@@ -14,6 +14,19 @@ export default function HomePage() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [message, setMessage] = useState<string>('');
 
+  const banners = [
+    "/images/banner1.png",
+    "/images/banner2.png",
+  ];
+
+  const [currentBanner, setCurrentBanner] = useState(banners[0]);
+
+  useEffect(() => {
+    //choose one banner from the pool
+    const randomIndex = Math.floor(Math.random() * banners.length);
+    setCurrentBanner(banners[randomIndex]);
+  }, []);
+
   // Fetch a random sentence on component mount
   useEffect(() => {
     if (user) {
@@ -104,7 +117,7 @@ export default function HomePage() {
         <h1 className="text-4xl font-bold mb-4">No Meow no meow-meow</h1>
 
         <Image
-          src="/images/banner.png"
+          src={currentBanner}
           alt="Banner"
           width={300}
           height={150}
