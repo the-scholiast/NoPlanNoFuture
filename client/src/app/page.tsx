@@ -144,7 +144,7 @@ export default function HomePage() {
       <h1 className="text-4xl font-bold mb-4">No Meow no meow-meow</h1>
 
       <Image
-        src="/images/banner.png"
+        src={currentBanner}
         alt="Banner"
         width={300}
         height={150}
