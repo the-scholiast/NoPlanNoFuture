@@ -17,6 +17,7 @@ import {
   getDayHeader,
 } from './timetable/utils'
 import { useEffect, useState } from 'react'
+import { useWorkHourTotals } from './timetable/hooks/useWorkHourTotals';
 
 interface SharedTimeTableProps {
   selectedDate: Date
@@ -107,6 +108,10 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
 
   const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const timeSlots = generateTimeSlots();
+  const { weekHours, perDayThisWeek } = useWorkHourTotals(weekDates, scheduledTasks);
+  const todayIndex = weekDates.findIndex(
+    d => d.toDateString() === new Date().toDateString()
+  );
 
   if (error) {
     return (
@@ -125,6 +130,11 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">Shared Calendar</h1>
+          <p className="text-sm text-muted-foreground">
+            Total today: {todayIndex >= 0 ? perDayThisWeek[todayIndex]?.toFixed(1) : '0.0'} h
+            Total this week: {weekHours.toFixed(1)} h
+          </p>
+          
         </div>
 
         {/* Week Navigation */}
@@ -184,7 +194,7 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
                   return (
                     <TableCell
                       key={`${dayName}-${time}`}
-                      className={`h-8 border-r w-32 relative p-0 ${isToday ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}
+                      className={`h-8 border-r w-32 relative p-0 ${isToday ? 'bg-blue-50/30 dark:bg-blue-950/30' : ''}`}
                     >
                       {tasks.map((task, taskIndex) => {
                         const isFirstSlot = isFirstSlotForTask(task, time);
