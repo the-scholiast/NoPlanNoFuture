@@ -102,7 +102,7 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
 
         // Remove undefined values
         const cleanOverrideData = Object.fromEntries(
-          Object.entries(overrideData).filter(([_, value]) => value !== undefined)
+          Object.entries(overrideData).filter(([, value]) => value !== undefined)
         );
 
         if (Object.keys(cleanOverrideData).length > 0) {
