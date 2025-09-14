@@ -3,6 +3,12 @@ import { getTodosForDate } from '../controllers/index.js';
 import { authenticateUser } from '../middleware/auth.js';
 import { getUserDateString } from '../utils/dateUtils.js';
 import { getTasksMonth, getRecurringTaskInstances } from '../controllers/index.js';
+import {
+  createOrUpdateTaskOverride,
+  getTaskOverride,
+  getTaskOverrides,
+  deleteTaskOverride
+} from '../controllers/index.js';
 
 const router = express.Router();
 
@@ -44,6 +50,73 @@ router.get('/month', authenticateUser, async (req, res, next) => {
     next(error);
   }
 });
+
+// Get all overrides for a parent task
+router.get('/:parentTaskId', authenticateUser, async (req, res, next) => {
+  try {
+    const { parentTaskId } = req.params;
+    const overrides = await getTaskOverrides(req.user.id, parentTaskId);
+    res.json(overrides);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get override for a specific task instance
+router.get('/:parentTaskId/:instanceDate', authenticateUser, async (req, res, next) => {
+  try {
+    const { parentTaskId, instanceDate } = req.params;
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(instanceDate)) {
+      return res.status(400).json({
+        error: 'Invalid instance date format. Use YYYY-MM-DD'
+      });
+    }
+
+    const override = await getTaskOverride(req.user.id, parentTaskId, instanceDate);
+    res.json(override);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create or update an override for a specific task instance
+router.put('/:parentTaskId/:instanceDate', authenticateUser, async (req, res, next) => {
+  try {
+    const { parentTaskId, instanceDate } = req.params;
+    const overrideData = req.body;
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(instanceDate)) {
+      return res.status(400).json({
+        error: 'Invalid instance date format. Use YYYY-MM-DD'
+      });
+    }
+
+    const override = await createOrUpdateTaskOverride(
+      req.user.id,
+      parentTaskId,
+      instanceDate,
+      overrideData
+    );
+
+    res.json(override);
+  } catch (error) {
+    next(error);
+  }
+})
+
+// Delete an override for a specific task instance
+router.delete('/:parentTaskId', authenticateUser, async (req, res, next) => {
+  try {
+    const { parentTaskId } = req.params;
+
+    await deleteTaskOverride(req.user.id, parentTaskId);
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
 
 
 export default router;
