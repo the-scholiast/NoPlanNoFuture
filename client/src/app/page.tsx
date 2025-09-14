@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from '@/hooks/useAuth';
 import GoogleAuthButton from '@/components/login/GoogleAuthButton';
+import { useMemo } from "react";
 
 export default function HomePage() {
   const { user, loading } = useAuth();
@@ -14,10 +15,10 @@ export default function HomePage() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [message, setMessage] = useState<string>('');
 
-  const banners = [
+  const banners = useMemo(() => [
     "/images/banner1.png",
     "/images/banner2.png",
-  ];
+  ], []);
 
   const [currentBanner, setCurrentBanner] = useState(banners[0]);
 
@@ -25,7 +26,7 @@ export default function HomePage() {
     //choose one banner from the pool
     const randomIndex = Math.floor(Math.random() * banners.length);
     setCurrentBanner(banners[randomIndex]);
-  }, []);
+  }, [banners]);
 
   // Fetch a random sentence on component mount
   useEffect(() => {
