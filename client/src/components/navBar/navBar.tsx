@@ -23,6 +23,9 @@ import { supabase } from "@/lib/supabaseClient";
 import { Badge } from "@/components/ui/badge";
 import { useTimetableData } from "@/components/calendar/timetable/hooks";
 import { useWorkHourTotals } from "@/components/calendar/timetable/hooks/useWorkHourTotals";
+import { useQuery } from "@tanstack/react-query";
+import { recurringTodoApi } from "@/lib/api/recurringTodosApi";
+import { todoKeys } from "@/lib/queryKeys";
 
 interface MenuItem {
   title: string;
@@ -115,7 +118,24 @@ export function NavSidebar() {
 
   // NEW: load timetable data and compute hours
   const { weekDates, scheduledTasks } = useTimetableData({});
-  const { todayHours, weekHours, monthHours } = useWorkHourTotals(weekDates, scheduledTasks);
+  
+  // Get current month for month tasks
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth() + 1; // getMonth() returns 0-11, we need 1-12
+  
+  // Fetch month tasks
+  const { data: monthTasks = [] } = useQuery({
+    queryKey: todoKeys.monthTasks(currentYear, currentMonth),
+    queryFn: () => recurringTodoApi.getMonthTasks(currentYear, currentMonth),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+  
+  const { todayHours, weekHours, monthHours } = useWorkHourTotals(
+    weekDates, 
+    scheduledTasks, 
+    { monthTasks, monthRefDate: currentDate }
+  );
 
   return (
     <Sidebar>
