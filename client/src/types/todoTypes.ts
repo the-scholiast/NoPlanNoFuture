@@ -82,6 +82,7 @@ export interface TaskOverrideData {
   description?: string;
   priority?: 'low' | 'medium' | 'high';
   is_schedule?: boolean;
+  is_skipped?: boolean;
 }
 
 export interface TaskOverride extends TaskOverrideData {
