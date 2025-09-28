@@ -37,20 +37,6 @@ function calculateActualHours(task: TimetableTask): number {
     return durationMinutes / 60; // Convert to hours
 }
 
-// Check if two tasks overlap
-function tasksOverlap(task1: TimetableTask, task2: TimetableTask): boolean {
-    const [start1Hours, start1Mins] = task1.start_time.split(':').map(Number);
-    const [end1Hours, end1Mins] = task1.end_time.split(':').map(Number);
-    const [start2Hours, start2Mins] = task2.start_time.split(':').map(Number);
-    const [end2Hours, end2Mins] = task2.end_time.split(':').map(Number);
-    
-    const start1Minutes = start1Hours * 60 + start1Mins;
-    const end1Minutes = end1Hours * 60 + end1Mins;
-    const start2Minutes = start2Hours * 60 + start2Mins;
-    const end2Minutes = end2Hours * 60 + end2Mins;
-    
-    return start1Minutes < end2Minutes && start2Minutes < end1Minutes;
-}
 
 // Calculate total non-overlapping work hours
 function calculateNonOverlappingHours(tasks: TimetableTask[]): number {
