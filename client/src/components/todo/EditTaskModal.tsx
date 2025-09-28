@@ -152,18 +152,36 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
   const handleDelete = async () => {
     if (!task?.id) return;
 
-    const confirmMessage = isRecurringInstance(task)
-      ? 'Are you sure you want to delete this recurring task? This will delete the entire recurring series.'
-      : 'Are you sure you want to delete this task?';
-
-    if (!window.confirm(confirmMessage)) return;
-
     setError(null);
     setIsSubmitting(true);
 
     try {
-      const taskIdToDelete = isRecurringInstance(task) ? task.parent_task_id! : task.id;
-      await deleteTaskMutation.mutateAsync(taskIdToDelete);
+      if (isRecurringInstance(task)) {
+        // Use the edit mode to determine delete behavior
+        if (editMode === 'instance') {
+          // Delete this instance only - create skip override
+          const confirmMessage = `Are you sure you want to delete this instance (${task.instance_date})?`;
+          if (!window.confirm(confirmMessage)) return;
+          
+          await createTaskOverrideMutation.mutateAsync({
+            parentTaskId: task.parent_task_id!,
+            instanceDate: task.instance_date!,
+            overrideData: { is_skipped: true }
+          });
+        } else {
+          // Delete entire series
+          const confirmMessage = 'Are you sure you want to delete the entire recurring series?';
+          if (!window.confirm(confirmMessage)) return;
+          
+          await deleteTaskMutation.mutateAsync(task.parent_task_id!);
+        }
+      } else {
+        // Non-recurring task deletion
+        const confirmMessage = 'Are you sure you want to delete this task?';
+        if (!window.confirm(confirmMessage)) return;
+        
+        await deleteTaskMutation.mutateAsync(task.id);
+      }
 
       // Notify parent component
       onTaskUpdated();
@@ -172,7 +190,6 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
     } catch (error) {
       console.error('Error deleting task:', error);
       setError(error instanceof Error ? error.message : 'Failed to delete task. Please try again.');
-      setIsSubmitting(false);
     } finally {
       setIsSubmitting(false);
     }
