@@ -199,8 +199,23 @@ export const applyOverridesToInstances = async (userId, instances) => {
     overrideMap.set(key, override);
   });
 
-  // Apply overrides to instances
-  return instances.map(instance => {
+  // Filter out skipped instances first
+  const filteredInstances = instances.filter(instance => {
+    if (!instance.parent_task_id || !instance.instance_date) return true;
+
+    const key = `${instance.parent_task_id}_${instance.instance_date}`;
+    const override = overrideMap.get(key);
+
+    // If override exists and is_skipped is true, filter out this instance
+    if (override && override.is_skipped) {
+      return false;
+    }
+
+    return true;
+  });
+
+  // Apply overrides to remaining instances
+  return filteredInstances.map(instance => {
     if (!instance.parent_task_id || !instance.instance_date) return instance;
 
     const key = `${instance.parent_task_id}_${instance.instance_date}`;
