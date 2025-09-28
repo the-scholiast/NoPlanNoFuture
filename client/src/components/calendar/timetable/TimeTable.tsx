@@ -13,6 +13,7 @@ import {
   useTimetableScrolling,
   useTimetableModalHandlers
 } from './hooks'
+import { useWorkHourTotals } from './hooks/useWorkHourTotals'
 import {
   generateTimeSlots,
   getTasksForTimeSlot,
@@ -88,6 +89,9 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
     weekDates,
     handleDataRefresh
   });
+
+  // Get work hour totals for each day
+  const { perDayThisWeek } = useWorkHourTotals(weekDates, scheduledTasks);
 
   // Load hidden time ranges from localStorage
   useEffect(() => {
@@ -217,6 +221,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
               {dayNames.map((dayName, index) => {
                 const headerData = getDayHeader(dayName, index, weekDates, isMounted);
                 const isToday = isMounted && weekDates && weekDates[index].toDateString() === new Date().toDateString();
+                const dayWorkHours = perDayThisWeek[index] || 0;
 
                 return (
                   <TableHead
@@ -226,7 +231,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                     <div className="flex flex-col items-center">
                       <div>{headerData.dayName}</div>
                       <div className={`text-xs font-normal ${headerData.isToday ? 'text-blue-600 font-medium' : 'text-muted-foreground'}`}>
-                        {headerData.dateDisplay}
+                        {headerData.dateDisplay} <span className="font-medium text-gray-400">[{dayWorkHours.toFixed(1)}h]</span>
                       </div>
                     </div>
                   </TableHead>

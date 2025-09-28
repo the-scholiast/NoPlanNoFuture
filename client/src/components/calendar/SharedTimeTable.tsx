@@ -173,7 +173,7 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
                       <div>{headerData.dayName}</div>
                       <div className={`text-xs font-normal ${headerData.isToday ?
                         'text-blue-600 font-medium' : 'text-muted-foreground'}`}>
-                        {headerData.dateDisplay}
+                        {headerData.dateDisplay} <span className="font-medium text-gray-400">[{perDayThisWeek[index]?.toFixed(1) || '0.0'}h]</span>
                       </div>
                     </div>
                   </TableHead>
