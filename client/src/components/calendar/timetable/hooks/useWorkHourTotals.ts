@@ -185,10 +185,27 @@ export function useWorkHourTotals(
     const monthHours = useMemo(() => {
         if (opts?.monthTasks && opts.monthTasks.length > 0) {
             const monthSafe = opts.monthTasks.filter(hasTimeFields);
+
+            // Build YYYY-MM-DD strings for month start and today (inclusive upper bound)
+            const refDate = opts.monthRefDate ?? new Date();
+            const year = refDate.getFullYear();
+            const month = refDate.getMonth(); // 0-11
+            const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+            const monthStartStr = `${year}-${pad(month + 1)}-01`;
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+
+            // Filter to [month start, today]
+            const inCurrentMonthToDate = monthSafe.filter((t) => {
+                const d = t.instance_date || t.start_date;
+                if (!d) return false;
+                return d >= monthStartStr && d <= todayStr;
+            });
+
             // Group by date
             const tasksByDate = new Map<string, TimetableTask[]>();
             
-            for (const task of monthSafe) {
+            for (const task of inCurrentMonthToDate) {
                 const taskDate = task.instance_date || task.start_date;
                 if (taskDate) {
                     if (!tasksByDate.has(taskDate)) {
@@ -207,7 +224,7 @@ export function useWorkHourTotals(
             return totalMonthHours;
         }
         return weekHours;
-    }, [opts?.monthTasks, weekHours]);
+    }, [opts?.monthTasks, opts?.monthRefDate, weekHours]);
 
     return { 
         todayHours, 
