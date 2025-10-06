@@ -26,6 +26,7 @@ import { useWorkHourTotals } from "@/components/calendar/timetable/hooks/useWork
 import { useQuery } from "@tanstack/react-query";
 import { recurringTodoApi } from "@/lib/api/recurringTodosApi";
 import { todoKeys } from "@/lib/queryKeys";
+ 
 
 interface MenuItem {
   title: string;
@@ -54,11 +55,10 @@ const items: MenuItem[] = [
     title: "To Do",
     url: "/todo",
   },
-  // FOR FUTURE VERSION
-  // {
-  //   title: "Stats",
-  //   url: "/stats",
-  // },
+  {
+    title: "Stats",
+    url: "/stats",
+  },
   {
     title: "Memo",
     url: "/memo",
@@ -137,6 +137,8 @@ export function NavSidebar() {
     { monthTasks, monthRefDate: currentDate }
   );
 
+  
+
   return (
     <Sidebar>
       {/* Replace with app icon */}
@@ -155,6 +157,8 @@ export function NavSidebar() {
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
+
+            
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
