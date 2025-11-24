@@ -6,7 +6,17 @@ import type { PieSlice } from './useStatsData'
 
 const RADIAN = Math.PI / 180
 
-function renderPieLabel(props: any) {
+interface PieLabelProps {
+  cx: number
+  cy: number
+  midAngle: number
+  outerRadius: number
+  percent: number
+  name: string
+  index: number
+}
+
+function renderPieLabel(props: PieLabelProps) {
   const { cx, cy, midAngle, outerRadius, percent, name, index } = props
   
   // Hide label if less than 1%
