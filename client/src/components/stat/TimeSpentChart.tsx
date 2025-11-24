@@ -13,7 +13,7 @@ export function TimeSpentChart({ data, isDark }: Props) {
   return (
     <div className="overflow-x-auto flex justify-center">
       <div className="w-[1400px]">
-        <ChartContainer config={{ hours: { label: 'Hours', color: isDark ? '#a3e635' : '#166534' } }} className="h-[480px] w-[1300px] mx-auto">
+        <ChartContainer config={{ hours: { label: 'Hours', color: isDark ? '#9ca3af' : '#93c5fd' } }} className="h-[480px] w-[1300px] mx-auto">
           <ResponsiveContainer>
             <ComposedChart data={data}>
               <XAxis dataKey="date" tickLine={false} axisLine={false} />
