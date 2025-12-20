@@ -143,7 +143,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
   const timeSlots = filterHiddenTimeSlots(allTimeSlots, hiddenTimeRanges);
 
   return (
-    <div className="w-full flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
+    <div className="w-full flex flex-col" style={{ height: 'calc(100vh - 130px)' }}>
       <div className="flex justify-between items-center mb-2">
         <div className="flex items-center gap-2">
           <CalendarShareDialog />
@@ -214,11 +214,11 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
           </DialogContent>
         </Dialog>
       </div>
-      <Card className="flex-1 overflow-auto relative">
-        <Table ref={tableRef} className="overflow-visible">
-          <TableHeader className="sticky top-0 bg-background z-10">
-            <TableRow>
-              <TableHead className="w-24 border-r bg-background">Time</TableHead>
+      <Card className="flex-1 overflow-auto relative min-h-0 flex flex-col py-0 gap-0">
+        <Table ref={tableRef} className="w-full overflow-visible">
+          <TableHeader className="sticky top-0 bg-background z-30">
+            <TableRow className="relative z-30">
+              <TableHead className="w-24 border-r bg-background relative z-30">Time</TableHead>
               {dayNames.map((dayName, index) => {
                 const headerData = getDayHeader(dayName, index, weekDates, isMounted);
                 const isToday = isMounted && weekDates && weekDates[index].toDateString() === new Date().toDateString();
@@ -227,7 +227,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                 return (
                   <TableHead
                     key={dayName}
-                    className={`text-center w-32 bg-background ${isToday ? 'text-blue-600 dark:text-blue-400 font-semibold' : ''}`}
+                    className={`text-center w-32 bg-background relative z-30 ${isToday ? 'text-blue-600 dark:text-blue-400 font-semibold' : ''}`}
                   >
                     <div className="flex flex-col items-center">
                       <div>{headerData.dayName}</div>

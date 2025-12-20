@@ -115,6 +115,7 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
     d => d.toDateString() === new Date().toDateString()
   );
 
+
   if (error) {
     return (
       <Card className="p-8 text-center">
@@ -127,9 +128,9 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
   }
 
   return (
-    <div className="w-full overflow-auto">
+    <div className="w-full flex flex-col" style={{ height: 'calc(100vh - 130px)' }}>
       {/* Header with Navigation */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-shrink-0">
         <div>
           <h1 className="text-2xl font-bold">Shared Calendar</h1>
           <p className="text-sm text-muted-foreground">
@@ -153,11 +154,11 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
         </div>
       </div>
 
-      <Card className="overflow-hidden">
+      <Card className="flex-1 overflow-auto relative min-h-0 flex flex-col py-0 gap-0">
         <Table className="w-full overflow-visible">
-          <TableHeader className="sticky top-0 bg-background z-10">
-            <TableRow>
-              <TableHead className="w-24 border-r bg-background">Time</TableHead>
+          <TableHeader className="sticky top-0 bg-background z-30">
+            <TableRow className="relative z-30">
+              <TableHead className="w-24 border-r bg-background relative z-30">Time</TableHead>
               {dayNames.map((dayName, index) => {
                 const headerData = weekDates.length > 0 ? getDayHeader(dayName, index, weekDates, isMounted) : {
                   dayName,
@@ -168,7 +169,7 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
                 return (
                   <TableHead
                     key={dayName}
-                    className={`text-center w-32 bg-background ${headerData.isToday ?
+                    className={`text-center w-32 bg-background relative z-30 ${headerData.isToday ?
                       'text-blue-600 dark:text-blue-400 font-semibold' : ''}`}
                   >
                     <div className="flex flex-col items-center">
