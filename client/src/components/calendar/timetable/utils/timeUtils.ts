@@ -1,26 +1,28 @@
 /**
- * Generates a complete day's worth of time slots in 30-minute increments
- * Creates 48 total slots (24 hours × 2 slots per hour)
- * Returns formatted time strings like "7:00 AM", "7:30 AM", etc.
+ * Generates a complete day's worth of time slots in 15-minute increments
+ * Creates 96 total slots (24 hours × 4 slots per hour)
+ * Returns formatted time strings like "7:00 AM", "7:15 AM", "7:30 AM", "7:45 AM", etc.
  */
 
 export const generateTimeSlots = () => {
   const slots = [];
   for (let hour = 0; hour < 24; hour++) {
-    // Add the hour slot
-    const hourTime = hour === 0 ? "12:00 AM" :
-      hour < 12 ? `${hour}:00 AM` :
-        hour === 12 ? "12:00 PM" :
-          `${hour - 12}:00 PM`;
-    slots.push(hourTime);
-
-    // Add the 30-minute slot
-    if (hour < 24) {
-      const halfHourTime = hour === 0 ? "12:30 AM" :
-        hour < 12 ? `${hour}:30 AM` :
-          hour === 12 ? "12:30 PM" :
-            `${hour - 12}:30 PM`;
-      slots.push(halfHourTime);
+    // Add slots for each 15-minute interval in the hour
+    for (let quarter = 0; quarter < 4; quarter++) {
+      const minutes = quarter * 15;
+      let timeString = '';
+      
+      if (hour === 0) {
+        timeString = minutes === 0 ? "12:00 AM" : `12:${minutes.toString().padStart(2, '0')} AM`;
+      } else if (hour < 12) {
+        timeString = minutes === 0 ? `${hour}:00 AM` : `${hour}:${minutes.toString().padStart(2, '0')} AM`;
+      } else if (hour === 12) {
+        timeString = minutes === 0 ? "12:00 PM" : `12:${minutes.toString().padStart(2, '0')} PM`;
+      } else {
+        timeString = minutes === 0 ? `${hour - 12}:00 PM` : `${hour - 12}:${minutes.toString().padStart(2, '0')} PM`;
+      }
+      
+      slots.push(timeString);
     }
   }
   return slots;
