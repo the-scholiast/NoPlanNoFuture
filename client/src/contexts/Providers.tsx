@@ -59,36 +59,51 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       <SidebarProvider>
         <NavSidebar />
         <SidebarInset>
-          <main className="p-6">
-            <div>
+          <main className="p-6 flex flex-col h-full overflow-hidden">
+            <div className="flex-shrink-0">
               {shouldShowBreadcrumb(pathname) ? (
                 <div className="mb-2 flex justify-between">
                   <UniversalBreadcrumb />
-                  {!['/memo', '/'].includes(pathname) && <TodoModalButton />}
+                  {!['/memo', '/'].includes(pathname) && (
+                    <div className="flex items-center gap-2">
+                      <TodoModalButton />
+                      <Button
+                        className="h-8 w-8 rounded-full shadow-lg"
+                        size="icon"
+                        onClick={() => setIsAddModalOpen(true)}
+                        type="button"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="mb-2 flex justify-end">
-                  {!['/memo', '/'].includes(pathname) && <TodoModalButton />}
+                  {!['/memo', '/'].includes(pathname) && (
+                    <div className="flex items-center gap-2">
+                      <TodoModalButton />
+                      <Button
+                        className="h-8 w-8 rounded-full shadow-lg"
+                        size="icon"
+                        onClick={() => setIsAddModalOpen(true)}
+                        type="button"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            <div className="flex items-center justify-between mb-6">
-              <div className="w-12"></div>
+            <div className="flex items-center justify-center mb-3 flex-shrink-0">
               <UniversalDateNavigation />
-              {!['/memo', '/'].includes(pathname) && (
-                <Button
-                  className="h-12 w-12 rounded-full shadow-lg"
-                  size="icon"
-                  onClick={() => setIsAddModalOpen(true)}
-                  type="button"
-                >
-                  <Plus className="h-6 w-6" />
-                </Button>
-              )}
             </div>
 
-            {children}
+            <div className="flex-1 min-h-0">
+              {children}
+            </div>
 
             <AddTaskModal
               open={isAddModalOpen}
