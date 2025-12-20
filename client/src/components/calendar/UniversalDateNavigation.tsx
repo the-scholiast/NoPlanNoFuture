@@ -235,7 +235,7 @@ function DateNavigationContent({ className }: UniversalDateNavigationProps) {
   }
 
   return (
-    <div className={cn("flex items-center justify-center gap-2 mb-6", className)}>
+    <div className={cn("flex items-center justify-center gap-2", className)}>
       {/* Previous navigation button */}
       <Button variant="ghost" size="sm" onClick={navigatePrevious}>
         <ChevronLeft className="h-4 w-4" />
