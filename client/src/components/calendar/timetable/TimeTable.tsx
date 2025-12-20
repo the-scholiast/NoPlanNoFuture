@@ -244,9 +244,9 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
               <TableRow
                 key={time}
                 id={time === "7:00 AM" ? "seven-am-row" : time === "8:00 AM" ? "eight-am-row" : undefined}
-                className={shouldHighlightRow(time, weekDates, hoveredTaskId, scheduledTasks, dayNames) ? 'bg-muted/30' : ''}
+                className={`h-5 ${shouldHighlightRow(time, weekDates, hoveredTaskId, scheduledTasks, dayNames) ? 'bg-muted/30' : ''}`}
               >
-                <TableCell className="font-medium text-xs border-r sticky left-0 bg-background p-1">
+                <TableCell className="font-medium text-xs border-r sticky left-0 bg-background p-1 h-5 align-top leading-none">
                   {time}
                 </TableCell>
                 {dayNames.map((dayName, index) => {
@@ -256,7 +256,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                   return (
                     <TableCell
                       key={`${dayName}-${time}`}
-                      className={`h-8 border-r w-32 relative cursor-pointer p-0 ${shouldHighlightRow(time, weekDates, hoveredTaskId, scheduledTasks, dayNames)
+                      className={`h-5 border-r w-32 relative cursor-pointer p-0 align-top leading-none ${shouldHighlightRow(time, weekDates, hoveredTaskId, scheduledTasks, dayNames)
                         ? ''
                         : 'hover:bg-muted/50'
                         } ${isToday ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}
@@ -282,8 +282,8 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                             key={task.id}
                             className={`absolute inset-0 text-xs rounded cursor-pointer z-10 opacity-80 hover:opacity-90 border ${taskColors}`}
                             style={{
-                              height: `${durationSlots * 32 - 4}px`,
-                              minHeight: '28px',
+                              height: `${durationSlots * 21}px`,
+                              minHeight: '0px',
                               width: taskWidth,
                               left: taskLeft,
                               marginRight: tasks.length > 1 ? '2px' : '0px',
@@ -299,7 +299,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                                 <span className="text-[8px] text-yellow-800">!</span>
                               </div>
                             )}
-                            <div className="truncate text-center font-semibold text-[12px] text-gray-900 dark:text-white">{task.title}</div>
+                            <div className="truncate text-center font-semibold text-[12px] text-gray-900 dark:text-white leading-none">{task.title}</div>
                             {tasks.length > 1 && (
                               <div className="text-[10px] opacity-55 text-center">
                                 {task.start_time}
