@@ -1,9 +1,14 @@
 /**
+ * Time slot duration in minutes
+ * Changing this value will affect all time slot calculations
+ */
+export const SLOT_MINUTES = 15;
+
+/**
  * Generates a complete day's worth of time slots in 15-minute increments
  * Creates 96 total slots (24 hours × 4 slots per hour)
  * Returns formatted time strings like "7:00 AM", "7:15 AM", "7:30 AM", "7:45 AM", etc.
  */
-
 export const generateTimeSlots = () => {
   const slots = [];
   for (let hour = 0; hour < 24; hour++) {

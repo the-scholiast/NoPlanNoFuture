@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { X, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { convertTimeSlotTo24Hour } from '@/components/calendar/timetable/utils';
+import { convertTimeSlotTo24Hour, SLOT_MINUTES } from '@/components/calendar/timetable/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AddTaskModalProps, TaskData, CreateTaskData } from '@/types/todoTypes';
 import { transformCreateTaskData } from '@/lib/utils/transformers';
@@ -25,12 +25,12 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilled
   } = useMultiTaskFormLogic();
   const { createTaskMutation } = useTodoMutations();
 
-  // Add helper function to calculate end time (30 minutes later)
+  // Add helper function to calculate end time (15 minutes later, based on SLOT_MINUTES)
   const calculateEndTime = (startTime: string): string => {
     const startTime24 = convertTimeSlotTo24Hour(startTime);
     const [hours, minutes] = startTime24.split(':').map(Number);
     const startMinutes = hours * 60 + minutes;
-    const endMinutes = startMinutes + 30;
+    const endMinutes = startMinutes + SLOT_MINUTES;
 
     const endHours = Math.floor(endMinutes / 60);
     const endMins = endMinutes % 60;
