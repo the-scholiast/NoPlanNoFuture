@@ -23,6 +23,7 @@ import {
   shouldHighlightRow,
   filterHiddenTimeSlots
 } from './utils'
+import { convertTimeSlotTo24Hour } from './utils/timeUtils'
 import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../../ui/dialog"
 import { Label } from "../../ui/label"
@@ -214,7 +215,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
         </Dialog>
       </div>
       <Card className="flex-1 overflow-auto relative">
-        <Table ref={tableRef}>
+        <Table ref={tableRef} className="overflow-visible">
           <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow>
               <TableHead className="w-24 border-r bg-background">Time</TableHead>
@@ -240,82 +241,112 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {timeSlots.map((time) => (
-              <TableRow
-                key={time}
-                id={time === "7:00 AM" ? "seven-am-row" : time === "8:00 AM" ? "eight-am-row" : undefined}
-                className={`h-5 ${shouldHighlightRow(time, weekDates, hoveredTaskId, scheduledTasks, dayNames) ? 'bg-muted/30' : ''}`}
-              >
-                <TableCell className="font-medium text-xs border-r sticky left-0 bg-background p-1 h-5 align-top leading-none">
-                  {time}
-                </TableCell>
-                {dayNames.map((dayName, index) => {
-                  const isToday = isMounted && weekDates && weekDates[index].toDateString() === new Date().toDateString();
-                  const tasks = weekDates.length > 0 ? getTasksForTimeSlot(index, time, weekDates, scheduledTasks) : [];
+            {timeSlots.map((time, timeIndex) => {
+              // Convert time to 24-hour format and extract minutes (calculate once)
+              const time24Hour = convertTimeSlotTo24Hour(time);
+              const [, minutes] = time24Hour.split(':').map(Number);
 
-                  return (
-                    <TableCell
-                      key={`${dayName}-${time}`}
-                      className={`h-5 border-r w-32 relative cursor-pointer p-0 align-top leading-none ${shouldHighlightRow(time, weekDates, hoveredTaskId, scheduledTasks, dayNames)
-                        ? ''
-                        : 'hover:bg-muted/50'
-                        } ${isToday ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}
-                      onClick={(e) => {
-                        if (e.target === e.currentTarget) {
-                          handleEmptySlotClick(index, time);
-                        }
-                      }}
+              // Check if this time slot should display a label (only at 00 and 30 minutes)
+              const shouldShowTimeLabel = minutes === 0 || minutes === 30;
+
+              // Check if this time slot ends at 15 or 45 minutes (should not have bottom border)
+              const endMinutes = (minutes + 15) % 60;
+              const removeBottomBorder = endMinutes === 15 || endMinutes === 45;
+
+              // Check if this is the first row of a 30-minute block (should merge with next row)
+              const shouldMergeTimeCell = shouldShowTimeLabel;
+              const nextTimeSlot = timeSlots[timeIndex + 1];
+              const hasNextSlot = nextTimeSlot !== undefined;
+
+              return (
+                <TableRow
+                  key={time}
+                  id={time === "7:00 AM" ? "seven-am-row" : time === "8:00 AM" ? "eight-am-row" : undefined}
+                  className={`h-3 ${shouldHighlightRow(time, weekDates, hoveredTaskId, scheduledTasks, dayNames) ? 'bg-muted/30' : ''} ${removeBottomBorder ? 'border-b-0' : ''}`}
+                >
+                  {shouldMergeTimeCell && hasNextSlot ? (
+                    <TableCell 
+                      rowSpan={2}
+                      className={`font-medium text-xs border-r sticky left-0 bg-background p-0.5 leading-none ${removeBottomBorder ? 'border-b-0' : ''}`}
+                      style={{ verticalAlign: 'middle' }}
                     >
-                      {tasks.map((task, taskIndex) => {
-                        const isFirstSlot = isFirstSlotForTask(task, time);
-                        const durationSlots = getTaskDurationSlots(task );
-
-                        if (!isFirstSlot) return null;
-
-                        const taskWidth = tasks.length > 1 ? `${100 / tasks.length}%` : '100%';
-                        const taskLeft = tasks.length > 1 ? `${(taskIndex * 100) / tasks.length}%` : '0%';
-                        const taskColors = getTaskColors(task.section, task.priority, task.color);
-                        const customColorStyle = getCustomColorStyle(task.color);
-
-                        return (
-                          <div
-                            key={task.id}
-                            className={`absolute inset-0 text-xs rounded cursor-pointer z-10 opacity-80 hover:opacity-90 border ${taskColors}`}
-                            style={{
-                              height: `${durationSlots * 21}px`,
-                              minHeight: '0px',
-                              width: taskWidth,
-                              left: taskLeft,
-                              marginRight: tasks.length > 1 ? '2px' : '0px',
-                              ...customColorStyle
-                            }}
-                            title={`${task.title}\n${task.start_time} - ${task.end_time}${tasks.length > 1 ? '\n⚠️ Overlapping with other tasks' : ''}`}
-                            onMouseEnter={() => setHoveredTaskId(task.id)}
-                            onMouseLeave={() => setHoveredTaskId(null)}
-                            onClick={() => handleTaskClick(task)}
-                          >
-                            {tasks.length > 1 && (
-                              <div className="absolute top-0 right-0 w-2 h-2 bg-yellow-400 rounded-full text-xs flex items-center justify-center">
-                                <span className="text-[8px] text-yellow-800">!</span>
-                              </div>
-                            )}
-                            <div className="truncate text-center font-semibold text-[12px] text-gray-900 dark:text-white leading-none">{task.title}</div>
-                            {tasks.length > 1 && (
-                              <div className="text-[10px] opacity-55 text-center">
-                                {task.start_time}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                      {isLoadingTasks && index === 0 && time === timeSlots[0] && (
-                        <div className="text-xs text-muted-foreground">Loading...</div>
-                      )}
+                      {time}
                     </TableCell>
-                  );
-                })}
-              </TableRow>
-            ))}
+                  ) : !shouldMergeTimeCell ? null : (
+                    <TableCell className={`font-medium text-[10px] border-r sticky left-0 bg-background p-0 h-3 leading-none ${removeBottomBorder ? 'border-b-0' : ''}`} style={{ verticalAlign: 'middle' }}>
+                      {time}
+                    </TableCell>
+                  )}
+                  {dayNames.map((dayName, index) => {
+                    const isToday = isMounted && weekDates && weekDates[index].toDateString() === new Date().toDateString();
+                    const tasks = weekDates.length > 0 ? getTasksForTimeSlot(index, time, weekDates, scheduledTasks) : [];
+
+                    return (
+                      <TableCell
+                        key={`${dayName}-${time}`}
+                        className={`h-3 border-r w-32 relative cursor-pointer p-0 align-top leading-none overflow-visible ${removeBottomBorder ? 'border-b-0' : ''} ${shouldHighlightRow(time, weekDates, hoveredTaskId, scheduledTasks, dayNames)
+                          ? ''
+                          : 'hover:bg-muted/50'
+                          } ${isToday ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}
+                        onClick={(e) => {
+                          if (e.target === e.currentTarget) {
+                            handleEmptySlotClick(index, time);
+                          }
+                        }}
+                      >
+                        {tasks.map((task, taskIndex) => {
+                          const isFirstSlot = isFirstSlotForTask(task, time);
+                          const durationSlots = getTaskDurationSlots(task );
+
+                          if (!isFirstSlot) return null;
+
+                          const taskWidth = tasks.length > 1 ? `${100 / tasks.length}%` : '100%';
+                          const taskLeft = tasks.length > 1 ? `${(taskIndex * 100) / tasks.length}%` : '0%';
+                          const taskColors = getTaskColors(task.section, task.priority, task.color);
+                          const customColorStyle = getCustomColorStyle(task.color);
+
+                          return (
+                            <div
+                              key={task.id}
+                              className={`absolute top-0 text-[10px] rounded cursor-pointer z-10 opacity-80 hover:opacity-90 border ${taskColors}`}
+                              style={{
+                                height: `${durationSlots * 12}px`,
+                                minHeight: '0px',
+                                width: taskWidth,
+                                left: taskLeft,
+                                marginRight: tasks.length > 1 ? '2px' : '0px',
+                                ...customColorStyle
+                              }}
+                              title={`${task.title}\n${task.start_time} - ${task.end_time}${tasks.length > 1 ? '\n⚠️ Overlapping with other tasks' : ''}`}
+                              onMouseEnter={() => setHoveredTaskId(task.id)}
+                              onMouseLeave={() => setHoveredTaskId(null)}
+                              onClick={() => handleTaskClick(task)}
+                            >
+                              {tasks.length > 1 && (
+                                <div className="absolute top-0 right-0 w-2 h-2 bg-yellow-400 rounded-full text-xs flex items-center justify-center">
+                                  <span className="text-[8px] text-yellow-800">!</span>
+                                </div>
+                              )}
+                              <div className="px-0.5 py-0.5 flex flex-col items-center justify-center h-full">
+                                <div className="truncate text-center font-semibold text-[12px] text-gray-900 dark:text-white leading-tight">{task.title}</div>
+                                {tasks.length > 1 && (
+                                  <div className="text-[10px] opacity-55 text-center leading-tight">
+                                    {task.start_time}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {isLoadingTasks && index === 0 && time === timeSlots[0] && (
+                          <div className="text-xs text-muted-foreground">Loading...</div>
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </Card>
