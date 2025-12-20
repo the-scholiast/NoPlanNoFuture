@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useQuery } from '@tanstack/react-query'
 import { getSharedCalendarTasks } from '@/lib/api/calendarShareApi'
 import { formatDateString } from '@/lib/utils/dateUtils'
-import { getTaskColors } from '@/components/todo/shared/utils/sectionUtils'
+import { getTaskColors, getCustomColorStyle } from '@/components/todo/shared/utils/sectionUtils'
 import { useRouter } from 'next/navigation'
 import {
   generateTimeSlots,
@@ -153,9 +153,9 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
 
       <Card className="overflow-hidden">
         <Table className="w-full">
-          <TableHeader className="sticky top-0 z-20 bg-background">
+          <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow>
-              <TableHead className="w-20 text-center sticky left-0 bg-background border-r">Time</TableHead>
+              <TableHead className="w-24 border-r bg-background">Time</TableHead>
               {dayNames.map((dayName, index) => {
                 const headerData = weekDates.length > 0 ? getDayHeader(dayName, index, weekDates, isMounted) : {
                   dayName,
@@ -166,7 +166,7 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
                 return (
                   <TableHead
                     key={dayName}
-                    className={`text-center w-32 ${headerData.isToday ?
+                    className={`text-center w-32 bg-background ${headerData.isToday ?
                       'text-blue-600 dark:text-blue-400 font-semibold' : ''}`}
                   >
                     <div className="flex flex-col items-center">
@@ -183,8 +183,8 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
           </TableHeader>
           <TableBody>
             {timeSlots.map((time) => (
-              <TableRow key={time} className="h-8">
-                <TableCell className="font-medium text-xs border-r sticky left-0 bg-background p-1">
+              <TableRow key={time} className="h-5">
+                <TableCell className="font-medium text-xs border-r sticky left-0 bg-background p-1 h-5 align-top leading-none">
                   {time}
                 </TableCell>
                 {dayNames.map((dayName, index) => {
@@ -194,7 +194,7 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
                   return (
                     <TableCell
                       key={`${dayName}-${time}`}
-                      className={`h-8 border-r w-32 relative p-0 ${isToday ? 'bg-blue-50/30 dark:bg-blue-950/30' : ''}`}
+                      className={`h-5 border-r w-32 relative p-0 align-top leading-none ${isToday ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}
                     >
                       {tasks.map((task, taskIndex) => {
                         const isFirstSlot = isFirstSlotForTask(task, time);
@@ -204,18 +204,20 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
 
                         const taskWidth = tasks.length > 1 ? `${100 / tasks.length}%` : '100%';
                         const taskLeft = tasks.length > 1 ? `${(taskIndex * 100) / tasks.length}%` : '0%';
-                        const taskColors = getTaskColors(task.section, task.priority);
+                        const taskColors = getTaskColors(task.section, task.priority, task.color);
+                        const customColorStyle = getCustomColorStyle(task.color);
 
                         return (
                           <div
                             key={task.id}
-                            className={`absolute inset-0 text-xs rounded border ${taskColors}`}
+                            className={`absolute inset-0 text-xs rounded cursor-pointer z-10 opacity-80 hover:opacity-90 border ${taskColors}`}
                             style={{
-                              height: `${durationSlots * 32 - 4}px`,
-                              minHeight: '28px',
+                              height: `${durationSlots * 21}px`,
+                              minHeight: '0px',
                               width: taskWidth,
                               left: taskLeft,
-                              marginRight: tasks.length > 1 ? '2px' : '0px'
+                              marginRight: tasks.length > 1 ? '2px' : '0px',
+                              ...customColorStyle
                             }}
                             title={`${task.title}\n${task.start_time} - ${task.end_time}${tasks.length > 1 ? '\n⚠️ Overlapping with other tasks' : ''}`}
                           >
@@ -224,9 +226,9 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
                                 <span className="text-[8px] text-yellow-800">!</span>
                               </div>
                             )}
-                            <div className="truncate text-center font-medium text-[10px]">{task.title}</div>
+                            <div className="truncate text-center font-semibold text-[12px] text-gray-900 dark:text-white leading-none">{task.title}</div>
                             {tasks.length > 1 && (
-                              <div className="text-[10px] opacity-75 text-center">
+                              <div className="text-[10px] opacity-55 text-center">
                                 {task.start_time}
                               </div>
                             )}
