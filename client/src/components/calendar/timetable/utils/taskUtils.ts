@@ -27,7 +27,7 @@ export const getTasksForTimeSlot = (
     // Convert slot time to minutes for easier comparison
     const [slotHours, slotMinutes] = slotTime.split(':').map(Number);
     const slotStartMinutes = slotHours * 60 + slotMinutes;
-    const slotEndMinutes = slotStartMinutes + 30;
+    const slotEndMinutes = slotStartMinutes + 15;
 
     // Convert task times to minutes
     const [taskStartHours, taskStartMins] = taskStart.split(':').map(Number);
@@ -53,7 +53,7 @@ export const getTaskDurationSlots = (task: TaskData) => {
   const endMinutes = endHours * 60 + endMins;
 
   const durationMinutes = endMinutes - startMinutes;
-  return Math.ceil(durationMinutes / 30);
+  return Math.ceil(durationMinutes / 15);
 };
 
 // Helper to check if this is the first slot for a task
@@ -72,7 +72,7 @@ export const isFirstSlotForTask = (
   const currentMinutes = currentHours * 60 + currentMins;
   const taskStartMinutes = taskStartHours * 60 + taskStartMins;
 
-  return currentMinutes <= taskStartMinutes && taskStartMinutes < currentMinutes + 30;
+  return currentMinutes <= taskStartMinutes && taskStartMinutes < currentMinutes + 15;
 };
 
 // Check which tasks are overlapping
