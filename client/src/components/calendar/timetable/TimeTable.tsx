@@ -214,7 +214,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
           </DialogContent>
         </Dialog>
       </div>
-      <Card className="flex-1 overflow-auto relative min-h-0 flex flex-col py-0 gap-0">
+      <Card className="flex-1 overflow-auto relative min-h-0 flex flex-col py-0 gap-0 justify-center">
         <Table ref={tableRef} className="w-full overflow-visible">
           <TableHeader className="sticky top-0 bg-background z-30">
             <TableRow className="relative z-30">
