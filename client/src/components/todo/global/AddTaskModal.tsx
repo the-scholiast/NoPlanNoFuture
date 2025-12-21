@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { X, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { convertTimeSlotTo24Hour, SLOT_MINUTES } from '@/components/calendar/timetable/utils';
@@ -9,6 +9,9 @@ import { AddTaskModalProps, TaskData, CreateTaskData } from '@/types/todoTypes';
 import { transformCreateTaskData } from '@/lib/utils/transformers';
 import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField } from '../shared/components/TaskFormComponents';
 import { useMultiTaskFormLogic, validateMultipleTasks, useTodoMutations, getRecurringDescription } from '../shared/';
+import { useQuery } from '@tanstack/react-query';
+import { todoApi } from '@/lib/api/todos';
+import { todoKeys } from '@/lib/queryKeys';
 
 export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilledData }: AddTaskModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -24,6 +27,62 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilled
     initializeWithData
   } = useMultiTaskFormLogic();
   const { createTaskMutation } = useTodoMutations();
+
+  // Fetch all existing tasks to get task names for suggestions
+  const { data: allTasks = [] } = useQuery({
+    queryKey: todoKeys.all,
+    queryFn: todoApi.getAll,
+    enabled: open, // Only fetch when modal is open
+  });
+
+  // Extract unique task names with their closest dates
+  const existingTaskNamesWithDates = useMemo(() => {
+    const taskMap = new Map<string, { name: string; closestDate: Date }>();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    allTasks.forEach(task => {
+      if (task.title?.trim()) {
+        const name = task.title.trim();
+        // Use instance_date for recurring tasks, otherwise start_date
+        const taskDateStr = task.instance_date || task.start_date;
+        const taskDate = taskDateStr ? new Date(taskDateStr) : null;
+        
+        if (taskDate) {
+          taskDate.setHours(0, 0, 0, 0);
+          const existing = taskMap.get(name);
+          
+          if (!existing) {
+            taskMap.set(name, { name, closestDate: taskDate });
+          } else {
+            // Keep the date closest to today
+            const existingDiff = Math.abs(existing.closestDate.getTime() - today.getTime());
+            const currentDiff = Math.abs(taskDate.getTime() - today.getTime());
+            
+            if (currentDiff < existingDiff) {
+              taskMap.set(name, { name, closestDate: taskDate });
+            }
+          }
+        } else if (!taskMap.has(name)) {
+          // If no date, use a far future date so they appear last
+          taskMap.set(name, { name, closestDate: new Date('9999-12-31') });
+        }
+      }
+    });
+
+    // Sort by closest date (closest to today first)
+    return Array.from(taskMap.values())
+      .sort((a, b) => {
+        const diffA = Math.abs(a.closestDate.getTime() - today.getTime());
+        const diffB = Math.abs(b.closestDate.getTime() - today.getTime());
+        return diffA - diffB;
+      });
+  }, [allTasks]);
+
+  // Extract just the names for backward compatibility
+  const existingTaskNames = useMemo(() => {
+    return existingTaskNamesWithDates.map(item => item.name);
+  }, [existingTaskNamesWithDates]);
 
   // Add helper function to calculate end time (15 minutes later, based on SLOT_MINUTES)
   const calculateEndTime = (startTime: string): string => {
@@ -177,6 +236,7 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilled
                   updateField={(field, value) => updateTask(task.id, field, value)}
                   isSubmitting={isSubmitting}
                   fieldPrefix={`-${task.id}`}
+                  existingTaskNames={existingTaskNames}
                 />
 
                 {/* Recurring Section - Only show for daily tasks */}
