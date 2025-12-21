@@ -5,7 +5,6 @@ import { useTheme } from 'next-themes'
 import { useQuery } from '@tanstack/react-query'
 import { timetableApi, type TimetableTask } from '@/lib/api/timetableApi'
 import { formatDateString } from '@/lib/utils/dateUtils'
-import { normalizeTaskName } from '@/lib/utils/taskNameSimilarity'
 
 export type Period = 'all' | 'year' | 'month' | 'week'
 export type ViewMode = 'day' | 'week' | 'month'
@@ -86,9 +85,12 @@ export function useStatsData() {
   const palette = isDark ? DARK_COLORS : LIGHT_COLORS
 
   function normalizeTitle(title: string): string {
-    // Use the same normalization function as task similarity checking
-    // This ensures consistent grouping in stats (e.g., "coop", "Coop", "co-op" are grouped together)
-    return normalizeTaskName(title)
+    return title
+      .toLowerCase()
+      .trim()
+      .replace(/[-_]/g, ' ')  // Replace hyphens and underscores with spaces
+      .replace(/\s+/g, ' ')    // Collapse multiple spaces to single space
+      .trim()
   }
 
   function getCanonicalName(originalNames: string[]): string {
