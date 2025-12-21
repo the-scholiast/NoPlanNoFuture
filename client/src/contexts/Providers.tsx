@@ -80,17 +80,17 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                 </div>
               ) : (
                 <div className="mb-2 flex justify-end">
-                  {!['/memo', '/'].includes(pathname) && (
+              {!['/memo', '/'].includes(pathname) && (
                     <div className="flex items-center gap-2">
                       <TodoModalButton />
-                      <Button
+                <Button
                         className="h-8 w-8 rounded-full shadow-lg"
-                        size="icon"
-                        onClick={() => setIsAddModalOpen(true)}
-                        type="button"
-                      >
+                  size="icon"
+                  onClick={() => setIsAddModalOpen(true)}
+                  type="button"
+                >
                         <Plus className="h-4 w-4" />
-                      </Button>
+                </Button>
                     </div>
                   )}
                 </div>
@@ -102,7 +102,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex-1 min-h-0">
-              {children}
+            {children}
             </div>
 
             <AddTaskModal
