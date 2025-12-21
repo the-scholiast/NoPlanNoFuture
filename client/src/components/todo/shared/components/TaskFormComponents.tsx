@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { DAYS_OF_WEEK, DAY_ABBREVIATIONS } from '@/lib/utils/constants';
 import { TaskFormDataValue } from '../types';
 import { ColorPicker } from './ColorPicker';
+import { useState, useMemo, useRef, useEffect } from 'react';
 
 export interface TaskFormData {
   title: string;
@@ -33,22 +34,90 @@ interface TaskFormFieldsProps {
     section?: boolean;
     priority?: boolean;
   };
+  existingTaskNames?: string[]; // List of existing task names for suggestions (sorted by closest date)
 }
 
 // Basic task fields component
-export function TaskBasicFields({ task, updateField, isSubmitting, disabledFields = {} }: TaskFormFieldsProps) {
+export function TaskBasicFields({ task, updateField, isSubmitting, disabledFields = {}, existingTaskNames = [] }: TaskFormFieldsProps) {
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Filter existing task names that match the current input
+  const suggestions = useMemo(() => {
+    if (!task.title.trim() || existingTaskNames.length === 0) {
+      return [];
+    }
+    const searchTerm = task.title.toLowerCase();
+    return existingTaskNames
+      .filter(name => name.toLowerCase().includes(searchTerm) && name !== task.title)
+      .slice(0, 5); // Show max 5 suggestions
+  }, [task.title, existingTaskNames]);
+
+  // Handle clicking outside to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    if (showSuggestions) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showSuggestions]);
+
   return (
     <>
       {/* Task Input */}
-      <div>
+      <div className="relative">
         <label className="text-sm font-medium mb-2 block">Task Name *</label>
         <Input
+          ref={inputRef}
           placeholder="Enter task name..."
           value={task.title}
-          onChange={(e) => updateField('title', e.target.value)}
+          onChange={(e) => {
+            updateField('title', e.target.value);
+            setShowSuggestions(e.target.value.trim().length > 0 && suggestions.length > 0);
+          }}
+          onFocus={() => {
+            if (task.title.trim().length > 0 && suggestions.length > 0) {
+              setShowSuggestions(true);
+            }
+          }}
           className="w-full"
           disabled={isSubmitting || disabledFields.title}
         />
+        
+        {/* Simple Suggestions Dropdown */}
+        {showSuggestions && suggestions.length > 0 && (
+          <div
+            ref={suggestionsRef}
+            className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg max-h-48 overflow-auto"
+          >
+            <div className="divide-y">
+              {suggestions.map((name, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => {
+                    updateField('title', name);
+                    setShowSuggestions(false);
+                  }}
+                  className="w-full text-left p-2 hover:bg-muted transition-colors text-sm"
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Description Input */}
