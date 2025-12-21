@@ -187,8 +187,8 @@ const InteractiveMemoBoard: React.FC = () => {
     }, []);
 
     return (
-        <div className="min-h-screen">
-            <div className="text-center pb-6">
+        <div className="h-full flex flex-col overflow-hidden">
+            <div className="text-center pb-6 flex-shrink-0">
                 <h1
                     className={`text-4xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}
                 >
@@ -196,18 +196,19 @@ const InteractiveMemoBoard: React.FC = () => {
                 </h1>
             </div>
 
-            {/* Board */}
-            <div
-                ref={boardRef}
-                className="relative mx-auto bg-white border-10 border-gray-400 shadow-lg w-full max-w-[1200px]"
-                style={{
-                    height: 'clamp(360px, 70vh, 800px)',
-                    borderRadius: '6px'
-                }}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-            >
+            <div className="flex-1 overflow-auto min-h-0">
+                {/* Board */}
+                <div
+                    ref={boardRef}
+                    className="relative mx-auto bg-white border-10 border-gray-400 shadow-lg w-full max-w-[1200px]"
+                    style={{
+                        height: 'clamp(360px, 70vh, 800px)',
+                        borderRadius: '6px'
+                    }}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                >
                 {memos.map((memo) => (
                     <div
                         key={memo.id}
@@ -315,6 +316,7 @@ const InteractiveMemoBoard: React.FC = () => {
                     >
                         Generate
                     </button>
+                </div>
                 </div>
             </div>
         </div>

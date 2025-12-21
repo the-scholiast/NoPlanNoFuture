@@ -226,12 +226,14 @@ const RadialPlanner: React.FC = () => {
           <NumbersOverlay />
         </div>
 
-        <TaskList
-          tasks={repairedTasks}
-          isDarkMode={isDarkMode}
-          onEdit={handleEditTask}
-          onDeleteTask={handleDeleteTask}
-        />
+        <div className="w-full lg:w-auto max-h-[calc(100vh-300px)] overflow-auto">
+          <TaskList
+            tasks={repairedTasks}
+            isDarkMode={isDarkMode}
+            onEdit={handleEditTask}
+            onDeleteTask={handleDeleteTask}
+          />
+        </div>
       </div>
     </div>
   );
