@@ -75,11 +75,22 @@ export const getOwnedShares = async (ownerId) => {
   }
 
   // Add email information to each share
+  // Handle both user shares (with shared_with_user_id) and public tokens (NULL)
   const sharesWithEmails = (data || []).map(share => {
+    // If shared_with_user_id is NULL, it's a public token
+    if (!share.shared_with_user_id) {
+      return {
+        ...share,
+        shared_with: null,
+        is_public: true
+      };
+    }
+    
     const sharedWithUser = users.find(user => user.id === share.shared_with_user_id);
     return {
       ...share,
-      shared_with: { email: sharedWithUser?.email }
+      shared_with: { email: sharedWithUser?.email },
+      is_public: false
     };
   });
 
@@ -139,6 +150,36 @@ export const getSharedCalendarTasks = async (shareToken, startDate, endDate) => 
   // Get scheduled tasks for the date range using existing controller
   const { getScheduledTasksForDateRange } = await import('./timetableController.js');
   return getScheduledTasksForDateRange(share.owner_id, startDate, endDate);
+};
+
+// Create a public calendar token (for devices like Raspberry Pi)
+// This doesn't require an email - shared_with_user_id will be NULL
+export const createPublicCalendarToken = async (ownerId, expiresAt = null) => {
+  // Create the share with NULL shared_with_user_id for public access
+  const { data, error } = await supabase
+    .from('calendar_shares')
+    .insert({
+      owner_id: ownerId,
+      shared_with_user_id: null, // NULL means it's a public token
+      expires_at: expiresAt
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating public token:', error);
+    throw error;
+  }
+
+  // Get owner email for response
+  const { data: { users }, error: userError } = await supabase.auth.admin.listUsers();
+  const ownerUser = !userError ? users.find(user => user.id === ownerId) : null;
+
+  return {
+    ...data,
+    owner: { email: ownerUser?.email },
+    shared_with: null // Public token, no specific user
+  };
 };
 
 // Revoke a calendar share

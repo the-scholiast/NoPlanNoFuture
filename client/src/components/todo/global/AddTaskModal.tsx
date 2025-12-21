@@ -9,6 +9,9 @@ import { AddTaskModalProps, TaskData, CreateTaskData } from '@/types/todoTypes';
 import { transformCreateTaskData } from '@/lib/utils/transformers';
 import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField } from '../shared/components/TaskFormComponents';
 import { useMultiTaskFormLogic, validateMultipleTasks, useTodoMutations, getRecurringDescription } from '../shared/';
+import { useQuery } from '@tanstack/react-query';
+import { todoApi } from '@/lib/api/todos';
+import { todoKeys } from '@/lib/queryKeys';
 
 export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilledData }: AddTaskModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -24,6 +27,13 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilled
     initializeWithData
   } = useMultiTaskFormLogic();
   const { createTaskMutation } = useTodoMutations();
+
+  // Fetch all existing tasks for similarity checking
+  const { data: existingTasks = [] } = useQuery({
+    queryKey: todoKeys.all,
+    queryFn: todoApi.getAll,
+    enabled: open, // Only fetch when modal is open
+  });
 
   // Add helper function to calculate end time (15 minutes later, based on SLOT_MINUTES)
   const calculateEndTime = (startTime: string): string => {
@@ -177,6 +187,37 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilled
                   updateField={(field, value) => updateTask(task.id, field, value)}
                   isSubmitting={isSubmitting}
                   fieldPrefix={`-${task.id}`}
+                  existingTasks={existingTasks}
+                  onSelectSimilarTask={(similarTask) => {
+                    // Fill in the task with similar task data
+                    updateTask(task.id, 'title', similarTask.title);
+                    if (similarTask.description) {
+                      updateTask(task.id, 'description', similarTask.description);
+                    }
+                    updateTask(task.id, 'section', similarTask.section);
+                    updateTask(task.id, 'priority', similarTask.priority);
+                    if (similarTask.start_date) {
+                      updateTask(task.id, 'start_date', similarTask.start_date);
+                    }
+                    if (similarTask.end_date) {
+                      updateTask(task.id, 'end_date', similarTask.end_date);
+                    }
+                    if (similarTask.start_time) {
+                      updateTask(task.id, 'start_time', similarTask.start_time);
+                    }
+                    if (similarTask.end_time) {
+                      updateTask(task.id, 'end_time', similarTask.end_time);
+                    }
+                    if (similarTask.is_recurring !== undefined) {
+                      updateTask(task.id, 'is_recurring', similarTask.is_recurring);
+                    }
+                    if (similarTask.recurring_days) {
+                      updateTask(task.id, 'recurring_days', similarTask.recurring_days);
+                    }
+                    if (similarTask.color) {
+                      updateTask(task.id, 'color', similarTask.color);
+                    }
+                  }}
                 />
 
                 {/* Recurring Section - Only show for daily tasks */}

@@ -3,6 +3,7 @@ import { authenticateUser } from '../middleware/auth.js';
 import { errorHandler } from '../middleware/errorHandler.js';
 import {
   createCalendarShare,
+  createPublicCalendarToken,
   getOwnedShares,
   getSharedWithMe,
   getSharedCalendarTasks,
@@ -21,6 +22,18 @@ router.post('/', authenticateUser, async (req, res, next) => {
     }
 
     const share = await createCalendarShare(req.user.id, email, expiresAt);
+    res.json(share);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create a public calendar token (for devices like Raspberry Pi)
+router.post('/public-token', authenticateUser, async (req, res, next) => {
+  try {
+    const { expiresAt } = req.body;
+
+    const share = await createPublicCalendarToken(req.user.id, expiresAt);
     res.json(share);
   } catch (error) {
     next(error);
