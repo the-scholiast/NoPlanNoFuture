@@ -85,12 +85,6 @@ export function useStatsData() {
   const isDark = theme === 'dark'
   const palette = isDark ? DARK_COLORS : LIGHT_COLORS
 
-  function normalizeTitle(title: string): string {
-    // Use the same normalization function as task similarity checking
-    // This ensures consistent grouping in stats (e.g., "coop", "Coop", "co-op" are grouped together)
-    return normalizeTaskName(title)
-  }
-
   function getCanonicalName(originalNames: string[]): string {
     // Find the most common name (by frequency)
     const counts = new Map<string, number>()
@@ -186,7 +180,7 @@ export function useStatsData() {
       if (!d || d > endStrEffective) continue
       const h = parseHours(t.start_time, t.end_time)
       
-      const normalizedKey = normalizeTitle(title)
+      const normalizedKey = normalizeTaskName(title)
       const existing = groupMap.get(normalizedKey)
       
       if (existing) {
