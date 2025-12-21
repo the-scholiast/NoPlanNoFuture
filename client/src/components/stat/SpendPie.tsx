@@ -23,7 +23,7 @@ function renderPieLabel(props: PieLabelProps) {
   if (percent < 0.01) return null
   
   // Calculate base position further out
-  const radius = outerRadius + 100
+  const radius = outerRadius + 80
   const x = cx + radius * Math.cos(-midAngle * RADIAN)
   const y = cy + radius * Math.sin(-midAngle * RADIAN)
   
@@ -52,8 +52,8 @@ interface Props {
 export function SpendPie({ data }: Props) {
   return (
     <div className="overflow-x-auto flex justify-center">
-      <div className="w-[1400px]">
-        <ChartContainer config={{}} className="h-[700px] w-[1400px] mx-auto">
+      <div className="w-[1300px]">
+        <ChartContainer config={{}} className="h-[600px] w-[1200px] mx-auto">
           <ResponsiveContainer>
             <PieChart>
               <ChartTooltip content={<ChartTooltipContent />} />
