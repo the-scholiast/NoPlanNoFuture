@@ -11,8 +11,7 @@ import {
   ExternalLink,
   Calendar,
   Users,
-  Link as LinkIcon,
-  Smartphone
+  Link as LinkIcon
 } from 'lucide-react'
 import {
   getOwnedShares,
@@ -53,11 +52,6 @@ export default function SharesPage() {
     const link = `${window.location.origin}/calendar/shared/${shareToken}`
     navigator.clipboard.writeText(link)
     toast.success("Share link copied to clipboard!")
-  }
-
-  const copyToken = (token: string) => {
-    navigator.clipboard.writeText(token)
-    toast.success("Token copied to clipboard!")
   }
 
   const openShareLink = (shareToken: string) => {
@@ -108,51 +102,28 @@ export default function SharesPage() {
             ) : (
               <div className="space-y-4">
                 {ownedShares.map((share: CalendarShare) => (
-                  <Card key={share.id} className={`border-l-4 ${share.is_public ? 'border-l-purple-500' : 'border-l-blue-500'}`}>
+                  <Card key={share.id} className="border-l-4 border-l-blue-500">
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
-                            {share.is_public ? (
-                              <>
-                                <Smartphone className="w-4 h-4 text-muted-foreground" />
-                                <span className="font-medium">Device Token</span>
-                                <Badge variant="outline" className="text-xs">
-                                  Public
-                                </Badge>
-                              </>
-                            ) : (
-                              <>
-                                <Users className="w-4 h-4 text-muted-foreground" />
-                                <span className="font-medium">{share.shared_with?.email}</span>
-                                <Badge variant="outline" className="text-xs">
-                                  Active
-                                </Badge>
-                              </>
-                            )}
+                            <Users className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-medium">{share.shared_with?.email}</span>
+                            <Badge variant="outline" className="text-xs">
+                              Active
+                            </Badge>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            {share.is_public ? 'Created' : 'Shared'} {new Date(share.created_at).toLocaleDateString()}
+                            Shared {new Date(share.created_at).toLocaleDateString()}
                           </p>
 
-                          {/* Share Link or Token */}
+                          {/* Share Link */}
                           <div className="bg-muted rounded p-2 mt-2">
                             <div className="flex items-center gap-2 text-xs">
-                              {share.is_public ? (
-                                <>
-                                  <Smartphone className="w-3 h-3" />
-                                  <code className="flex-1 break-all font-mono">
-                                    {share.share_token}
-                                  </code>
-                                </>
-                              ) : (
-                                <>
-                                  <LinkIcon className="w-3 h-3" />
-                                  <code className="flex-1 break-all">
-                                    {`${window.location.origin}/calendar/shared/${share.share_token}`}
-                                  </code>
-                                </>
-                              )}
+                              <LinkIcon className="w-3 h-3" />
+                              <code className="flex-1 break-all">
+                                {`${window.location.origin}/calendar/shared/${share.share_token}`}
+                              </code>
                             </div>
                           </div>
                         </div>
@@ -161,25 +132,17 @@ export default function SharesPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                              if (share.is_public) {
-                                copyToken(share.share_token)
-                              } else {
-                                copyShareLink(share.share_token)
-                              }
-                            }}
+                            onClick={() => copyShareLink(share.share_token)}
                           >
                             <Copy className="w-4 h-4" />
                           </Button>
-                          {!share.is_public && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openShareLink(share.share_token)}
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                            </Button>
-                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openShareLink(share.share_token)}
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"

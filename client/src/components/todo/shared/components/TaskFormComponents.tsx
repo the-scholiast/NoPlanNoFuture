@@ -2,14 +2,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
 import { DAYS_OF_WEEK, DAY_ABBREVIATIONS } from '@/lib/utils/constants';
 import { TaskFormDataValue } from '../types';
 import { ColorPicker } from './ColorPicker';
-import { TaskData } from '@/types/todoTypes';
-import { findSimilarTasks, normalizeTaskName } from '@/lib/utils/taskNameSimilarity';
-import { useState, useMemo, useRef, useEffect } from 'react';
-import { X } from 'lucide-react';
 
 export interface TaskFormData {
   title: string;
@@ -38,127 +33,22 @@ interface TaskFormFieldsProps {
     section?: boolean;
     priority?: boolean;
   };
-  existingTasks?: TaskData[]; // For similar task suggestions
-  onSelectSimilarTask?: (similarTask: TaskData) => void; // Callback when user selects a similar task
 }
 
 // Basic task fields component
-export function TaskBasicFields({ 
-  task, 
-  updateField, 
-  isSubmitting, 
-  disabledFields = {},
-  existingTasks = [],
-  onSelectSimilarTask
-}: TaskFormFieldsProps) {
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const suggestionsRef = useRef<HTMLDivElement>(null);
-
-  // Find similar tasks when title changes
-  // Filter out exact matches (normalized) to avoid suggesting the same task
-  const similarTasks = useMemo(() => {
-    if (!task.title.trim() || !existingTasks.length) {
-      return [];
-    }
-    const normalizedCurrent = normalizeTaskName(task.title);
-    const filteredTasks = existingTasks.filter(existing => 
-      normalizeTaskName(existing.title) !== normalizedCurrent
-    );
-    return findSimilarTasks(task.title, filteredTasks, 0.6, 5);
-  }, [task.title, existingTasks]);
-
-  // Handle clicking outside to close suggestions
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        suggestionsRef.current &&
-        !suggestionsRef.current.contains(event.target as Node) &&
-        inputRef.current &&
-        !inputRef.current.contains(event.target as Node)
-      ) {
-        setShowSuggestions(false);
-      }
-    };
-
-    if (showSuggestions) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showSuggestions]);
-
-  const handleTitleChange = (value: string) => {
-    updateField('title', value);
-    setShowSuggestions(value.trim().length > 0 && similarTasks.length > 0);
-  };
-
-  const handleSelectSimilarTask = (similarTask: TaskData) => {
-    if (onSelectSimilarTask) {
-      onSelectSimilarTask(similarTask);
-    }
-    setShowSuggestions(false);
-  };
-
+export function TaskBasicFields({ task, updateField, isSubmitting, disabledFields = {} }: TaskFormFieldsProps) {
   return (
     <>
       {/* Task Input */}
-      <div className="relative">
+      <div>
         <label className="text-sm font-medium mb-2 block">Task Name *</label>
         <Input
-          ref={inputRef}
           placeholder="Enter task name..."
           value={task.title}
-          onChange={(e) => handleTitleChange(e.target.value)}
-          onFocus={() => {
-            if (task.title.trim().length > 0 && similarTasks.length > 0) {
-              setShowSuggestions(true);
-            }
-          }}
+          onChange={(e) => updateField('title', e.target.value)}
           className="w-full"
           disabled={isSubmitting || disabledFields.title}
         />
-        
-        {/* Similar Tasks Suggestions */}
-        {showSuggestions && similarTasks.length > 0 && (
-          <div
-            ref={suggestionsRef}
-            className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto"
-          >
-            <div className="p-2 border-b">
-              <div className="text-xs font-medium text-muted-foreground">
-                Similar tasks found ({similarTasks.length})
-              </div>
-            </div>
-            <div className="divide-y">
-              {similarTasks.map(({ task: similarTask, similarity }) => (
-                <button
-                  key={similarTask.id}
-                  type="button"
-                  onClick={() => handleSelectSimilarTask(similarTask)}
-                  className="w-full text-left p-3 hover:bg-muted transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">{similarTask.title}</div>
-                      {similarTask.description && (
-                        <div className="text-xs text-muted-foreground truncate mt-1">
-                          {similarTask.description}
-                        </div>
-                      )}
-                      <div className="text-xs text-muted-foreground mt-1">
-                        Section: {similarTask.section} | Priority: {similarTask.priority}
-                        {similarTask.start_time && ` | Time: ${similarTask.start_time}`}
-                      </div>
-                    </div>
-                    <div className="ml-2 text-xs text-muted-foreground">
-                      {Math.round(similarity * 100)}%
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Description Input */}

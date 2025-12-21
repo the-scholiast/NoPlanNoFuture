@@ -6,9 +6,6 @@ import { TaskData, EditTaskModalProps } from '@/types/todoTypes';
 import { transformCreateTaskData, updateTaskData } from '@/lib/utils/transformers';
 import { useTodoMutations, useTaskFormLogic, validateEditTask, getRecurringDescription, isRecurringInstance } from './shared/';
 import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField, TaskFormData } from './shared/components/TaskFormComponents';
-import { useQuery } from '@tanstack/react-query';
-import { todoApi } from '@/lib/api/todos';
-import { todoKeys } from '@/lib/queryKeys';
 
 export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated }: EditTaskModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -16,14 +13,6 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
   const [editMode, setEditMode] = useState<'instance' | 'series'>('instance');
 
   const { updateTaskMutation, deleteTaskMutation, createTaskOverrideMutation } = useTodoMutations();
-
-  // Fetch all existing tasks for similarity checking (excluding current task)
-  const { data: existingTasks = [] } = useQuery({
-    queryKey: todoKeys.all,
-    queryFn: todoApi.getAll,
-    enabled: open, // Only fetch when modal is open
-    select: (tasks) => task ? tasks.filter(t => t.id !== task.id) : tasks, // Exclude current task
-  });
 
   // Helper function to get original task data for recurring instances
   const getOriginalTaskData = (task: TaskData): TaskFormData => {
@@ -280,39 +269,6 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
                 description: editMode === 'instance',
                 section: editMode === 'instance',
                 priority: editMode === 'instance'
-              }}
-              existingTasks={existingTasks}
-              onSelectSimilarTask={(similarTask) => {
-                // Fill in the task with similar task data (only in series mode)
-                if (editMode === 'series') {
-                  updateField('title', similarTask.title);
-                  if (similarTask.description) {
-                    updateField('description', similarTask.description);
-                  }
-                  updateField('section', similarTask.section);
-                  updateField('priority', similarTask.priority);
-                  if (similarTask.start_date) {
-                    updateField('start_date', similarTask.start_date);
-                  }
-                  if (similarTask.end_date) {
-                    updateField('end_date', similarTask.end_date);
-                  }
-                  if (similarTask.start_time) {
-                    updateField('start_time', similarTask.start_time);
-                  }
-                  if (similarTask.end_time) {
-                    updateField('end_time', similarTask.end_time);
-                  }
-                  if (similarTask.is_recurring !== undefined) {
-                    updateField('is_recurring', similarTask.is_recurring);
-                  }
-                  if (similarTask.recurring_days) {
-                    updateField('recurring_days', similarTask.recurring_days);
-                  }
-                  if (similarTask.color) {
-                    updateField('color', similarTask.color);
-                  }
-                }
               }}
             />
 
