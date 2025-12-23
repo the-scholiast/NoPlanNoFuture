@@ -310,8 +310,8 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                               key={task.id}
                               className={`absolute top-0 text-[10px] rounded cursor-pointer z-10 opacity-80 hover:opacity-90 border ${taskColors}`}
                               style={{
-                                height: `${durationSlots * 12}px`,
-                                minHeight: '0px',
+                                height: `${Math.max(durationSlots * 12, 11)}px`,
+                                minHeight: '11px',
                                 width: taskWidth,
                                 left: taskLeft,
                                 marginRight: tasks.length > 1 ? '2px' : '0px',
@@ -327,9 +327,11 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                                   <span className="text-[8px] text-yellow-800">!</span>
                                 </div>
                               )}
-                              <div className="px-0.5 py-0.5 flex flex-col items-center justify-center h-full">
-                                <div className="truncate text-center font-semibold text-[12px] text-gray-900 dark:text-white leading-tight">{task.title}</div>
-                                {tasks.length > 1 && (
+                              <div className="px-0 py-0 flex flex-col items-center justify-center h-full overflow-hidden">
+                                <div className={`truncate text-center font-semibold text-gray-900 dark:text-white leading-tight w-full ${
+                                  durationSlots <= 1 ? 'text-[8px]' : 'text-[12px]'
+                                }`}>{task.title}</div>
+                                {tasks.length > 1 && durationSlots > 1 && (
                                   <div className="text-[10px] opacity-55 text-center leading-tight">
                                     {task.start_time}
                                   </div>
