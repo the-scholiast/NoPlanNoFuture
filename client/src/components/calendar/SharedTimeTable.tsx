@@ -252,13 +252,8 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
                                 marginRight: tasks.length > 1 ? '2px' : '0px',
                                 ...customColorStyle
                               }}
-                              title={`${task.title}\n${task.start_time} - ${task.end_time}${tasks.length > 1 ? '\n⚠️ Overlapping with other tasks' : ''}`}
+                              title={`${task.title}\n${task.start_time} - ${task.end_time}`}
                             >
-                              {tasks.length > 1 && (
-                                <div className="absolute top-0 right-0 w-2 h-2 bg-yellow-400 rounded-full text-xs flex items-center justify-center">
-                                  <span className="text-[8px] text-yellow-800">!</span>
-                                </div>
-                              )}
                               <div className="px-0.5 py-0.5 flex flex-col items-center justify-center h-full">
                                 <div className="truncate text-center font-semibold text-[12px] text-gray-900 dark:text-white leading-tight">{task.title}</div>
                                 {tasks.length > 1 && (
