@@ -36,6 +36,9 @@ export interface RawTaskApiResponse {
   updated_at?: string;
   instance_date?: string | null;
   color?: string | null;
+  is_secondary?: boolean | null;
+  count_in_stats?: boolean | null;
+  count_in_work_hours?: boolean | null;
 }
 
 // Transform raw API response to WorkoutTemplate. Handles potential data inconsistencies from backend
@@ -100,6 +103,9 @@ export function transformTaskData(data: RawTaskApiResponse): TaskData {
     is_schedule: data.is_schedule || false,
     updated_at: data.updated_at || undefined,
     color: data.color || undefined,
+    is_secondary: data.is_secondary || false,
+    count_in_stats: data.count_in_stats !== null && data.count_in_stats !== undefined ? data.count_in_stats : true,
+    count_in_work_hours: data.count_in_work_hours !== null && data.count_in_work_hours !== undefined ? data.count_in_work_hours : true,
   }
 }
 
@@ -118,6 +124,9 @@ export function transformCreateTaskData(data: TaskFormData): CreateTaskData {
     recurring_days: data.recurring_days || undefined,
     is_schedule: data.is_schedule || false,
     color: data.color || undefined,
+    is_secondary: data.is_secondary || false,
+    count_in_stats: data.count_in_stats !== undefined ? data.count_in_stats : true,
+    count_in_work_hours: data.count_in_work_hours !== undefined ? data.count_in_work_hours : true,
   }
 }
 
@@ -137,6 +146,9 @@ export function formatCreateTaskData(data: CreateTaskData, user: string) {
     recurring_days: data.recurring_days || null,
     is_schedule: data.is_schedule || false,
     color: data.color || null,
+    is_secondary: data.is_secondary || false,
+    count_in_stats: data.count_in_stats !== undefined ? data.count_in_stats : true,
+    count_in_work_hours: data.count_in_work_hours !== undefined ? data.count_in_work_hours : true,
   }
 }
 

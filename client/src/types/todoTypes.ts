@@ -23,6 +23,9 @@ export interface TaskData {
   color?: string;
   has_override?: boolean;
   override_id?: string;
+  is_secondary?: boolean;
+  count_in_stats?: boolean;
+  count_in_work_hours?: boolean;
 }
 
 export interface CreateTaskData {
@@ -38,6 +41,9 @@ export interface CreateTaskData {
   recurring_days?: string[];
   is_schedule?: boolean;
   color?: string;
+  is_secondary?: boolean;
+  count_in_stats?: boolean;
+  count_in_work_hours?: boolean;
 }
 
 export interface AddTaskModalProps {
@@ -83,6 +89,9 @@ export interface TaskOverrideData {
   priority?: 'low' | 'medium' | 'high';
   is_schedule?: boolean;
   is_skipped?: boolean;
+  is_secondary?: boolean;
+  count_in_stats?: boolean;
+  count_in_work_hours?: boolean;
 }
 
 export interface TaskOverride extends TaskOverrideData {

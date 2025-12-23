@@ -7,7 +7,7 @@ import { convertTimeSlotTo24Hour, SLOT_MINUTES } from '@/components/calendar/tim
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AddTaskModalProps, TaskData, CreateTaskData } from '@/types/todoTypes';
 import { transformCreateTaskData } from '@/lib/utils/transformers';
-import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField } from '../shared/components/TaskFormComponents';
+import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField, SecondaryTaskField } from '../shared/components/TaskFormComponents';
 import { useMultiTaskFormLogic, validateMultipleTasks, useTodoMutations, getRecurringDescription } from '../shared/';
 import { useQuery } from '@tanstack/react-query';
 import { todoApi } from '@/lib/api/todos';
@@ -160,6 +160,9 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilled
         is_recurring: false,
         recurring_days: [],
         is_schedule: true,
+        is_secondary: false,
+        count_in_stats: true,
+        count_in_work_hours: true,
       };
       initializeWithData(initialTaskData);
     } else {
@@ -270,6 +273,14 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilled
                   isSubmitting={isSubmitting}
                   fieldPrefix={`-${task.id}`}
                   forceChecked={task.section === 'none'}
+                />
+
+                {/* Secondary Task Field */}
+                <SecondaryTaskField
+                  task={task}
+                  updateField={(field, value) => updateTask(task.id, field, value)}
+                  isSubmitting={isSubmitting}
+                  fieldPrefix={`-${task.id}`}
                 />
               </div>
             );

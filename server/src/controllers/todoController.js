@@ -88,6 +88,9 @@ export const createTodo = async (userId, todoData) => {
     recurring_days,
     is_schedule,
     color,
+    is_secondary,
+    count_in_stats,
+    count_in_work_hours,
   } = todoData; // New task to add as frontend format
 
   if (!title || !section) {
@@ -122,6 +125,9 @@ export const createTodo = async (userId, todoData) => {
     deleted_at: null,
     is_schedule: is_schedule || false,
     color: color || null,
+    is_secondary: is_secondary || false,
+    count_in_stats: count_in_stats !== undefined ? count_in_stats : true,
+    count_in_work_hours: count_in_work_hours !== undefined ? count_in_work_hours : true,
   };
 
   const { data, error } = await supabase

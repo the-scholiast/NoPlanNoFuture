@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { TaskData, EditTaskModalProps } from '@/types/todoTypes';
 import { transformCreateTaskData, updateTaskData } from '@/lib/utils/transformers';
 import { useTodoMutations, useTaskFormLogic, validateEditTask, getRecurringDescription, isRecurringInstance } from './shared/';
-import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField, TaskFormData } from './shared/components/TaskFormComponents';
+import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField, SecondaryTaskField, TaskFormData } from './shared/components/TaskFormComponents';
 
 export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated }: EditTaskModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,6 +30,9 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
         is_recurring: task.is_recurring || false,
         recurring_days: task.recurring_days || [],
         is_schedule: task.is_schedule || false,
+        is_secondary: task.is_secondary || false,
+        count_in_stats: task.count_in_stats !== undefined ? task.count_in_stats : true,
+        count_in_work_hours: task.count_in_work_hours !== undefined ? task.count_in_work_hours : true,
       };
     } else {
       // For regular tasks, use all the original data
@@ -45,6 +48,9 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
         is_recurring: task.is_recurring || false,
         recurring_days: task.recurring_days || [],
         is_schedule: task.is_schedule || false,
+        is_secondary: task.is_secondary || false,
+        count_in_stats: task.count_in_stats !== undefined ? task.count_in_stats : true,
+        count_in_work_hours: task.count_in_work_hours !== undefined ? task.count_in_work_hours : true,
       };
     }
   };
@@ -98,6 +104,9 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
           description: editableTask.description !== task.description ? editableTask.description : undefined,
           priority: editableTask.priority !== task.priority ? editableTask.priority : undefined,
           is_schedule: editableTask.is_schedule !== task.is_schedule ? editableTask.is_schedule : undefined,
+          is_secondary: editableTask.is_secondary !== task.is_secondary ? editableTask.is_secondary : undefined,
+          count_in_stats: editableTask.count_in_stats !== task.count_in_stats ? editableTask.count_in_stats : undefined,
+          count_in_work_hours: editableTask.count_in_work_hours !== task.count_in_work_hours ? editableTask.count_in_work_hours : undefined,
         };
 
         // Remove undefined values
@@ -302,6 +311,14 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
               isSubmitting={isSubmitting}
               fieldPrefix="-edit"
               forceChecked={task.section === 'none'}
+            />
+
+            {/* Secondary Task Field */}
+            <SecondaryTaskField
+              task={editableTask}
+              updateField={updateField}
+              isSubmitting={isSubmitting}
+              fieldPrefix="-edit"
             />
           </div>
         </div>
