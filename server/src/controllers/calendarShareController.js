@@ -179,7 +179,7 @@ export const createEinkDevice = async (ownerId, deviceName) => {
       user_id: ownerId,
       device_name: deviceName.trim(),
       device_token: deviceToken,
-      view_type: 'weekly' // Default view type
+      view_type: 'weekly' // Default view type (can be changed via update)
     })
     .select()
     .single();
@@ -236,8 +236,9 @@ export const getEinkDevices = async (ownerId) => {
 // Update e-ink device (for changing view_type)
 export const updateEinkDevice = async (ownerId, deviceId, updates) => {
   // Validate view_type if provided
-  if (updates.view_type && !['weekly', 'monthly', 'yearly'].includes(updates.view_type)) {
-    throw new ValidationError('Invalid view_type. Must be weekly, monthly, or yearly');
+  const valid_view_types = ['weekly', 'dual_weekly', 'dual_monthly', 'dual_yearly', 'monthly_square', 'monthly_re'];
+  if (updates.view_type && !valid_view_types.includes(updates.view_type)) {
+    throw new ValidationError(`Invalid view_type. Must be one of: ${valid_view_types.join(', ')}`);
   }
 
   const { data, error } = await supabase
