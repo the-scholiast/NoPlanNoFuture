@@ -11,18 +11,29 @@ import {
   ExternalLink,
   Calendar,
   Users,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Monitor
 } from 'lucide-react'
 import {
   getOwnedShares,
   getSharedWithMe,
   revokeCalendarShare,
-  type CalendarShare
+  type CalendarShare,
+  getEinkDevices,
+  createEinkDevice,
+  updateEinkDevice,
+  deleteEinkDevice,
+  type EinkDevice
 } from '@/lib/api/calendarShareApi'
 import { toast } from 'sonner'
+import { useState } from 'react'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export default function SharesPage() {
   const queryClient = useQueryClient()
+  const [newDeviceName, setNewDeviceName] = useState('')
+  const [newDeviceToken, setNewDeviceToken] = useState<string | null>(null)
 
   // Fetch shares I own (sent to others)
   const { data: ownedShares = [], isLoading: loadingOwned } = useQuery({
@@ -36,6 +47,12 @@ export default function SharesPage() {
     queryFn: getSharedWithMe
   })
 
+  // Fetch e-ink devices
+  const { data: einkDevices = [], isLoading: loadingDevices } = useQuery({
+    queryKey: ['eink-devices'],
+    queryFn: getEinkDevices
+  })
+
   // Revoke share mutation
   const revokeShareMutation = useMutation({
     mutationFn: (shareId: string) => revokeCalendarShare(shareId),
@@ -45,6 +62,45 @@ export default function SharesPage() {
     },
     onError: (error: Error) => {
       toast.error(`Failed to revoke share: ${error.message}`)
+    }
+  })
+
+  // Create e-ink device mutation
+  const createDeviceMutation = useMutation({
+    mutationFn: (deviceName: string) => createEinkDevice(deviceName),
+    onSuccess: (device) => {
+      queryClient.invalidateQueries({ queryKey: ['eink-devices'] })
+      setNewDeviceToken(device.device_token)
+      setNewDeviceName('')
+      toast.success("Device created successfully. Copy the token now - it won't be shown again!")
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create device: ${error.message}`)
+    }
+  })
+
+  // Update e-ink device mutation
+  const updateDeviceMutation = useMutation({
+    mutationFn: ({ deviceId, updates }: { deviceId: string; updates: Partial<EinkDevice> }) =>
+      updateEinkDevice(deviceId, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['eink-devices'] })
+      toast.success("Device updated successfully.")
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update device: ${error.message}`)
+    }
+  })
+
+  // Delete e-ink device mutation
+  const deleteDeviceMutation = useMutation({
+    mutationFn: (deviceId: string) => deleteEinkDevice(deviceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['eink-devices'] })
+      toast.success("Device deleted successfully.")
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to delete device: ${error.message}`)
     }
   })
 
@@ -64,8 +120,21 @@ export default function SharesPage() {
     window.open(link, '_blank')
   }
 
+  const copyDeviceToken = (deviceToken: string) => {
+    navigator.clipboard.writeText(deviceToken)
+    toast.success("Device token copied to clipboard!")
+  }
+
+  const handleCreateDevice = () => {
+    if (!newDeviceName.trim()) {
+      toast.error("Device name is required")
+      return
+    }
+    createDeviceMutation.mutate(newDeviceName.trim())
+  }
+
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6 space-y-6 overflow-y-auto min-h-0">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -237,6 +306,130 @@ export default function SharesPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* E-ink Devices Section */}
+      <Card className="py-3">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Monitor className="w-4 h-4" />
+            E-ink Devices
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Manage your e-ink display devices ({einkDevices.length})
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {/* Create New Device */}
+          <div className="mb-3 p-2 border rounded-lg bg-muted/50">
+            <div className="flex gap-2 items-center">
+              <Input
+                placeholder="Device name"
+                value={newDeviceName}
+                onChange={(e) => setNewDeviceName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateDevice()}
+                className="flex-1 h-8 text-sm"
+              />
+              <Button
+                onClick={handleCreateDevice}
+                disabled={createDeviceMutation.isPending || !newDeviceName.trim()}
+                size="sm"
+                className="h-8"
+              >
+                Create
+              </Button>
+            </div>
+            {newDeviceToken && (
+              <div className="mt-2 p-1.5 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+                <p className="text-xs font-medium mb-1">Token (copy now):</p>
+                <div className="flex items-center gap-1.5">
+                  <code className="flex-1 break-all text-[10px] bg-white dark:bg-gray-800 p-1 rounded">
+                    {newDeviceToken}
+                  </code>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 px-1.5"
+                    onClick={() => {
+                      copyDeviceToken(newDeviceToken)
+                      setNewDeviceToken(null)
+                    }}
+                  >
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Device List */}
+          {loadingDevices ? (
+            <div className="text-center py-2 text-muted-foreground text-xs">
+              Loading...
+            </div>
+          ) : einkDevices.length === 0 ? (
+            <div className="text-center py-2 text-muted-foreground">
+              <p className="text-xs">No devices yet</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {einkDevices.map((device: EinkDevice) => (
+                <Card key={device.id} className="border-l-4 border-l-purple-500">
+                  <CardContent className="p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Monitor className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          <span className="font-medium truncate">{device.device_name}</span>
+                          <Select
+                            value={device.view_type}
+                            onValueChange={(value: 'weekly' | 'monthly' | 'yearly') =>
+                              updateDeviceMutation.mutate({ deviceId: device.id, updates: { view_type: value } })
+                            }
+                            disabled={updateDeviceMutation.isPending}
+                          >
+                            <SelectTrigger className="w-24 h-7 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="weekly">Weekly</SelectItem>
+                              <SelectItem value="monthly">Monthly</SelectItem>
+                              <SelectItem value="yearly">Yearly</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="bg-muted rounded p-1.5 mt-1.5">
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <code className="flex-1 break-all text-[10px] truncate">
+                              {device.device_token}
+                            </code>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 px-1.5 flex-shrink-0"
+                              onClick={() => copyDeviceToken(device.device_token)}
+                            >
+                              <Copy className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 w-7 p-0 flex-shrink-0"
+                        onClick={() => deleteDeviceMutation.mutate(device.id)}
+                        disabled={deleteDeviceMutation.isPending}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
