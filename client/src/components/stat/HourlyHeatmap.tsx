@@ -33,6 +33,8 @@ export function HourlyHeatmap({ tasks, isDark }: Props) {
     
     // Aggregate work hours by hour of day
     tasks.forEach(task => {
+      // Filter out secondary tasks that shouldn't be counted in stats
+      if (task.is_secondary && !task.count_in_stats) return
       if (!task.start_time || !task.end_time) return
       
       const [startHour, startMin] = task.start_time.split(':').map(Number)

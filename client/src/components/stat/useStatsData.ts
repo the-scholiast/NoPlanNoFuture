@@ -160,6 +160,8 @@ export function useStatsData() {
   const barData: BarPoint[] = useMemo(() => {
     const map = new Map<string, number>()
     for (const t of rangeTasks) {
+      // Filter out secondary tasks that shouldn't be counted in stats
+      if (t.is_secondary && !t.count_in_stats) continue
       const dateKey = t.instance_date || t.start_date
       if (!dateKey) continue
       if (dateKey > endStrEffective) continue
@@ -183,6 +185,8 @@ export function useStatsData() {
     
     // First pass: group by normalized title
     for (const t of rangeTasks) {
+      // Filter out secondary tasks that shouldn't be counted in stats
+      if (t.is_secondary && !t.count_in_stats) continue
       const title = t.title || 'Untitled'
       const d = t.instance_date || t.start_date
       if (!d || d > endStrEffective) continue
@@ -272,6 +276,8 @@ export function useStatsData() {
   const aggregateDaily = useCallback((tasks: TimetableTask[]) => {
     const map = new Map<string, number>()
     for (const t of tasks) {
+      // Filter out secondary tasks that shouldn't be counted in stats
+      if (t.is_secondary && !t.count_in_stats) continue
       const dateKey = t.instance_date || t.start_date
       if (!dateKey) continue
       const h = parseHours(t.start_time, t.end_time)
