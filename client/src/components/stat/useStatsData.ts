@@ -49,6 +49,35 @@ export function useStatsData() {
   }, [today])
   const allStartStr = '2000-01-01'
 
+  // Fetch all tasks to find the earliest task date
+  const { data: allTasks = [] } = useQuery({
+    queryKey: ['stats','timetable','range','all', '2000-01-01', endStrToday],
+    queryFn: () => timetableApi.getScheduledTasks('2000-01-01', endStrToday),
+    staleTime: 1000 * 60 * 5,
+  })
+
+  // Find the earliest task date from allTasks
+  const firstTaskDateStr = useMemo(() => {
+    if (allTasks.length === 0) return allStartStr
+    
+    let earliestDate: string | null = null
+    
+    for (const task of allTasks) {
+      // Filter out secondary tasks that shouldn't be counted in stats
+      if (task.is_secondary && !task.count_in_stats) continue
+      
+      // Use instance_date for recurring tasks, otherwise start_date
+      const taskDate = task.instance_date || task.start_date
+      if (!taskDate) continue
+      
+      if (!earliestDate || taskDate < earliestDate) {
+        earliestDate = taskDate
+      }
+    }
+    
+    return earliestDate || allStartStr
+  }, [allTasks, allStartStr])
+
   const { startStr, endStrEffective, label } = useMemo(() => {
     if (customStart && customEnd) {
       const effEnd = customEnd > endStrToday ? endStrToday : customEnd
@@ -63,19 +92,13 @@ export function useStatsData() {
         return { startStr: weekStartStr, endStrEffective: endStrToday, label: 'This Week' }
       case 'all':
       default:
-        return { startStr: allStartStr, endStrEffective: endStrToday, label: 'All' }
+        return { startStr: firstTaskDateStr, endStrEffective: endStrToday, label: 'All' }
     }
-  }, [period, yearStartStr, monthStartStr, weekStartStr, customStart, customEnd, endStrToday])
+  }, [period, yearStartStr, monthStartStr, weekStartStr, customStart, customEnd, endStrToday, firstTaskDateStr])
 
   const { data: rangeTasks = [] } = useQuery({
     queryKey: ['stats','timetable','range', startStr, endStrEffective],
     queryFn: () => timetableApi.getScheduledTasks(startStr, endStrEffective),
-    staleTime: 1000 * 60 * 5,
-  })
-
-  const { data: allTasks = [] } = useQuery({
-    queryKey: ['stats','timetable','range','all', '2000-01-01', endStrToday],
-    queryFn: () => timetableApi.getScheduledTasks('2000-01-01', endStrToday),
     staleTime: 1000 * 60 * 5,
   })
 
@@ -318,6 +341,23 @@ export function useStatsData() {
   }, [startStr, endStrEffective])
   const selectedAvgPerDay = selectedDaysCount ? selectedAgg.totalHours / selectedDaysCount : 0
 
+  // Count unique scheduled tasks (only parent tasks, not instances)
+  const scheduledTaskCount = useMemo(() => {
+    const uniqueTaskIds = new Set<string>()
+    
+    for (const task of allTasks) {
+      // Only count scheduled tasks
+      if (!task.is_schedule) continue
+      
+      // For recurring task instances, use parent_task_id to count the parent task only once
+      // For regular tasks, use the task id itself
+      const taskId = task.parent_task_id || task.id
+      uniqueTaskIds.add(taskId)
+    }
+    
+    return uniqueTaskIds.size
+  }, [allTasks])
+
   return {
     period, setPeriod,
     viewMode, setViewMode,
@@ -334,6 +374,8 @@ export function useStatsData() {
     rangeTasks, // Export tasks for hourly heatmap
     startStr, // Export start date for filtering
     endStrEffective, // Export end date for filtering
+    firstTaskDateStr, // Export first task date
+    scheduledTaskCount, // Export count of scheduled tasks
   }
 }
 

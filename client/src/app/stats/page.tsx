@@ -40,6 +40,8 @@ export default function Page() {
           selTotal={s.selectedAgg.totalHours}
           selAvgPerDay={s.selectedAvgPerDay}
           selMax={s.selectedAgg.highest}
+          firstTaskDate={s.firstTaskDateStr}
+          scheduledTaskCount={s.scheduledTaskCount}
         />
       </div>
     </div>
