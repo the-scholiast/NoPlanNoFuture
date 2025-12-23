@@ -45,7 +45,7 @@ export interface EinkDevice {
   user_id: string;
   device_name: string;
   device_token: string;
-  view_type: 'weekly' | 'monthly' | 'yearly';
+  view_type: 'weekly' | 'dual_weekly' | 'dual_monthly' | 'dual_yearly' | 'monthly_square' | 'monthly_re';
   last_synced_at: string | null;
   created_at: string;
   is_active: boolean;
