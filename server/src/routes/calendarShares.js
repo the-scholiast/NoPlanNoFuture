@@ -6,7 +6,12 @@ import {
   getOwnedShares,
   getSharedWithMe,
   getSharedCalendarTasks,
-  revokeCalendarShare
+  revokeCalendarShare,
+  createEinkDevice,
+  getEinkDevices,
+  getEinkDeviceData,
+  updateEinkDevice,
+  deleteEinkDevice
 } from '../controllers/calendarShareController.js';
 
 const router = express.Router();
@@ -69,6 +74,72 @@ router.delete('/:shareId', authenticateUser, async (req, res, next) => {
   try {
     const share = await revokeCalendarShare(req.user.id, req.params.shareId);
     res.json(share);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ===== E-INK DEVICE ROUTES =====
+
+// Create e-ink device (JWT authenticated)
+router.post('/devices', authenticateUser, async (req, res, next) => {
+  try {
+    const { deviceName } = req.body;
+    
+    if (!deviceName) {
+      return res.status(400).json({ error: 'Device name is required' });
+    }
+
+    const device = await createEinkDevice(req.user.id, deviceName);
+    res.status(201).json(device);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get user's e-ink devices (JWT authenticated)
+router.get('/devices', authenticateUser, async (req, res, next) => {
+  try {
+    const devices = await getEinkDevices(req.user.id);
+    res.json(devices);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update e-ink device (JWT authenticated) - for changing view_type
+router.patch('/devices/:id', authenticateUser, async (req, res, next) => {
+  try {
+    const device = await updateEinkDevice(req.user.id, req.params.id, req.body);
+    res.json(device);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete e-ink device (JWT authenticated)
+router.delete('/devices/:id', authenticateUser, async (req, res, next) => {
+  try {
+    const device = await deleteEinkDevice(req.user.id, req.params.id);
+    res.json(device);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get e-ink device data (PUBLIC endpoint - for Python)
+// Use /devices/view/:deviceToken to avoid conflict with /view/:shareToken
+router.get('/devices/view/:deviceToken', async (req, res, next) => {
+  try {
+    const { deviceToken } = req.params;
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'startDate and endDate are required' });
+    }
+
+    const data = await getEinkDeviceData(deviceToken, startDate, endDate);
+    res.json(data);
   } catch (error) {
     next(error);
   }
