@@ -38,3 +38,44 @@ export const revokeCalendarShare = async (shareId: string): Promise<CalendarShar
   })
 };
 
+// ===== E-INK DEVICE TYPES AND FUNCTIONS =====
+
+export interface EinkDevice {
+  id: string;
+  user_id: string;
+  device_name: string;
+  device_token: string;
+  view_type: 'weekly' | 'monthly' | 'yearly';
+  last_synced_at: string | null;
+  created_at: string;
+  is_active: boolean;
+}
+
+export const createEinkDevice = async (deviceName: string): Promise<EinkDevice> => {
+  return apiCall(`/calendar-shares/devices`, {
+    method: 'POST',
+    body: JSON.stringify({ deviceName }),
+  });
+};
+
+export const getEinkDevices = async (): Promise<EinkDevice[]> => {
+  return apiCall(`/calendar-shares/devices`);
+};
+
+export const updateEinkDevice = async (deviceId: string, updates: Partial<EinkDevice>): Promise<EinkDevice> => {
+  return apiCall(`/calendar-shares/devices/${deviceId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(updates),
+  });
+};
+
+export const deleteEinkDevice = async (deviceId: string): Promise<EinkDevice> => {
+  return apiCall(`/calendar-shares/devices/${deviceId}`, {
+    method: 'DELETE',
+  });
+};
+
+export const getEinkDeviceData = async (deviceToken: string, startDate: string, endDate: string) => {
+  return apiCall(`/calendar-shares/devices/view/${deviceToken}?startDate=${startDate}&endDate=${endDate}`);
+};
+
