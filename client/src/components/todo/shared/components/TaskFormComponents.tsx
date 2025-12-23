@@ -20,6 +20,9 @@ export interface TaskFormData {
   recurring_days: string[];
   is_schedule?: boolean;
   color?: string;
+  is_secondary?: boolean;
+  count_in_stats?: boolean;
+  count_in_work_hours?: boolean;
 }
 
 interface TaskFormFieldsProps {
@@ -371,6 +374,71 @@ export function ScheduleField({ task, updateField, isSubmitting, fieldPrefix = '
       <Label htmlFor={`schedule${fieldPrefix}`} className="text-sm font-medium">
         Add to calendar/timetable
       </Label>
+    </div>
+  );
+}
+
+// Secondary task options component
+interface SecondaryTaskFieldProps {
+  task: TaskFormData;
+  updateField: (field: keyof TaskFormData, value: TaskFormDataValue) => void;
+  isSubmitting: boolean;
+  fieldPrefix?: string;
+}
+
+export function SecondaryTaskField({ task, updateField, isSubmitting, fieldPrefix = '' }: SecondaryTaskFieldProps) {
+  const isSecondary = task.is_secondary || false;
+  const countInStats = task.count_in_stats !== undefined ? task.count_in_stats : true;
+  const countInWorkHours = task.count_in_work_hours !== undefined ? task.count_in_work_hours : true;
+
+  return (
+    <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-md border">
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id={`secondary${fieldPrefix}`}
+          checked={isSecondary}
+          onCheckedChange={(checked) => {
+            updateField('is_secondary', checked === true);
+            // When unchecking secondary, reset count options to default
+            if (!checked) {
+              updateField('count_in_stats', true);
+              updateField('count_in_work_hours', true);
+            }
+          }}
+          disabled={isSubmitting}
+        />
+        <Label htmlFor={`secondary${fieldPrefix}`} className="text-sm font-medium">
+          Mark as secondary task
+        </Label>
+      </div>
+
+      {isSecondary && (
+        <div className="ml-6 space-y-2 pl-4 border-l-2 border-gray-300 dark:border-gray-600">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id={`countStats${fieldPrefix}`}
+              checked={countInStats}
+              onCheckedChange={(checked) => updateField('count_in_stats', checked === true)}
+              disabled={isSubmitting}
+            />
+            <Label htmlFor={`countStats${fieldPrefix}`} className="text-sm">
+              Count in statistics page
+            </Label>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id={`countWorkHours${fieldPrefix}`}
+              checked={countInWorkHours}
+              onCheckedChange={(checked) => updateField('count_in_work_hours', checked === true)}
+              disabled={isSubmitting}
+            />
+            <Label htmlFor={`countWorkHours${fieldPrefix}`} className="text-sm">
+              Count in work hours calculation
+            </Label>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
