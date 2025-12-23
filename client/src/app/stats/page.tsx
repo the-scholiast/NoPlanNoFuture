@@ -31,7 +31,7 @@ export default function Page() {
         <SpendPie data={s.pieData} />
 
         <h3 className="text-base font-semibold">Hourly work distribution</h3>
-        <HourlyHeatmap tasks={s.rangeTasks} isDark={s.isDark} />
+        <HourlyHeatmap tasks={s.rangeTasks} isDark={s.isDark} startDate={s.startStr} endDate={s.endStrEffective} />
 
         <StatsSummary
           allTotal={s.allAgg.totalHours}

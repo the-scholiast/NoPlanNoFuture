@@ -332,6 +332,8 @@ export function useStatsData() {
     selectedAgg,
     selectedAvgPerDay,
     rangeTasks, // Export tasks for hourly heatmap
+    startStr, // Export start date for filtering
+    endStrEffective, // Export end date for filtering
   }
 }
 

@@ -11,6 +11,8 @@ interface HourlyData {
 interface Props {
   tasks: TimetableTask[]
   isDark: boolean
+  startDate?: string
+  endDate?: string
 }
 
 const parseHours = (start?: string, end?: string): number => {
@@ -21,7 +23,7 @@ const parseHours = (start?: string, end?: string): number => {
   return Math.max(0, mins) / 60
 }
 
-export function HourlyHeatmap({ tasks, isDark }: Props) {
+export function HourlyHeatmap({ tasks, isDark, startDate, endDate }: Props) {
   // Calculate hours worked per hour of day (0-23)
   const hourlyData = useMemo(() => {
     const hourMap = new Map<number, number>()
@@ -36,6 +38,13 @@ export function HourlyHeatmap({ tasks, isDark }: Props) {
       // Filter out secondary tasks that shouldn't be counted in stats
       if (task.is_secondary && !task.count_in_stats) return
       if (!task.start_time || !task.end_time) return
+      
+      // Filter by date range if provided
+      if (startDate && endDate) {
+        const dateKey = task.instance_date || task.start_date
+        if (!dateKey) return
+        if (dateKey < startDate || dateKey > endDate) return
+      }
       
       const [startHour, startMin] = task.start_time.split(':').map(Number)
       const [endHour, endMin] = task.end_time.split(':').map(Number)
@@ -63,7 +72,7 @@ export function HourlyHeatmap({ tasks, isDark }: Props) {
     return Array.from(hourMap.entries())
       .map(([hour, hours]) => ({ hour, hours }))
       .sort((a, b) => a.hour - b.hour)
-  }, [tasks])
+  }, [tasks, startDate, endDate])
   
   // Find max hours for normalization
   const maxHours = useMemo(() => {
