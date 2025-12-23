@@ -88,9 +88,13 @@ export function useWorkHourTotals(
     const weekDates = useMemo(() => [...weekDatesRO], [weekDatesRO]);
     const scheduledTasks = useMemo(() => [...scheduledTasksRO], [scheduledTasksRO]);
 
-    // Filter to tasks that have start/end times
+    // Filter to tasks that have start/end times and should be counted in work hours
     const safeTasks = useMemo(
-        () => scheduledTasks.filter(hasTimeFields),
+        () => scheduledTasks.filter(hasTimeFields).filter(t => {
+            // Filter out secondary tasks that shouldn't be counted in work hours
+            if (t.is_secondary && !t.count_in_work_hours) return false;
+            return true;
+        }),
         [scheduledTasks]
     );
 
