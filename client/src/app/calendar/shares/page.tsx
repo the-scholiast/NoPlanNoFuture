@@ -145,7 +145,7 @@ export default function SharesPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendars I've Shared (Outgoing) */}
         <Card>
           <CardHeader>
@@ -305,20 +305,19 @@ export default function SharesPage() {
             )}
           </CardContent>
         </Card>
-      </div>
 
-      {/* E-ink Devices Section */}
-      <Card className="py-3">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Monitor className="w-4 h-4" />
-            E-ink Devices
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Manage your e-ink display devices ({einkDevices.length})
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
+        {/* E-ink Devices Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Monitor className="w-5 h-5" />
+              E-ink Devices
+            </CardTitle>
+            <CardDescription>
+              Manage your e-ink display devices ({einkDevices.length})
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
           {/* Create New Device */}
           <div className="mb-3 p-2 border rounded-lg bg-muted/50">
             <div className="flex gap-2 items-center">
@@ -382,18 +381,21 @@ export default function SharesPage() {
                           <span className="font-medium truncate">{device.device_name}</span>
                           <Select
                             value={device.view_type}
-                            onValueChange={(value: 'weekly' | 'monthly' | 'yearly') =>
+                            onValueChange={(value: 'weekly' | 'dual_weekly' | 'dual_monthly' | 'dual_yearly' | 'monthly_square' | 'monthly_re') =>
                               updateDeviceMutation.mutate({ deviceId: device.id, updates: { view_type: value } })
                             }
                             disabled={updateDeviceMutation.isPending}
                           >
-                            <SelectTrigger className="w-24 h-7 text-xs">
+                            <SelectTrigger className="w-32 h-7 text-xs">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="weekly">Weekly</SelectItem>
-                              <SelectItem value="monthly">Monthly</SelectItem>
-                              <SelectItem value="yearly">Yearly</SelectItem>
+                              <SelectItem value="dual_weekly">Dual Weekly</SelectItem>
+                              <SelectItem value="dual_monthly">Dual Monthly</SelectItem>
+                              <SelectItem value="dual_yearly">Dual Yearly</SelectItem>
+                              <SelectItem value="monthly_square">Monthly Square</SelectItem>
+                              <SelectItem value="monthly_re">Monthly RE</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -430,6 +432,7 @@ export default function SharesPage() {
           )}
         </CardContent>
       </Card>
+      </div>
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
