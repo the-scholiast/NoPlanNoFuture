@@ -1,5 +1,6 @@
 import supabase from '../supabaseAdmin.js';
 import { ValidationError } from '../utils/errors.js';
+import crypto from 'crypto';
 
 // Create a calendar share
 export const createCalendarShare = async (ownerId, sharedWithEmail, expiresAt = null) => {
@@ -153,6 +154,118 @@ export const revokeCalendarShare = async (ownerId, shareId) => {
 
   if (error) throw error;
   if (!data) throw new ValidationError('Share not found');
+
+  return data;
+};
+
+// ===== E-INK DEVICE FUNCTIONS =====
+
+// Generate device token (similar to share_token generation)
+const generateDeviceToken = () => {
+  return crypto.randomBytes(32).toString('hex');
+};
+
+// Create e-ink device
+export const createEinkDevice = async (ownerId, deviceName) => {
+  if (!deviceName || deviceName.trim() === '') {
+    throw new ValidationError('Device name is required');
+  }
+
+  const deviceToken = generateDeviceToken();
+
+  const { data, error } = await supabase
+    .from('eink_devices')
+    .insert({
+      user_id: ownerId,
+      device_name: deviceName.trim(),
+      device_token: deviceToken,
+      view_type: 'weekly' // Default view type
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating e-ink device:', error);
+    throw error;
+  }
+
+  // Return device with token (token shown only once)
+  return { ...data, device_token: deviceToken };
+};
+
+// Get e-ink device data (for Python - public endpoint)
+export const getEinkDeviceData = async (deviceToken, startDate, endDate) => {
+  // Verify device token and get owner (same pattern as getSharedCalendarTasks)
+  const { data: device, error: deviceError } = await supabase
+    .from('eink_devices')
+    .select('user_id, view_type, is_active')
+    .eq('device_token', deviceToken)
+    .eq('is_active', true)
+    .single();
+
+  if (deviceError || !device) {
+    throw new ValidationError('Invalid or inactive device token');
+  }
+
+  // Get scheduled tasks for the date range using existing controller
+  const { getScheduledTasksForDateRange } = await import('./timetableController.js');
+  const tasks = await getScheduledTasksForDateRange(device.user_id, startDate, endDate);
+
+  return {
+    config: {
+      view_type: device.view_type,
+      user_id: device.user_id
+    },
+    todos: tasks
+  };
+};
+
+// Get user's e-ink devices (for UI)
+export const getEinkDevices = async (ownerId) => {
+  const { data, error } = await supabase
+    .from('eink_devices')
+    .select('*')
+    .eq('user_id', ownerId)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
+// Update e-ink device (for changing view_type)
+export const updateEinkDevice = async (ownerId, deviceId, updates) => {
+  // Validate view_type if provided
+  if (updates.view_type && !['weekly', 'monthly', 'yearly'].includes(updates.view_type)) {
+    throw new ValidationError('Invalid view_type. Must be weekly, monthly, or yearly');
+  }
+
+  const { data, error } = await supabase
+    .from('eink_devices')
+    .update(updates)
+    .eq('id', deviceId)
+    .eq('user_id', ownerId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  if (!data) throw new ValidationError('Device not found');
+
+  return data;
+};
+
+// Delete e-ink device
+export const deleteEinkDevice = async (ownerId, deviceId) => {
+  const { data, error } = await supabase
+    .from('eink_devices')
+    .delete()
+    .eq('id', deviceId)
+    .eq('user_id', ownerId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  if (!data) throw new ValidationError('Device not found');
 
   return data;
 };
