@@ -317,16 +317,11 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                                 marginRight: tasks.length > 1 ? '2px' : '0px',
                                 ...customColorStyle
                               }}
-                              title={`${task.title}\n${task.start_time} - ${task.end_time}${tasks.length > 1 ? '\n⚠️ Overlapping with other tasks' : ''}`}
+                              title={`${task.title}\n${task.start_time} - ${task.end_time}`}
                               onMouseEnter={() => setHoveredTaskId(task.id)}
                               onMouseLeave={() => setHoveredTaskId(null)}
                               onClick={() => handleTaskClick(task)}
                             >
-                              {tasks.length > 1 && (
-                                <div className="absolute top-0 right-0 w-2 h-2 bg-yellow-400 rounded-full text-xs flex items-center justify-center">
-                                  <span className="text-[8px] text-yellow-800">!</span>
-                                </div>
-                              )}
                               <div className="px-0 py-0 flex flex-col items-center justify-center h-full overflow-hidden">
                                 <div className={`truncate text-center font-semibold text-gray-900 dark:text-white leading-tight w-full ${
                                   durationSlots <= 1 ? 'text-[8px]' : 'text-[12px]'
