@@ -217,8 +217,8 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
       <Card className="flex-1 overflow-auto relative min-h-0 flex flex-col py-0 gap-0 justify-center">
         <Table ref={tableRef} className="w-full overflow-visible">
           <TableHeader className="sticky top-0 bg-background z-30">
-            <TableRow className="relative z-30">
-              <TableHead className="w-24 border-r bg-background relative z-30">Time</TableHead>
+            <TableRow className="relative z-30 border-b">
+              <TableHead className="w-24 border-r border-b bg-background relative z-30">Time</TableHead>
               {dayNames.map((dayName, index) => {
                 const headerData = getDayHeader(dayName, index, weekDates, isMounted);
                 const isToday = isMounted && weekDates && weekDates[index].toDateString() === new Date().toDateString();
@@ -227,7 +227,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                 return (
                   <TableHead
                     key={dayName}
-                    className={`text-center w-32 bg-background relative z-30 ${isToday ? 'text-blue-600 dark:text-blue-400 font-semibold' : ''}`}
+                    className={`text-center w-32 border-r border-b bg-background relative z-30 ${isToday ? 'text-blue-600 dark:text-blue-400 font-semibold' : ''}`}
                   >
                     <div className="flex flex-col items-center">
                       <div>{headerData.dayName}</div>
@@ -262,18 +262,18 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                 <TableRow
                   key={time}
                   id={time === "7:00 AM" ? "seven-am-row" : time === "8:00 AM" ? "eight-am-row" : undefined}
-                  className={`h-3 ${shouldHighlightRow(time, weekDates, hoveredTaskId, scheduledTasks, dayNames) ? 'bg-muted/30' : ''} ${removeBottomBorder ? 'border-b-0' : ''}`}
+                  className={`h-3 ${shouldHighlightRow(time, weekDates, hoveredTaskId, scheduledTasks, dayNames) ? 'bg-muted/30' : ''} ${removeBottomBorder ? '' : 'border-b'}`}
                 >
                   {shouldMergeTimeCell && hasNextSlot ? (
                     <TableCell 
                       rowSpan={2}
-                      className={`font-medium text-xs border-r sticky left-0 bg-background p-0.5 leading-none ${removeBottomBorder ? 'border-b-0' : ''}`}
+                      className={`font-medium text-xs border-r border-b sticky left-0 bg-background p-0.5 leading-none z-20`}
                       style={{ verticalAlign: 'middle' }}
                     >
                       {time}
                     </TableCell>
                   ) : !shouldMergeTimeCell ? null : (
-                    <TableCell className={`font-medium text-[10px] border-r sticky left-0 bg-background p-0 h-3 leading-none ${removeBottomBorder ? 'border-b-0' : ''}`} style={{ verticalAlign: 'middle' }}>
+                    <TableCell className={`font-medium text-[10px] border-r border-b sticky left-0 bg-background p-0 h-3 leading-none z-20`} style={{ verticalAlign: 'middle' }}>
                       {time}
                     </TableCell>
                   )}
@@ -284,7 +284,7 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                     return (
                       <TableCell
                         key={`${dayName}-${time}`}
-                        className={`h-3 border-r w-32 relative cursor-pointer p-0 align-top leading-none overflow-visible ${removeBottomBorder ? 'border-b-0' : ''} ${shouldHighlightRow(time, weekDates, hoveredTaskId, scheduledTasks, dayNames)
+                        className={`h-3 border-r border-b w-32 relative cursor-pointer p-0 align-top leading-none overflow-visible ${shouldHighlightRow(time, weekDates, hoveredTaskId, scheduledTasks, dayNames)
                           ? ''
                           : 'hover:bg-muted/50'
                           } ${isToday ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}
