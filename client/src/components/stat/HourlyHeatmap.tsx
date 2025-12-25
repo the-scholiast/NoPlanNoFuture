@@ -3,24 +3,11 @@
 import { useMemo } from 'react'
 import type { TimetableTask } from '@/lib/api/timetableApi'
 
-interface HourlyData {
-  hour: number
-  hours: number
-}
-
 interface Props {
   tasks: TimetableTask[]
   isDark: boolean
   startDate?: string
   endDate?: string
-}
-
-const parseHours = (start?: string, end?: string): number => {
-  if (!start || !end) return 0
-  const [sh, sm] = start.split(':').map(Number)
-  const [eh, em] = end.split(':').map(Number)
-  const mins = (eh * 60 + em) - (sh * 60 + sm)
-  return Math.max(0, mins) / 60
 }
 
 export function HourlyHeatmap({ tasks, isDark, startDate, endDate }: Props) {
@@ -50,7 +37,6 @@ export function HourlyHeatmap({ tasks, isDark, startDate, endDate }: Props) {
       const [endHour, endMin] = task.end_time.split(':').map(Number)
       const startMinutes = startHour * 60 + startMin
       const endMinutes = endHour * 60 + endMin
-      const duration = parseHours(task.start_time, task.end_time)
       
       // Distribute work time across hours
       for (let hour = 0; hour < 24; hour++) {
