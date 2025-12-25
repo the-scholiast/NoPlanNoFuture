@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import supabase from '@/lib/supabaseAdmin';
-import { getScheduledTasksForDateRange } from '@/lib/api/timetableUtils';
+
+const RAILWAY_BACKEND_URL = process.env.RAILWAY_BACKEND_URL || 'https://noplannofuture-production.up.railway.app';
 
 /**
  * GET /api/calendar-shares/devices/view/:deviceToken
  * 
- * Public endpoint for e-ink devices to fetch calendar data
+ * Proxy endpoint that forwards requests to Railway backend
  * 
  * Query parameters:
  * - startDate: YYYY-MM-DD format
@@ -38,39 +38,37 @@ export async function GET(
       );
     }
 
-    // Verify device token and get device info
-    const { data: device, error: deviceError } = await supabase
-      .from('eink_devices')
-      .select('user_id, view_type, is_active')
-      .eq('device_token', deviceToken)
-      .eq('is_active', true)
-      .single();
+    // Proxy request to Railway backend
+    const backendUrl = `${RAILWAY_BACKEND_URL}/api/calendar-shares/devices/view/${deviceToken}?startDate=${startDate}&endDate=${endDate}`;
+    
+    const response = await fetch(backendUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      // Add cache control for public endpoints
+      cache: 'no-store',
+    });
 
-    if (deviceError || !device) {
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { error: errorText || `Backend returned ${response.status}` };
+      }
       return NextResponse.json(
-        { error: 'Invalid or inactive device token' },
-        { status: 401 }
+        errorData,
+        { status: response.status }
       );
     }
 
-    // Get scheduled tasks for the date range
-    const tasks = await getScheduledTasksForDateRange(
-      device.user_id,
-      startDate,
-      endDate
-    );
-
-    // Return data in the expected format
-    return NextResponse.json({
-      config: {
-        view_type: device.view_type,
-        user_id: device.user_id
-      },
-      todos: tasks
-    });
+    const data = await response.json();
+    return NextResponse.json(data);
 
   } catch (error: any) {
-    console.error('Error in e-ink device API:', error);
+    console.error('Error proxying to Railway backend:', error);
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }
