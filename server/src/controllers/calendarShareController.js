@@ -241,15 +241,36 @@ export const updateEinkDevice = async (ownerId, deviceId, updates) => {
     throw new ValidationError(`Invalid view_type. Must be one of: ${valid_view_types.join(', ')}`);
   }
 
+  // Filter updates to only include allowed fields
+  const allowedFields = ['view_type', 'update_pending', 'update_requested_at'];
+  const filteredUpdates = {};
+  for (const key of allowedFields) {
+    if (key in updates) {
+      filteredUpdates[key] = updates[key];
+    }
+  }
+
+  // If no valid fields to update, return error
+  if (Object.keys(filteredUpdates).length === 0) {
+    throw new ValidationError('No valid fields to update');
+  }
+
   const { data, error } = await supabase
     .from('eink_devices')
-    .update(updates)
+    .update(filteredUpdates)
     .eq('id', deviceId)
     .eq('user_id', ownerId)
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Error updating e-ink device:', error);
+    // If it's a column doesn't exist error, provide helpful message
+    if (error.message && error.message.includes('column') && error.message.includes('does not exist')) {
+      throw new ValidationError(`Database column error: ${error.message}. Please ensure all required columns exist in the database.`);
+    }
+    throw error;
+  }
   if (!data) throw new ValidationError('Device not found');
 
   return data;
