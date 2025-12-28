@@ -410,9 +410,9 @@ export default function SharesPage() {
                             <SelectItem value="weekly">Weekly</SelectItem>
                             <SelectItem value="monthly_square">Monthly (Square)</SelectItem>
                             <SelectItem value="monthly_re">Monthly (Rectangle)</SelectItem>
+                            <SelectItem value="dual_yearly">Yearly</SelectItem>
                             <SelectItem value="dual_weekly">Dual Weekly</SelectItem>
                             <SelectItem value="dual_monthly">Dual Monthly</SelectItem>
-                            <SelectItem value="dual_yearly">Dual Yearly</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
