@@ -12,7 +12,8 @@ import {
   Calendar,
   Users,
   Link as LinkIcon,
-  Monitor
+  Monitor,
+  RefreshCw
 } from 'lucide-react'
 import {
   getOwnedShares,
@@ -101,6 +102,19 @@ export default function SharesPage() {
     },
     onError: (error: Error) => {
       toast.error(`Failed to delete device: ${error.message}`)
+    }
+  })
+
+  // Request device update mutation
+  const requestDeviceUpdateMutation = useMutation({
+    mutationFn: ({ deviceId }: { deviceId: string }) =>
+      updateEinkDevice(deviceId, { update_pending: true }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['eink-devices'] })
+      toast.success("Update request sent to device.")
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to request update: ${error.message}`)
     }
   })
 
@@ -290,11 +304,11 @@ export default function SharesPage() {
                             <Copy className="w-4 h-4" />
                           </Button>
                           <Button
-                            onClick={() => visitSharedCalendar(share.share_token)}
+                            variant="outline"
                             size="sm"
+                            onClick={() => visitSharedCalendar(share.share_token)}
                           >
-                            <ExternalLink className="w-4 h-4 mr-1" />
-                            View
+                            <ExternalLink className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>
@@ -374,56 +388,78 @@ export default function SharesPage() {
               {einkDevices.map((device: EinkDevice) => (
                 <Card key={device.id} className="border-l-4 border-l-purple-500">
                   <CardContent className="p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
                           <Monitor className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                           <span className="font-medium truncate">{device.device_name}</span>
-                          <Select
-                            value={device.view_type}
-                            onValueChange={(value: 'weekly' | 'dual_weekly' | 'dual_monthly' | 'dual_yearly' | 'monthly_square' | 'monthly_re') =>
-                              updateDeviceMutation.mutate({ deviceId: device.id, updates: { view_type: value } })
-                            }
-                            disabled={updateDeviceMutation.isPending}
-                          >
-                            <SelectTrigger className="w-32 h-7 text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="weekly">Weekly</SelectItem>
-                              <SelectItem value="dual_weekly">Dual Weekly</SelectItem>
-                              <SelectItem value="dual_monthly">Dual Monthly</SelectItem>
-                              <SelectItem value="dual_yearly">Dual Yearly</SelectItem>
-                              <SelectItem value="monthly_square">Monthly Square</SelectItem>
-                              <SelectItem value="monthly_re">Monthly RE</SelectItem>
-                            </SelectContent>
-                          </Select>
                         </div>
-                        <div className="bg-muted rounded p-1.5 mt-1.5">
-                          <div className="flex items-center gap-1.5 text-xs">
-                            <code className="flex-1 break-all text-[10px] truncate">
-                              {device.device_token}
-                            </code>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-5 px-1.5 flex-shrink-0"
-                              onClick={() => copyDeviceToken(device.device_token)}
-                            >
-                              <Copy className="w-3 h-3" />
-                            </Button>
-                          </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              requestDeviceUpdateMutation.mutate({ deviceId: device.id })
+                            }}
+                            disabled={requestDeviceUpdateMutation.isPending}
+                            title="Request device update"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={() => deleteDeviceMutation.mutate(device.id)}
+                            disabled={deleteDeviceMutation.isPending}
+                            title="Delete device"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
                         </div>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 w-7 p-0 flex-shrink-0"
-                        onClick={() => deleteDeviceMutation.mutate(device.id)}
-                        disabled={deleteDeviceMutation.isPending}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={device.view_type}
+                          onValueChange={(value: 'weekly' | 'dual_weekly' | 'dual_monthly' | 'dual_yearly' | 'monthly_square' | 'monthly_re') =>
+                            updateDeviceMutation.mutate({ deviceId: device.id, updates: { view_type: value } })
+                          }
+                          disabled={updateDeviceMutation.isPending}
+                        >
+                          <SelectTrigger className="w-36 h-7 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="weekly">Weekly</SelectItem>
+                            <SelectItem value="dual_weekly">Dual Weekly</SelectItem>
+                            <SelectItem value="dual_monthly">Dual Monthly</SelectItem>
+                            <SelectItem value="dual_yearly">Dual Yearly</SelectItem>
+                            <SelectItem value="monthly_square">Monthly Square</SelectItem>
+                            <SelectItem value="monthly_re">Monthly RE</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="bg-muted rounded p-1.5">
+                        <div className="flex items-center gap-1.5 text-xs">
+                          <code className="flex-1 break-all text-[10px] truncate">
+                            {device.device_token}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 px-1.5 flex-shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              copyDeviceToken(device.device_token)
+                            }}
+                            title="Copy device token"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
