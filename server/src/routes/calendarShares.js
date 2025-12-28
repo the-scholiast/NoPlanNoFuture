@@ -11,8 +11,7 @@ import {
   getEinkDevices,
   getEinkDeviceData,
   updateEinkDevice,
-  deleteEinkDevice,
-  checkDeviceUpdate
+  deleteEinkDevice
 } from '../controllers/calendarShareController.js';
 
 const router = express.Router();
@@ -141,23 +140,6 @@ router.get('/devices/view/:deviceToken', async (req, res, next) => {
 
     const data = await getEinkDeviceData(deviceToken, startDate, endDate);
     res.json(data);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Check if device needs update (PUBLIC endpoint - for Python)
-router.get('/devices/update-check/:deviceToken', async (req, res, next) => {
-  try {
-    const { deviceToken } = req.params;
-    const result = await checkDeviceUpdate(deviceToken);
-    
-    // If device doesn't exist, return 404 with update_required: false
-    if (result === null) {
-      return res.status(404).json({ update_required: false });
-    }
-    
-    res.json(result);
   } catch (error) {
     next(error);
   }

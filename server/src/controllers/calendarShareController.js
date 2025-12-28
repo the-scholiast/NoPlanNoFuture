@@ -241,23 +241,14 @@ export const updateEinkDevice = async (ownerId, deviceId, updates) => {
     throw new ValidationError(`Invalid view_type. Must be one of: ${valid_view_types.join(', ')}`);
   }
 
-  // Filter updates to only include allowed fields
-  const allowedFields = ['view_type', 'update_pending', 'update_requested_at'];
-  const filteredUpdates = {};
-  for (const key of allowedFields) {
-    if (key in updates) {
-      filteredUpdates[key] = updates[key];
-    }
-  }
-
-  // If no valid fields to update, return error
-  if (Object.keys(filteredUpdates).length === 0) {
-    throw new ValidationError('No valid fields to update');
+  // Only allow view_type updates
+  if (!updates.view_type) {
+    throw new ValidationError('view_type is required for device updates');
   }
 
   const { data, error } = await supabase
     .from('eink_devices')
-    .update(filteredUpdates)
+    .update({ view_type: updates.view_type })
     .eq('id', deviceId)
     .eq('user_id', ownerId)
     .select()
@@ -290,29 +281,4 @@ export const deleteEinkDevice = async (ownerId, deviceId) => {
   if (!data) throw new ValidationError('Device not found');
 
   return data;
-};
-
-// Check if device needs update (public endpoint - for Python)
-export const checkDeviceUpdate = async (deviceToken) => {
-  // Verify device token and check update status
-  const { data: device, error: deviceError } = await supabase
-    .from('eink_devices')
-    .select('update_pending, is_active')
-    .eq('device_token', deviceToken)
-    .single();
-
-  // If device doesn't exist, return null to indicate 404
-  if (deviceError && deviceError.code === 'PGRST116') {
-    return null; // Device not found
-  }
-
-  // If device is inactive or other error, return false
-  if (deviceError || !device || !device.is_active) {
-    return { update_required: false };
-  }
-
-  // Return update status
-  return {
-    update_required: device.update_pending || false
-  };
 };

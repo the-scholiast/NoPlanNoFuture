@@ -12,8 +12,7 @@ import {
   Calendar,
   Users,
   Link as LinkIcon,
-  Monitor,
-  RefreshCw
+  Monitor
 } from 'lucide-react'
 import {
   getOwnedShares,
@@ -102,19 +101,6 @@ export default function SharesPage() {
     },
     onError: (error: Error) => {
       toast.error(`Failed to delete device: ${error.message}`)
-    }
-  })
-
-  // Request device update mutation
-  const requestDeviceUpdateMutation = useMutation({
-    mutationFn: ({ deviceId }: { deviceId: string }) =>
-      updateEinkDevice(deviceId, { update_pending: true }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['eink-devices'] })
-      toast.success("Update request sent to device.")
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to request update: ${error.message}`)
     }
   })
 
@@ -395,19 +381,6 @@ export default function SharesPage() {
                           <span className="font-medium truncate">{device.device_name}</span>
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 w-7 p-0"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              requestDeviceUpdateMutation.mutate({ deviceId: device.id })
-                            }}
-                            disabled={requestDeviceUpdateMutation.isPending}
-                            title="Request device update"
-                          >
-                            <RefreshCw className="w-3.5 h-3.5" />
-                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
