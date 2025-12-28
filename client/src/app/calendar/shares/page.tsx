@@ -423,21 +423,23 @@ export default function SharesPage() {
                       <div className="flex items-center gap-2">
                         <Select
                           value={device.view_type}
-                          onValueChange={(value: 'weekly' | 'dual_weekly' | 'dual_monthly' | 'dual_yearly' | 'monthly_square' | 'monthly_re') =>
-                            updateDeviceMutation.mutate({ deviceId: device.id, updates: { view_type: value } })
-                          }
+                          onValueChange={(value: 'weekly' | 'dual_weekly' | 'dual_monthly' | 'dual_yearly' | 'monthly_square' | 'monthly_re') => {
+                            if (value !== device.view_type) {
+                              updateDeviceMutation.mutate({ deviceId: device.id, updates: { view_type: value } })
+                            }
+                          }}
                           disabled={updateDeviceMutation.isPending}
                         >
-                          <SelectTrigger className="w-36 h-7 text-xs">
+                          <SelectTrigger className="w-40 h-7 text-xs">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="weekly">Weekly</SelectItem>
+                            <SelectItem value="monthly_square">Monthly (Square)</SelectItem>
+                            <SelectItem value="monthly_re">Monthly (Rectangle)</SelectItem>
                             <SelectItem value="dual_weekly">Dual Weekly</SelectItem>
                             <SelectItem value="dual_monthly">Dual Monthly</SelectItem>
                             <SelectItem value="dual_yearly">Dual Yearly</SelectItem>
-                            <SelectItem value="monthly_square">Monthly Square</SelectItem>
-                            <SelectItem value="monthly_re">Monthly RE</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
