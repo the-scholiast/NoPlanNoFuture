@@ -49,6 +49,8 @@ export interface EinkDevice {
   last_synced_at: string | null;
   created_at: string;
   is_active: boolean;
+  update_pending?: boolean;
+  update_requested_at?: string | null;
 }
 
 export const createEinkDevice = async (deviceName: string): Promise<EinkDevice> => {
