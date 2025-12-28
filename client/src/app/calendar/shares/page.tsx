@@ -29,6 +29,7 @@ import { toast } from 'sonner'
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 
 export default function SharesPage() {
   const queryClient = useQueryClient()
@@ -415,6 +416,20 @@ export default function SharesPage() {
                             <SelectItem value="dual_monthly">Dual Monthly</SelectItem>
                           </SelectContent>
                         </Select>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">4-Gray</span>
+                          <Switch
+                            checked={device.display_mode === 'bw'}
+                            onCheckedChange={(checked) => {
+                              const newMode = checked ? 'bw' : '4gray'
+                              if (newMode !== (device.display_mode || '4gray')) {
+                                updateDeviceMutation.mutate({ deviceId: device.id, updates: { display_mode: newMode } })
+                              }
+                            }}
+                            disabled={updateDeviceMutation.isPending}
+                          />
+                          <span className="text-xs text-muted-foreground">B&W</span>
+                        </div>
                       </div>
                       <div className="bg-muted rounded p-1.5">
                         <div className="flex items-center gap-1.5 text-xs">
