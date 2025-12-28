@@ -198,7 +198,7 @@ export const getEinkDeviceData = async (deviceToken, startDate, endDate) => {
   // Verify device token and get owner (same pattern as getSharedCalendarTasks)
   const { data: device, error: deviceError } = await supabase
     .from('eink_devices')
-    .select('user_id, view_type, is_active')
+    .select('user_id, view_type, display_mode, is_active')
     .eq('device_token', deviceToken)
     .eq('is_active', true)
     .single();
@@ -214,6 +214,7 @@ export const getEinkDeviceData = async (deviceToken, startDate, endDate) => {
   return {
     config: {
       view_type: device.view_type,
+      display_mode: device.display_mode || '4gray', // Default to 4-gray mode
       user_id: device.user_id
     },
     todos: tasks
@@ -233,7 +234,7 @@ export const getEinkDevices = async (ownerId) => {
   return data || [];
 };
 
-// Update e-ink device (for changing view_type)
+// Update e-ink device (for changing view_type and display_mode)
 export const updateEinkDevice = async (ownerId, deviceId, updates) => {
   // Validate view_type if provided
   const valid_view_types = ['weekly', 'dual_weekly', 'dual_monthly', 'dual_yearly', 'monthly_square', 'monthly_re'];
@@ -241,14 +242,29 @@ export const updateEinkDevice = async (ownerId, deviceId, updates) => {
     throw new ValidationError(`Invalid view_type. Must be one of: ${valid_view_types.join(', ')}`);
   }
 
-  // Only allow view_type updates
-  if (!updates.view_type) {
-    throw new ValidationError('view_type is required for device updates');
+  // Validate display_mode if provided
+  const valid_display_modes = ['4gray', 'bw'];
+  if (updates.display_mode && !valid_display_modes.includes(updates.display_mode)) {
+    throw new ValidationError(`Invalid display_mode. Must be one of: ${valid_display_modes.join(', ')}`);
+  }
+
+  // Build update object with only provided fields
+  const updateData = {};
+  if (updates.view_type) {
+    updateData.view_type = updates.view_type;
+  }
+  if (updates.display_mode) {
+    updateData.display_mode = updates.display_mode;
+  }
+
+  // At least one field must be provided
+  if (Object.keys(updateData).length === 0) {
+    throw new ValidationError('At least one of view_type or display_mode must be provided');
   }
 
   const { data, error } = await supabase
     .from('eink_devices')
-    .update({ view_type: updates.view_type })
+    .update(updateData)
     .eq('id', deviceId)
     .eq('user_id', ownerId)
     .select()
