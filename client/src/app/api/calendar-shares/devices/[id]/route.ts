@@ -7,7 +7,7 @@ const RAILWAY_BACKEND_URL = process.env.RAILWAY_BACKEND_URL || 'https://noplanno
  * 
  * Proxy endpoint that forwards PATCH requests to Railway backend
  * 
- * Used for updating device settings (e.g., view_type, update_pending)
+ * Used for updating device settings (e.g., view_type, display_mode)
  */
 export async function PATCH(
   request: NextRequest,
