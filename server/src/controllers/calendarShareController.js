@@ -270,3 +270,28 @@ export const deleteEinkDevice = async (ownerId, deviceId) => {
 
   return data;
 };
+
+// Check if device needs update (public endpoint - for Python)
+export const checkDeviceUpdate = async (deviceToken) => {
+  // Verify device token and check update status
+  const { data: device, error: deviceError } = await supabase
+    .from('eink_devices')
+    .select('update_pending, is_active')
+    .eq('device_token', deviceToken)
+    .single();
+
+  // If device doesn't exist, return null to indicate 404
+  if (deviceError && deviceError.code === 'PGRST116') {
+    return null; // Device not found
+  }
+
+  // If device is inactive or other error, return false
+  if (deviceError || !device || !device.is_active) {
+    return { update_required: false };
+  }
+
+  // Return update status
+  return {
+    update_required: device.update_pending || false
+  };
+};
