@@ -81,7 +81,7 @@ export const getScheduledTasksForDateRange = async (userId, startDate, endDate) 
   return allTasks;
 };
 
-// Get all tasks (scheduled + non-scheduled) for a date range
+// Get all tasks (scheduled + non-scheduled + daily + today + upcoming) for a date range
 // This includes tasks with start_date but without start_time/end_time
 export const getAllTasksForDateRange = async (userId, startDate, endDate) => {
   // Get scheduled tasks (with time)
@@ -97,6 +97,9 @@ export const getAllTasksForDateRange = async (userId, startDate, endDate) => {
     .not('start_date', 'is', null)
     .is('start_time', null) // No start_time
     .is('end_time', null) // No end_time
+    .neq('section', 'daily') // Exclude daily tasks (handled separately)
+    .neq('section', 'today') // Exclude today tasks (handled separately)
+    .neq('section', 'upcoming') // Exclude upcoming tasks (handled separately)
     .gte('start_date', startDate)
     .lte('start_date', endDate)
     .order('start_date', { ascending: true })
@@ -114,9 +117,41 @@ export const getAllTasksForDateRange = async (userId, startDate, endDate) => {
     .not('start_date', 'is', null)
     .is('start_time', null) // No start_time
     .is('end_time', null) // No end_time
+    .neq('section', 'daily') // Exclude daily tasks (handled separately)
     .not('recurring_days', 'is', null);
 
   if (recurringError) throw recurringError;
+
+  // Get daily tasks (section = 'daily')
+  const { data: dailyTasks, error: dailyError } = await supabase
+    .from('todos')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('section', 'daily')
+    .is('deleted_at', null)
+    .or(`end_date.is.null,end_date.gte.${startDate}`); // Active daily tasks
+
+  if (dailyError) throw dailyError;
+
+  // Get today tasks (section = 'today') within date range
+  const { data: todayTasks, error: todayError } = await supabase
+    .from('todos')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('section', 'today')
+    .is('deleted_at', null);
+
+  if (todayError) throw todayError;
+
+  // Get upcoming tasks (section = 'upcoming') within date range
+  const { data: upcomingTasks, error: upcomingError } = await supabase
+    .from('todos')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('section', 'upcoming')
+    .is('deleted_at', null);
+
+  if (upcomingError) throw upcomingError;
 
   // Generate instances for non-scheduled recurring tasks
   const recurringInstances = [];
@@ -141,17 +176,69 @@ export const getAllTasksForDateRange = async (userId, startDate, endDate) => {
     }
   }
 
+  // Generate instances for daily tasks (one instance per day in the week)
+  const dailyInstances = [];
+  for (const task of dailyTasks || []) {
+    const currentDate = new Date(startDateObj);
+    while (currentDate <= endDateObj) {
+      // Check if task is active on this date
+      const currentDateString = formatDateString(currentDate);
+      const isActive = 
+        (!task.start_date || currentDateString >= task.start_date) &&
+        (!task.end_date || currentDateString <= task.end_date);
+
+      if (isActive) {
+        // For recurring daily tasks, check if they should appear on this day
+        if (task.is_recurring && task.recurring_days && task.recurring_days.length > 0) {
+          if (shouldTaskAppearOnDate(task, currentDate)) {
+            dailyInstances.push({
+              ...task,
+              id: `${task.id}_${currentDateString}`,
+              instance_date: currentDateString,
+              start_date: currentDateString,
+              parent_task_id: task.id
+            });
+          }
+        } else {
+          // Non-recurring daily tasks appear every day
+          dailyInstances.push({
+            ...task,
+            id: `${task.id}_${currentDateString}`,
+            instance_date: currentDateString,
+            start_date: currentDateString,
+            parent_task_id: task.id
+          });
+        }
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+  }
+
   // Apply overrides to recurring instances
   const instancesWithOverrides = await applyOverridesToInstances(userId, recurringInstances);
 
-  // Combine all tasks: scheduled + non-scheduled regular + non-scheduled recurring
+  // Filter today and upcoming tasks by date range
+  const filteredTodayTasks = (todayTasks || []).filter(task => {
+    if (!task.start_date) return true; // Include tasks without start_date
+    return task.start_date >= startDate && task.start_date <= endDate;
+  });
+
+  const filteredUpcomingTasks = (upcomingTasks || []).filter(task => {
+    if (!task.start_date) return false; // Exclude tasks without start_date for upcoming
+    return task.start_date >= startDate && task.start_date <= endDate;
+  });
+
+  // Combine all tasks
   const allTasks = [
     ...scheduledTasks,
     ...(regularTasks || []),
-    ...instancesWithOverrides
+    ...instancesWithOverrides,
+    ...dailyInstances,
+    ...filteredTodayTasks,
+    ...filteredUpcomingTasks
   ];
 
-  // Sort by date, then by time (if available), then by priority
+  // Sort by date, then by time (if available), then by priority, then by section
   allTasks.sort((a, b) => {
     const dateA = a.start_date || a.instance_date;
     const dateB = b.start_date || b.instance_date;
@@ -169,7 +256,15 @@ export const getAllTasksForDateRange = async (userId, startDate, endDate) => {
     if (a.start_time && !b.start_time) return -1;
     if (!a.start_time && b.start_time) return 1;
 
-    // If neither has time, sort by priority
+    // If neither has time, sort by section (today > upcoming > daily > others)
+    const sectionOrder = { today: 3, upcoming: 2, daily: 1, none: 0 };
+    const sectionA = sectionOrder[a.section] || 0;
+    const sectionB = sectionOrder[b.section] || 0;
+    if (sectionA !== sectionB) {
+      return sectionB - sectionA;
+    }
+
+    // Then sort by priority
     const priorityOrder = { high: 3, medium: 2, low: 1 };
     const priorityA = priorityOrder[a.priority] || 0;
     const priorityB = priorityOrder[b.priority] || 0;
