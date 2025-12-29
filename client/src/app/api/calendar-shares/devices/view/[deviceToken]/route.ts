@@ -13,10 +13,10 @@ const RAILWAY_BACKEND_URL = process.env.RAILWAY_BACKEND_URL || 'https://noplanno
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { deviceToken: string } }
+  { params }: { params: Promise<{ deviceToken: string }> }
 ) {
   try {
-    const { deviceToken } = params;
+    const { deviceToken } = await params;
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
