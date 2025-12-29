@@ -85,12 +85,21 @@ export default function SharesPage() {
   const updateDeviceMutation = useMutation({
     mutationFn: ({ deviceId, updates }: { deviceId: string; updates: Partial<EinkDevice> }) =>
       updateEinkDevice(deviceId, updates),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['eink-devices'] })
-      toast.success("Device updated successfully.")
+    onSuccess: (updatedDevice) => {
+      // Optimistically update the cache with the returned device data
+      queryClient.setQueryData(['eink-devices'], (old: EinkDevice[] | undefined) => {
+        if (!old) return [updatedDevice];
+        return old.map(device => 
+          device.id === updatedDevice.id ? updatedDevice : device
+        );
+      });
+      queryClient.invalidateQueries({ queryKey: ['eink-devices'] });
+      toast.success("Device updated successfully.");
     },
     onError: (error: Error) => {
-      toast.error(`Failed to update device: ${error.message}`)
+      toast.error(`Failed to update device: ${error.message}`);
+      // Refresh data on error to ensure UI is in sync
+      queryClient.invalidateQueries({ queryKey: ['eink-devices'] });
     }
   })
 
@@ -406,11 +415,11 @@ export default function SharesPage() {
                             </Label>
                             <Switch
                               id={`display-mode-${device.id}`}
-                              checked={device.display_mode === '4gray' || !device.display_mode}
+                              checked={device.display_mode === 'bw'}
                               onCheckedChange={(checked: boolean) =>
                                 updateDeviceMutation.mutate({ 
                                   deviceId: device.id, 
-                                  updates: { display_mode: checked ? '4gray' : 'bw' } 
+                                  updates: { display_mode: checked ? 'bw' : '4gray' } 
                                 })
                               }
                               disabled={updateDeviceMutation.isPending}
