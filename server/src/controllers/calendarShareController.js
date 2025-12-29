@@ -250,10 +250,10 @@ export const updateEinkDevice = async (ownerId, deviceId, updates) => {
 
   // Build update object with only provided fields
   const updateData = {};
-  if (updates.view_type) {
+  if (updates.view_type !== undefined) {
     updateData.view_type = updates.view_type;
   }
-  if (updates.display_mode) {
+  if (updates.display_mode !== undefined) {
     updateData.display_mode = updates.display_mode;
   }
 
