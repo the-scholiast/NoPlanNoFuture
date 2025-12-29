@@ -179,7 +179,8 @@ export const createEinkDevice = async (ownerId, deviceName) => {
       user_id: ownerId,
       device_name: deviceName.trim(),
       device_token: deviceToken,
-      view_type: 'weekly' // Default view type (can be changed via update)
+      view_type: 'weekly', // Default view type (can be changed via update)
+      display_mode: '4gray' // Default display mode (can be changed via update)
     })
     .select()
     .single();
@@ -198,7 +199,7 @@ export const getEinkDeviceData = async (deviceToken, startDate, endDate) => {
   // Verify device token and get owner (same pattern as getSharedCalendarTasks)
   const { data: device, error: deviceError } = await supabase
     .from('eink_devices')
-    .select('user_id, view_type, is_active')
+    .select('user_id, view_type, display_mode, is_active')
     .eq('device_token', deviceToken)
     .eq('is_active', true)
     .single();
@@ -207,13 +208,18 @@ export const getEinkDeviceData = async (deviceToken, startDate, endDate) => {
     throw new ValidationError('Invalid or inactive device token');
   }
 
-  // Get scheduled tasks for the date range using existing controller
-  const { getScheduledTasksForDateRange } = await import('./timetableController.js');
-  const tasks = await getScheduledTasksForDateRange(device.user_id, startDate, endDate);
+  // Get all tasks (scheduled + non-scheduled) for the date range
+  // This includes tasks with start_date but without start_time/end_time
+  const { getAllTasksForDateRange } = await import('./timetableController.js');
+  const tasks = await getAllTasksForDateRange(device.user_id, startDate, endDate);
 
+  // Ensure display_mode is always included in config
+  const displayMode = device.display_mode || '4gray';
+  
   return {
     config: {
       view_type: device.view_type,
+      display_mode: displayMode, // Always include display_mode (default: '4gray')
       user_id: device.user_id
     },
     todos: tasks
@@ -233,7 +239,7 @@ export const getEinkDevices = async (ownerId) => {
   return data || [];
 };
 
-// Update e-ink device (for changing view_type)
+// Update e-ink device (for changing view_type and display_mode)
 export const updateEinkDevice = async (ownerId, deviceId, updates) => {
   // Validate view_type if provided
   const valid_view_types = ['weekly', 'dual_weekly', 'dual_monthly', 'dual_yearly', 'monthly_square', 'monthly_re'];
@@ -241,15 +247,42 @@ export const updateEinkDevice = async (ownerId, deviceId, updates) => {
     throw new ValidationError(`Invalid view_type. Must be one of: ${valid_view_types.join(', ')}`);
   }
 
+  // Validate display_mode if provided
+  const valid_display_modes = ['4gray', 'bw'];
+  if (updates.display_mode && !valid_display_modes.includes(updates.display_mode)) {
+    throw new ValidationError(`Invalid display_mode. Must be one of: ${valid_display_modes.join(', ')}`);
+  }
+
+  // Build update object with only provided fields
+  const updateData = {};
+  if (updates.view_type !== undefined) {
+    updateData.view_type = updates.view_type;
+  }
+  if (updates.display_mode !== undefined) {
+    updateData.display_mode = updates.display_mode;
+  }
+
+  // At least one field must be provided
+  if (Object.keys(updateData).length === 0) {
+    throw new ValidationError('At least one of view_type or display_mode must be provided');
+  }
+
   const { data, error } = await supabase
     .from('eink_devices')
-    .update(updates)
+    .update(updateData)
     .eq('id', deviceId)
     .eq('user_id', ownerId)
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Error updating e-ink device:', error);
+    // If it's a column doesn't exist error, provide helpful message
+    if (error.message && error.message.includes('column') && error.message.includes('does not exist')) {
+      throw new ValidationError(`Database column error: ${error.message}. Please ensure all required columns exist in the database.`);
+    }
+    throw error;
+  }
   if (!data) throw new ValidationError('Device not found');
 
   return data;

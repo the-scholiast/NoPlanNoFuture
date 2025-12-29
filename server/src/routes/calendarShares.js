@@ -107,7 +107,7 @@ router.get('/devices', authenticateUser, async (req, res, next) => {
   }
 });
 
-// Update e-ink device (JWT authenticated) - for changing view_type
+// Update e-ink device (JWT authenticated) - for changing view_type and display_mode
 router.patch('/devices/:id', authenticateUser, async (req, res, next) => {
   try {
     const device = await updateEinkDevice(req.user.id, req.params.id, req.body);

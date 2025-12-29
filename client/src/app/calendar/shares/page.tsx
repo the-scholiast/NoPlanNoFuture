@@ -29,6 +29,8 @@ import { toast } from 'sonner'
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 
 export default function SharesPage() {
   const queryClient = useQueryClient()
@@ -83,12 +85,21 @@ export default function SharesPage() {
   const updateDeviceMutation = useMutation({
     mutationFn: ({ deviceId, updates }: { deviceId: string; updates: Partial<EinkDevice> }) =>
       updateEinkDevice(deviceId, updates),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['eink-devices'] })
-      toast.success("Device updated successfully.")
+    onSuccess: (updatedDevice) => {
+      // Optimistically update the cache with the returned device data
+      queryClient.setQueryData(['eink-devices'], (old: EinkDevice[] | undefined) => {
+        if (!old) return [updatedDevice];
+        return old.map(device => 
+          device.id === updatedDevice.id ? updatedDevice : device
+        );
+      });
+      queryClient.invalidateQueries({ queryKey: ['eink-devices'] });
+      toast.success("Device updated successfully.");
     },
     onError: (error: Error) => {
-      toast.error(`Failed to update device: ${error.message}`)
+      toast.error(`Failed to update device: ${error.message}`);
+      // Refresh data on error to ensure UI is in sync
+      queryClient.invalidateQueries({ queryKey: ['eink-devices'] });
     }
   })
 
@@ -290,11 +301,11 @@ export default function SharesPage() {
                             <Copy className="w-4 h-4" />
                           </Button>
                           <Button
-                            onClick={() => visitSharedCalendar(share.share_token)}
+                            variant="outline"
                             size="sm"
+                            onClick={() => visitSharedCalendar(share.share_token)}
                           >
-                            <ExternalLink className="w-4 h-4 mr-1" />
-                            View
+                            <ExternalLink className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>
@@ -376,7 +387,7 @@ export default function SharesPage() {
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <Monitor className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                           <span className="font-medium truncate">{device.device_name}</span>
                           <Select
@@ -393,11 +404,30 @@ export default function SharesPage() {
                               <SelectItem value="weekly">Weekly</SelectItem>
                               <SelectItem value="dual_weekly">Dual Weekly</SelectItem>
                               <SelectItem value="dual_monthly">Dual Monthly</SelectItem>
-                              <SelectItem value="dual_yearly">Dual Yearly</SelectItem>
+                              <SelectItem value="dual_yearly">Yearly</SelectItem>
                               <SelectItem value="monthly_square">Monthly Square</SelectItem>
                               <SelectItem value="monthly_re">Monthly RE</SelectItem>
                             </SelectContent>
                           </Select>
+                          <div className="flex items-center gap-1.5">
+                            <Label htmlFor={`display-mode-${device.id}`} className="text-xs text-muted-foreground whitespace-nowrap">
+                              4-Gray
+                            </Label>
+                            <Switch
+                              id={`display-mode-${device.id}`}
+                              checked={device.display_mode === 'bw'}
+                              onCheckedChange={(checked: boolean) =>
+                                updateDeviceMutation.mutate({ 
+                                  deviceId: device.id, 
+                                  updates: { display_mode: checked ? 'bw' : '4gray' } 
+                                })
+                              }
+                              disabled={updateDeviceMutation.isPending}
+                            />
+                            <Label htmlFor={`display-mode-${device.id}`} className="text-xs text-muted-foreground whitespace-nowrap">
+                              B&W
+                            </Label>
+                          </div>
                         </div>
                         <div className="bg-muted rounded p-1.5 mt-1.5">
                           <div className="flex items-center gap-1.5 text-xs">
