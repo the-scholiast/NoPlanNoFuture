@@ -212,10 +212,13 @@ export const getEinkDeviceData = async (deviceToken, startDate, endDate) => {
   const { getScheduledTasksForDateRange } = await import('./timetableController.js');
   const tasks = await getScheduledTasksForDateRange(device.user_id, startDate, endDate);
 
+  // Ensure display_mode is always included in config
+  const displayMode = device.display_mode || '4gray';
+  
   return {
     config: {
       view_type: device.view_type,
-      display_mode: device.display_mode || '4gray', // Default to 4-gray mode
+      display_mode: displayMode, // Always include display_mode (default: '4gray')
       user_id: device.user_id
     },
     todos: tasks
