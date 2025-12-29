@@ -208,9 +208,10 @@ export const getEinkDeviceData = async (deviceToken, startDate, endDate) => {
     throw new ValidationError('Invalid or inactive device token');
   }
 
-  // Get scheduled tasks for the date range using existing controller
-  const { getScheduledTasksForDateRange } = await import('./timetableController.js');
-  const tasks = await getScheduledTasksForDateRange(device.user_id, startDate, endDate);
+  // Get all tasks (scheduled + non-scheduled) for the date range
+  // This includes tasks with start_date but without start_time/end_time
+  const { getAllTasksForDateRange } = await import('./timetableController.js');
+  const tasks = await getAllTasksForDateRange(device.user_id, startDate, endDate);
 
   // Ensure display_mode is always included in config
   const displayMode = device.display_mode || '4gray';
