@@ -30,6 +30,7 @@ import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 
 export default function SharesPage() {
   const queryClient = useQueryClient()
@@ -375,81 +376,75 @@ export default function SharesPage() {
               {einkDevices.map((device: EinkDevice) => (
                 <Card key={device.id} className="border-l-4 border-l-purple-500">
                   <CardContent className="p-3">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <Monitor className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                           <span className="font-medium truncate">{device.device_name}</span>
-                        </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 w-7 p-0"
-                            onClick={() => deleteDeviceMutation.mutate(device.id)}
-                            disabled={deleteDeviceMutation.isPending}
-                            title="Delete device"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Select
-                          value={device.view_type}
-                          onValueChange={(value: 'weekly' | 'dual_weekly' | 'dual_monthly' | 'dual_yearly' | 'monthly_square' | 'monthly_re') => {
-                            if (value !== device.view_type) {
+                          <Select
+                            value={device.view_type}
+                            onValueChange={(value: 'weekly' | 'dual_weekly' | 'dual_monthly' | 'dual_yearly' | 'monthly_square' | 'monthly_re') =>
                               updateDeviceMutation.mutate({ deviceId: device.id, updates: { view_type: value } })
                             }
-                          }}
-                          disabled={updateDeviceMutation.isPending}
-                        >
-                          <SelectTrigger className="w-40 h-7 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="weekly">Weekly</SelectItem>
-                            <SelectItem value="monthly_square">Monthly (Square)</SelectItem>
-                            <SelectItem value="monthly_re">Monthly (Rectangle)</SelectItem>
-                            <SelectItem value="dual_yearly">Yearly</SelectItem>
-                            <SelectItem value="dual_weekly">Dual Weekly</SelectItem>
-                            <SelectItem value="dual_monthly">Dual Monthly</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">4-Gray</span>
-                          <Switch
-                            checked={device.display_mode === 'bw'}
-                            onCheckedChange={(checked) => {
-                              const newMode = checked ? 'bw' : '4gray'
-                              if (newMode !== (device.display_mode || '4gray')) {
-                                updateDeviceMutation.mutate({ deviceId: device.id, updates: { display_mode: newMode } })
-                              }
-                            }}
                             disabled={updateDeviceMutation.isPending}
-                          />
-                          <span className="text-xs text-muted-foreground">B&W</span>
-                        </div>
-                      </div>
-                      <div className="bg-muted rounded p-1.5">
-                        <div className="flex items-center gap-1.5 text-xs">
-                          <code className="flex-1 break-all text-[10px] truncate">
-                            {device.device_token}
-                          </code>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-5 px-1.5 flex-shrink-0"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              copyDeviceToken(device.device_token)
-                            }}
-                            title="Copy device token"
                           >
-                            <Copy className="w-3 h-3" />
-                          </Button>
+                            <SelectTrigger className="w-32 h-7 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="weekly">Weekly</SelectItem>
+                              <SelectItem value="dual_weekly">Dual Weekly</SelectItem>
+                              <SelectItem value="dual_monthly">Dual Monthly</SelectItem>
+                              <SelectItem value="dual_yearly">Dual Yearly</SelectItem>
+                              <SelectItem value="monthly_square">Monthly Square</SelectItem>
+                              <SelectItem value="monthly_re">Monthly RE</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <div className="flex items-center gap-1.5">
+                            <Label htmlFor={`display-mode-${device.id}`} className="text-xs text-muted-foreground whitespace-nowrap">
+                              4-Gray
+                            </Label>
+                            <Switch
+                              id={`display-mode-${device.id}`}
+                              checked={device.display_mode === '4gray' || !device.display_mode}
+                              onCheckedChange={(checked: boolean) =>
+                                updateDeviceMutation.mutate({ 
+                                  deviceId: device.id, 
+                                  updates: { display_mode: checked ? '4gray' : 'bw' } 
+                                })
+                              }
+                              disabled={updateDeviceMutation.isPending}
+                            />
+                            <Label htmlFor={`display-mode-${device.id}`} className="text-xs text-muted-foreground whitespace-nowrap">
+                              B&W
+                            </Label>
+                          </div>
+                        </div>
+                        <div className="bg-muted rounded p-1.5 mt-1.5">
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <code className="flex-1 break-all text-[10px] truncate">
+                              {device.device_token}
+                            </code>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 px-1.5 flex-shrink-0"
+                              onClick={() => copyDeviceToken(device.device_token)}
+                            >
+                              <Copy className="w-3 h-3" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 w-7 p-0 flex-shrink-0"
+                        onClick={() => deleteDeviceMutation.mutate(device.id)}
+                        disabled={deleteDeviceMutation.isPending}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
