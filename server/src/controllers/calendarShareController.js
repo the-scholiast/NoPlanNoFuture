@@ -179,7 +179,8 @@ export const createEinkDevice = async (ownerId, deviceName) => {
       user_id: ownerId,
       device_name: deviceName.trim(),
       device_token: deviceToken,
-      view_type: 'weekly' // Default view type (can be changed via update)
+      view_type: 'weekly', // Default view type (can be changed via update)
+      display_mode: '4gray' // Default display mode (can be changed via update)
     })
     .select()
     .single();
