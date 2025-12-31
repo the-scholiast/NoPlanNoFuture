@@ -156,7 +156,7 @@ export default function SharesPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Calendars I've Shared (Outgoing) */}
         <Card>
           <CardHeader>
@@ -316,7 +316,10 @@ export default function SharesPage() {
             )}
           </CardContent>
         </Card>
+      </div>
 
+      {/* E-ink Devices and Summary Stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* E-ink Devices Section */}
         <Card>
           <CardHeader>
@@ -329,165 +332,165 @@ export default function SharesPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-          {/* Create New Device */}
-          <div className="mb-3 p-2 border rounded-lg bg-muted/50">
-            <div className="flex gap-2 items-center">
-              <Input
-                placeholder="Device name"
-                value={newDeviceName}
-                onChange={(e) => setNewDeviceName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleCreateDevice()}
-                className="flex-1 h-8 text-sm"
-              />
-              <Button
-                onClick={handleCreateDevice}
-                disabled={createDeviceMutation.isPending || !newDeviceName.trim()}
-                size="sm"
-                className="h-8"
-              >
-                Create
-              </Button>
-            </div>
-            {newDeviceToken && (
-              <div className="mt-2 p-1.5 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
-                <p className="text-xs font-medium mb-1">Token (copy now):</p>
-                <div className="flex items-center gap-1.5">
-                  <code className="flex-1 break-all text-[10px] bg-white dark:bg-gray-800 p-1 rounded">
-                    {newDeviceToken}
-                  </code>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-6 px-1.5"
-                    onClick={() => {
-                      copyDeviceToken(newDeviceToken)
-                      setNewDeviceToken(null)
-                    }}
-                  >
-                    <Copy className="w-3 h-3" />
-                  </Button>
-                </div>
+            {/* Create New Device */}
+            <div className="mb-3 p-2 border rounded-lg bg-muted/50">
+              <div className="flex gap-2 items-center">
+                <Input
+                  placeholder="Device name"
+                  value={newDeviceName}
+                  onChange={(e) => setNewDeviceName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCreateDevice()}
+                  className="flex-1 h-8 text-sm"
+                />
+                <Button
+                  onClick={handleCreateDevice}
+                  disabled={createDeviceMutation.isPending || !newDeviceName.trim()}
+                  size="sm"
+                  className="h-8"
+                >
+                  Create
+                </Button>
               </div>
-            )}
-          </div>
+              {newDeviceToken && (
+                <div className="mt-2 p-1.5 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+                  <p className="text-xs font-medium mb-1">Token (copy now):</p>
+                  <div className="flex items-center gap-1.5">
+                    <code className="flex-1 break-all text-[10px] bg-white dark:bg-gray-800 p-1 rounded">
+                      {newDeviceToken}
+                    </code>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-6 px-1.5"
+                      onClick={() => {
+                        copyDeviceToken(newDeviceToken)
+                        setNewDeviceToken(null)
+                      }}
+                    >
+                      <Copy className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
 
-          {/* Device List */}
-          {loadingDevices ? (
-            <div className="text-center py-2 text-muted-foreground text-xs">
-              Loading...
-            </div>
-          ) : einkDevices.length === 0 ? (
-            <div className="text-center py-2 text-muted-foreground">
-              <p className="text-xs">No devices yet</p>
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {einkDevices.map((device: EinkDevice) => (
-                <Card key={device.id} className="border-l-4 border-l-purple-500">
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <Monitor className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                          <span className="font-medium truncate">{device.device_name}</span>
-                          <Select
-                            value={device.view_type}
-                            onValueChange={(value: 'weekly' | 'dual_weekly' | 'dual_monthly' | 'dual_yearly' | 'monthly_square' | 'monthly_re') =>
-                              updateDeviceMutation.mutate({ deviceId: device.id, updates: { view_type: value } })
-                            }
-                            disabled={updateDeviceMutation.isPending}
-                          >
-                            <SelectTrigger className="w-32 h-7 text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="weekly">Weekly</SelectItem>
-                              <SelectItem value="dual_weekly">Dual Weekly</SelectItem>
-                              <SelectItem value="dual_monthly">Dual Monthly</SelectItem>
-                              <SelectItem value="dual_yearly">Yearly</SelectItem>
-                              <SelectItem value="monthly_square">Monthly Square</SelectItem>
-                              <SelectItem value="monthly_re">Monthly RE</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <div className="flex items-center gap-1.5">
-                            <Label htmlFor={`display-mode-${device.id}`} className="text-xs text-muted-foreground whitespace-nowrap">
-                              4-Gray
-                            </Label>
-                            <Switch
-                              id={`display-mode-${device.id}`}
-                              checked={device.display_mode === 'bw'}
-                              onCheckedChange={(checked: boolean) =>
-                                updateDeviceMutation.mutate({ 
-                                  deviceId: device.id, 
-                                  updates: { display_mode: checked ? 'bw' : '4gray' } 
-                                })
+            {/* Device List */}
+            {loadingDevices ? (
+              <div className="text-center py-2 text-muted-foreground text-xs">
+                Loading...
+              </div>
+            ) : einkDevices.length === 0 ? (
+              <div className="text-center py-2 text-muted-foreground">
+                <p className="text-xs">No devices yet</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {einkDevices.map((device: EinkDevice) => (
+                  <Card key={device.id} className="border-l-4 border-l-purple-500">
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <Monitor className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                            <span className="font-medium truncate">{device.device_name}</span>
+                            <Select
+                              value={device.view_type}
+                              onValueChange={(value: 'weekly' | 'dual_weekly' | 'dual_monthly' | 'dual_yearly' | 'monthly_square' | 'monthly_re') =>
+                                updateDeviceMutation.mutate({ deviceId: device.id, updates: { view_type: value } })
                               }
                               disabled={updateDeviceMutation.isPending}
-                            />
-                            <Label htmlFor={`display-mode-${device.id}`} className="text-xs text-muted-foreground whitespace-nowrap">
-                              B&W
-                            </Label>
-                          </div>
-                        </div>
-                        <div className="bg-muted rounded p-1.5 mt-1.5">
-                          <div className="flex items-center gap-1.5 text-xs">
-                            <code className="flex-1 break-all text-[10px] truncate">
-                              {device.device_token}
-                            </code>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-5 px-1.5 flex-shrink-0"
-                              onClick={() => copyDeviceToken(device.device_token)}
                             >
-                              <Copy className="w-3 h-3" />
-                            </Button>
+                              <SelectTrigger className="w-32 h-7 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="weekly">Weekly</SelectItem>
+                                <SelectItem value="dual_weekly">Dual Weekly</SelectItem>
+                                <SelectItem value="dual_monthly">Dual Monthly</SelectItem>
+                                <SelectItem value="dual_yearly">Yearly</SelectItem>
+                                <SelectItem value="monthly_square">Monthly Square</SelectItem>
+                                <SelectItem value="monthly_re">Monthly RE</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <div className="flex items-center gap-1.5">
+                              <Label htmlFor={`display-mode-${device.id}`} className="text-xs text-muted-foreground whitespace-nowrap">
+                                4-Gray
+                              </Label>
+                              <Switch
+                                id={`display-mode-${device.id}`}
+                                checked={device.display_mode === 'bw'}
+                                onCheckedChange={(checked: boolean) =>
+                                  updateDeviceMutation.mutate({ 
+                                    deviceId: device.id, 
+                                    updates: { display_mode: checked ? 'bw' : '4gray' } 
+                                  })
+                                }
+                                disabled={updateDeviceMutation.isPending}
+                              />
+                              <Label htmlFor={`display-mode-${device.id}`} className="text-xs text-muted-foreground whitespace-nowrap">
+                                B&W
+                              </Label>
+                            </div>
+                          </div>
+                          <div className="bg-muted rounded p-1.5 mt-1.5">
+                            <div className="flex items-center gap-1.5 text-xs">
+                              <code className="flex-1 break-all text-[10px] truncate">
+                                {device.device_token}
+                              </code>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-5 px-1.5 flex-shrink-0"
+                                onClick={() => copyDeviceToken(device.device_token)}
+                              >
+                                <Copy className="w-3 h-3" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 w-7 p-0 flex-shrink-0"
+                          onClick={() => deleteDeviceMutation.mutate(device.id)}
+                          disabled={deleteDeviceMutation.isPending}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 w-7 p-0 flex-shrink-0"
-                        onClick={() => deleteDeviceMutation.mutate(device.id)}
-                        disabled={deleteDeviceMutation.isPending}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">{`Calendars I've Shared`}</p>
-                <p className="text-2xl font-bold">{ownedShares.length}</p>
+        {/* Summary Stats */}
+        <div className="grid grid-cols-1 gap-4">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">{`Calendars I've Shared`}</p>
+                  <p className="text-2xl font-bold">{ownedShares.length}</p>
+                </div>
+                <Share2 className="w-8 h-8 text-blue-500" />
               </div>
-              <Share2 className="w-8 h-8 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Calendars Shared With Me</p>
-                <p className="text-2xl font-bold">{receivedShares.length}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Calendars Shared With Me</p>
+                  <p className="text-2xl font-bold">{receivedShares.length}</p>
+                </div>
+                <Calendar className="w-8 h-8 text-green-500" />
               </div>
-              <Calendar className="w-8 h-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )
