@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { CheckSquare, Check, Calendar, Clock, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useQuery } from '@tanstack/react-query';
 import { todoApi } from '@/lib/api/todos';
 import { recurringTodoApi } from '@/lib/api/recurringTodosApi';
@@ -14,7 +15,7 @@ import { getSectionLabel, getDateRangeDisplay, getTimeRangeDisplay, } from '@/co
 import { filterDailyTasksByDate, sortTasksByField } from '@/components/todo/shared/utils';
 
 export default function TodoModalButton() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   // Direct queries
   const { data: allTasks = [], isLoading } = useQuery({
@@ -97,96 +98,98 @@ export default function TodoModalButton() {
   const totalIncomplete = incompleteCounts.daily + incompleteCounts.today + incompleteCounts.upcoming;
 
   return (
-    <div className="relative">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative"
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="relative"
+        >
+          <CheckSquare className="w-4 h-4 mr-2" />
+          Tasks
+          {totalIncomplete > 0 && (
+            <Badge variant="destructive" className="ml-2 px-2 py-0.5 text-xs">
+              {totalIncomplete}
+            </Badge>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent 
+        align="end" 
+        className="w-80 p-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+        sideOffset={8}
       >
-        <CheckSquare className="w-4 h-4 mr-2" />
-        Tasks
-        {totalIncomplete > 0 && (
-          <Badge variant="destructive" className="ml-2 px-2 py-0.5 text-xs">
-            {totalIncomplete}
-          </Badge>
-        )}
-      </Button>
+        <div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="font-semibold text-sm">Quick Tasks</h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setOpen(false)}
+            className="p-1 h-auto"
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
 
-      {isOpen && (
-        <div className="absolute top-full right-0 mt-2 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-[100] overflow-hidden">
-          <div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="font-semibold text-sm">Quick Tasks</h3>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsOpen(false)}
-              className="p-1 h-auto"
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
+        <div className="max-h-[600px] overflow-y-auto">
+          {['daily', 'today', 'upcoming'].map(section => (
+            <div key={section} className="border-b border-gray-100 dark:border-gray-700 last:border-b-0">
+              <div className="p-3 bg-gray-50 dark:bg-gray-800">
+                <h4 className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                  {getSectionLabel(section)} ({incompleteCounts[section as keyof typeof incompleteCounts]})
+                </h4>
+              </div>
 
-          <div className="max-h-[600px] overflow-y-auto">
-            {['daily', 'today', 'upcoming'].map(section => (
-              <div key={section} className="border-b border-gray-100 dark:border-gray-700 last:border-b-0">
-                <div className="p-3 bg-gray-50 dark:bg-gray-750">
-                  <h4 className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                    {getSectionLabel(section)} ({incompleteCounts[section as keyof typeof incompleteCounts]})
-                  </h4>
-                </div>
-
-                <div className="p-2 space-y-1">
-                  {taskSections[section as keyof typeof taskSections]
-                    .filter(task => !task.completed)
-                    .map(task => (
-                      <div
-                        key={task.id}
-                        className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              <div className="p-2 space-y-1">
+                {taskSections[section as keyof typeof taskSections]
+                  .filter(task => !task.completed)
+                  .map(task => (
+                    <div
+                      key={task.id}
+                      className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <button
+                        onClick={() => handleToggle(task.id)}
+                        className="flex-shrink-0 w-4 h-4 border border-gray-300 dark:border-gray-600 rounded hover:border-blue-500 transition-colors"
                       >
-                        <button
-                          onClick={() => handleToggle(task.id)}
-                          className="flex-shrink-0 w-4 h-4 border border-gray-300 dark:border-gray-600 rounded hover:border-blue-500 transition-colors"
-                        >
-                          {task.completed && (
-                            <Check className="w-3 h-3 text-green-600" />
+                        {task.completed && (
+                          <Check className="w-3 h-3 text-green-600" />
+                        )}
+                      </button>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                          {task.title}
+                        </div>
+
+                        <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
+                          {task.start_date && (
+                            <div className="flex items-center space-x-1">
+                              <Calendar className="w-3 h-3" />
+                              <span>{getDateRangeDisplay(task)}</span>
+                            </div>
                           )}
-                        </button>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                            {task.title}
-                          </div>
-
-                          <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
-                            {task.start_date && (
-                              <div className="flex items-center space-x-1">
-                                <Calendar className="w-3 h-3" />
-                                <span>{getDateRangeDisplay(task)}</span>
-                              </div>
-                            )}
-                            {task.start_time && (
-                              <div className="flex items-center space-x-1">
-                                <Clock className="w-3 h-3" />
-                                <span>{getTimeRangeDisplay(task)}</span>
-                              </div>
-                            )}
-                          </div>
+                          {task.start_time && (
+                            <div className="flex items-center space-x-1">
+                              <Clock className="w-3 h-3" />
+                              <span>{getTimeRangeDisplay(task)}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
-                    ))}
-
-                  {taskSections[section as keyof typeof taskSections].filter(task => !task.completed).length === 0 && (
-                    <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-2">
-                      No incomplete tasks
                     </div>
-                  )}
-                </div>
+                  ))}
+
+                {taskSections[section as keyof typeof taskSections].filter(task => !task.completed).length === 0 && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-2">
+                    No incomplete tasks
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
-      )}
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 }
