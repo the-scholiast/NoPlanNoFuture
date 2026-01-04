@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -6,6 +6,9 @@ import { TaskData, EditTaskModalProps } from '@/types/todoTypes';
 import { transformCreateTaskData, updateTaskData } from '@/lib/utils/transformers';
 import { useTodoMutations, useTaskFormLogic, validateEditTask, getRecurringDescription, isRecurringInstance } from './shared/';
 import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField, SecondaryTaskField, TaskFormData } from './shared/components/TaskFormComponents';
+import { useQuery } from '@tanstack/react-query';
+import { todoApi } from '@/lib/api/todos';
+import { todoKeys } from '@/lib/queryKeys';
 
 export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated }: EditTaskModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -13,6 +16,62 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
   const [editMode, setEditMode] = useState<'instance' | 'series'>('instance');
 
   const { updateTaskMutation, deleteTaskMutation, createTaskOverrideMutation } = useTodoMutations();
+
+  // Fetch all existing tasks to get task names for suggestions
+  const { data: allTasks = [] } = useQuery({
+    queryKey: todoKeys.all,
+    queryFn: todoApi.getAll,
+    enabled: open, // Only fetch when modal is open
+  });
+
+  // Extract unique task names with their closest dates
+  const existingTaskNamesWithDates = useMemo(() => {
+    const taskMap = new Map<string, { name: string; closestDate: Date }>();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    allTasks.forEach(task => {
+      if (task.title?.trim()) {
+        const name = task.title.trim();
+        // Use instance_date for recurring tasks, otherwise start_date
+        const taskDateStr = task.instance_date || task.start_date;
+        const taskDate = taskDateStr ? new Date(taskDateStr) : null;
+        
+        if (taskDate) {
+          taskDate.setHours(0, 0, 0, 0);
+          const existing = taskMap.get(name);
+          
+          if (!existing) {
+            taskMap.set(name, { name, closestDate: taskDate });
+          } else {
+            // Keep the date closest to today
+            const existingDiff = Math.abs(existing.closestDate.getTime() - today.getTime());
+            const currentDiff = Math.abs(taskDate.getTime() - today.getTime());
+            
+            if (currentDiff < existingDiff) {
+              taskMap.set(name, { name, closestDate: taskDate });
+            }
+          }
+        } else if (!taskMap.has(name)) {
+          // If no date, use a far future date so they appear last
+          taskMap.set(name, { name, closestDate: new Date('9999-12-31') });
+        }
+      }
+    });
+
+    // Sort by closest date (closest to today first)
+    return Array.from(taskMap.values())
+      .sort((a, b) => {
+        const diffA = Math.abs(a.closestDate.getTime() - today.getTime());
+        const diffB = Math.abs(b.closestDate.getTime() - today.getTime());
+        return diffA - diffB;
+      });
+  }, [allTasks]);
+
+  // Extract just the names for backward compatibility
+  const existingTaskNames = useMemo(() => {
+    return existingTaskNamesWithDates.map(item => item.name);
+  }, [existingTaskNamesWithDates]);
 
   // Helper function to get original task data for recurring instances
   const getOriginalTaskData = (task: TaskData): TaskFormData => {
@@ -64,6 +123,9 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
     toggleEveryDay,
     isEveryDaySelected,
     isDaySelected,
+    isEndDateDisabled,
+    getMinEndDate,
+    handleEndDateBlur,
   } = useTaskFormLogic();
 
   // Reset form when task changes or modal opens
@@ -273,6 +335,7 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
               updateField={updateField}
               isSubmitting={isSubmitting}
               fieldPrefix="-edit"
+              existingTaskNames={existingTaskNames}
               disabledFields={{
                 title: editMode === 'instance',
                 description: editMode === 'instance',
@@ -302,6 +365,9 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
               task={editableTask}
               updateField={updateField}
               isSubmitting={isSubmitting}
+              isEndDateDisabled={isEndDateDisabled()}
+              getMinEndDate={getMinEndDate}
+              handleEndDateBlur={(value) => handleEndDateBlur(value, updateField)}
             />
 
             {/* Schedule Field */}
