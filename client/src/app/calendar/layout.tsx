@@ -6,7 +6,7 @@ export default function CalendarLayout({
   children: React.ReactNode
 }) {
   return (
-    <div>
+    <div className="h-full flex flex-col">
       {children}
     </div>
   )
