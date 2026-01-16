@@ -16,6 +16,7 @@ import {
   isFirstSlotForTask,
   getDayHeader,
   convertTimeSlotTo24Hour,
+  detectTimeConflicts,
 } from './timetable/utils'
 import { useEffect, useState } from 'react'
 import { useWorkHourTotals } from './timetable/hooks/useWorkHourTotals';
@@ -223,6 +224,7 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
                   {dayNames.map((dayName, index) => {
                     const isToday = isMounted && weekDates && weekDates[index].toDateString() === new Date().toDateString();
                     const tasks = weekDates.length > 0 ? getTasksForTimeSlot(index, time, weekDates, scheduledTasks) : [];
+                    const overlappingTaskIds = weekDates.length > 0 ? detectTimeConflicts(index, weekDates, scheduledTasks) : new Set<string>();
 
                     return (
                       <TableCell
@@ -232,6 +234,7 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
                         {tasks.map((task, taskIndex) => {
                           const isFirstSlot = isFirstSlotForTask(task, time);
                           const durationSlots = getTaskDurationSlots(task);
+                          const isOverlapping = overlappingTaskIds.has(task.id);
 
                           if (!isFirstSlot) return null;
 
@@ -256,7 +259,7 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
                             >
                               <div className="px-0.5 py-0.5 flex flex-col items-center justify-center h-full">
                                 <div className="truncate text-center font-semibold text-[12px] text-gray-900 dark:text-white leading-tight">{task.title}</div>
-                                {tasks.length > 1 && (
+                                {tasks.length > 1 && !isOverlapping && (
                                   <div className="text-[10px] opacity-55 text-center leading-tight">
                                     {task.start_time}
                                   </div>
