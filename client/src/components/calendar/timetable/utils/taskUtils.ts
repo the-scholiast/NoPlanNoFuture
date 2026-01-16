@@ -116,3 +116,49 @@ const tasksOverlap = (task1: TaskData, task2: TaskData): boolean => {
 
   return task1Start < task2End && task2Start < task1End;
 };
+
+// Get all tasks that overlap with a given task from the day's tasks
+export const getOverlappingTasksForTask = (
+  task: TaskData,
+  dayTasks: TaskData[]
+): TaskData[] => {
+  return dayTasks.filter(otherTask => {
+    if (otherTask.id === task.id) return false;
+    return tasksOverlap(task, otherTask);
+  });
+};
+
+// Get layout info for a task based on its overlapping group
+export const getTaskLayoutForOverlappingGroup = (
+  task: TaskData,
+  dayTasks: TaskData[]
+): { width: string; left: string } => {
+  // Get all tasks that overlap with this task
+  const overlappingTasks = getOverlappingTasksForTask(task, dayTasks);
+  
+  // If no overlapping tasks, take full width
+  if (overlappingTasks.length === 0) {
+    return { width: '100%', left: '0%' };
+  }
+
+  // Create a group with this task and all its overlapping tasks
+  const group = [task, ...overlappingTasks];
+  
+  // Sort by start time to ensure consistent ordering
+  group.sort((a, b) => {
+    if (!a.start_time || !b.start_time) return 0;
+    const aStart = getTimeInMinutes(a.start_time);
+    const bStart = getTimeInMinutes(b.start_time);
+    return aStart - bStart;
+  });
+
+  // Find this task's index in the sorted group
+  const taskIndex = group.findIndex(t => t.id === task.id);
+  const groupSize = group.length;
+
+  // Calculate width and position
+  const width = `${100 / groupSize}%`;
+  const left = `${(taskIndex * 100) / groupSize}%`;
+
+  return { width, left };
+};
