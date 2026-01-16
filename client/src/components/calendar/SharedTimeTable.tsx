@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getSharedCalendarTasks } from '@/lib/api/calendarShareApi'
 import { formatDateString } from '@/lib/utils/dateUtils'
 import { getTaskColors, getCustomColorStyle } from '@/components/todo/shared/utils/sectionUtils'
+import { TaskData } from '@/types/todoTypes'
 import { useRouter } from 'next/navigation'
 import {
   generateTimeSlots,
@@ -17,6 +18,7 @@ import {
   getDayHeader,
   convertTimeSlotTo24Hour,
   detectTimeConflicts,
+  getTaskLayoutForOverlappingGroup,
 } from './timetable/utils'
 import { useEffect, useState } from 'react'
 import { useWorkHourTotals } from './timetable/hooks/useWorkHourTotals';
@@ -225,21 +227,33 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
                     const isToday = isMounted && weekDates && weekDates[index].toDateString() === new Date().toDateString();
                     const tasks = weekDates.length > 0 ? getTasksForTimeSlot(index, time, weekDates, scheduledTasks) : [];
                     const overlappingTaskIds = weekDates.length > 0 ? detectTimeConflicts(index, weekDates, scheduledTasks) : new Set<string>();
+                    
+                    // Get all day tasks for layout calculation
+                    const dayDate = weekDates.length > 0 ? formatDateString(weekDates[index]) : null;
+                    const dayTasks = scheduledTasks.filter((task: TaskData) => {
+                      if (!dayDate) return false;
+                      const taskDate = task.instance_date || task.start_date;
+                      return taskDate === dayDate && task.start_time && task.end_time;
+                    });
 
                     return (
                       <TableCell
                         key={`${dayName}-${time}`}
                         className={`h-3 border-r w-32 relative p-0 align-top leading-none overflow-visible ${removeBottomBorder ? 'border-b-0' : ''} ${isToday ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}
                       >
-                        {tasks.map((task, taskIndex) => {
+                        {tasks.map((task) => {
                           const isFirstSlot = isFirstSlotForTask(task, time);
                           const durationSlots = getTaskDurationSlots(task);
                           const isOverlapping = overlappingTaskIds.has(task.id);
 
                           if (!isFirstSlot) return null;
 
-                          const taskWidth = tasks.length > 1 ? `${100 / tasks.length}%` : '100%';
-                          const taskLeft = tasks.length > 1 ? `${(taskIndex * 100) / tasks.length}%` : '0%';
+                          // Get layout based on overlapping group, not just current time slot
+                          const layout = getTaskLayoutForOverlappingGroup(task, dayTasks);
+                          const taskWidth = layout.width;
+                          const taskLeft = layout.left;
+                          const hasOverlappingTasks = overlappingTaskIds.has(task.id);
+                          
                           const taskColors = getTaskColors(task.section, task.priority, task.color);
                           const customColorStyle = getCustomColorStyle(task.color);
 
@@ -252,14 +266,14 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
                                 minHeight: '0px',
                                 width: taskWidth,
                                 left: taskLeft,
-                                marginRight: tasks.length > 1 ? '2px' : '0px',
+                                marginRight: hasOverlappingTasks ? '2px' : '0px',
                                 ...customColorStyle
                               }}
                               title={`${task.title}\n${task.start_time} - ${task.end_time}`}
                             >
                               <div className="px-0.5 py-0.5 flex flex-col items-center justify-center h-full">
                                 <div className="truncate text-center font-semibold text-[12px] text-gray-900 dark:text-white leading-tight">{task.title}</div>
-                                {tasks.length > 1 && !isOverlapping && (
+                                {!hasOverlappingTasks && tasks.length > 1 && (
                                   <div className="text-[10px] opacity-55 text-center leading-tight">
                                     {task.start_time}
                                   </div>
