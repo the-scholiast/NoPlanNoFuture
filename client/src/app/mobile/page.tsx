@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { AddTaskModal } from '@/components/todo';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { useAuth } from '@/hooks/useAuth';
 import { User as UserIcon } from 'lucide-react';
 
 const tasksOverlap = (task1: TaskData, task2: TaskData): boolean => {
@@ -62,7 +61,6 @@ const groupOverlappingTasks = (tasks: TaskData[]): TaskData[][] => {
 export default function MobilePage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const today = useMemo(() => getTodayString(), []);
-  const { user } = useAuth();
 
   const handleAddTasks = (tasks: TaskData[]) => {
     console.log('Tasks added:', tasks);

@@ -244,7 +244,6 @@ export default function SharedTimeTable({ selectedDate, shareToken }: SharedTime
                         {tasks.map((task) => {
                           const isFirstSlot = isFirstSlotForTask(task, time);
                           const durationSlots = getTaskDurationSlots(task);
-                          const isOverlapping = overlappingTaskIds.has(task.id);
 
                           if (!isFirstSlot) return null;
 

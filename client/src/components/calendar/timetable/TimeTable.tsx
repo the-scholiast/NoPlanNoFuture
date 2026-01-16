@@ -309,7 +309,6 @@ export default function TimeTable({ selectedDate }: TimeTableProps) {
                         {tasks.map((task) => {
                           const isFirstSlot = isFirstSlotForTask(task, time);
                           const durationSlots = getTaskDurationSlots(task );
-                          const isOverlapping = overlappingTaskIds.has(task.id);
 
                           if (!isFirstSlot) return null;
 
