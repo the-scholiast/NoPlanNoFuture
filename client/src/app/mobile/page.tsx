@@ -12,6 +12,9 @@ import { getTimeInMinutes } from '@/components/todo';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { AddTaskModal } from '@/components/todo';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { useAuth } from '@/hooks/useAuth';
+import { User as UserIcon } from 'lucide-react';
 
 const tasksOverlap = (task1: TaskData, task2: TaskData): boolean => {
   if (!task1.start_time || !task1.end_time || !task2.start_time || !task2.end_time) {
@@ -59,6 +62,7 @@ const groupOverlappingTasks = (tasks: TaskData[]): TaskData[][] => {
 export default function MobilePage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const today = useMemo(() => getTodayString(), []);
+  const { user } = useAuth();
 
   const handleAddTasks = (tasks: TaskData[]) => {
     console.log('Tasks added:', tasks);
@@ -128,12 +132,46 @@ export default function MobilePage() {
 
   const isLoading = isLoadingAll || isLoadingToday;
 
+  const headerContent = (
+    <div className="mb-4 pb-3 border-b">
+      <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 pb-5 ">
+            <Avatar className="h-8 w-8">
+              <AvatarImage src="/favicon.ico" alt="No Plan No Future" />
+              <AvatarFallback>
+                <UserIcon className="h-4 w-4" />
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-sm font-medium ">No Plan No Future</span>
+          </div>
+      </div>
+      <div className="text-base font-semibold text-center">{formatDateDisplay(today)}</div>
+    </div>
+  );
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
+        <div className="text-muted-foreground">Loading tasks...</div>
+      </div>
+    );
+  }
+
+  if (todayTasks.length === 0) {
+    return (
+      <div className="min-h-screen bg-background p-4 pb-20">
+        {headerContent}
+        <div className="flex items-center justify-center h-[calc(100vh-120px)]">
+          <div className="text-center text-muted-foreground text-lg">No task</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="min-h-screen bg-background p-4 pb-20">
-        <div className="mb-4 pb-3 border-b">
-          <div className="text-lg font-semibold text-center">{formatDateDisplay(today)}</div>
-        </div>
+        {headerContent}
         <div className="space-y-2">
           {taskGroups.map((group, groupIndex) => {
             const hasOverlapping = group.length > 1;
