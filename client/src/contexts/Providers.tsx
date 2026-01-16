@@ -64,7 +64,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               {shouldShowBreadcrumb(pathname) ? (
                 <div className="mb-2 flex justify-between">
                   <UniversalBreadcrumb />
-                  {!['/memo', '/'].includes(pathname) && (
+                  {!['/memo', '/', '/mobile'].includes(pathname) && (
                     <div className="flex items-center gap-2 relative z-10">
                       <TodoModalButton />
                       <Button
@@ -80,7 +80,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                 </div>
               ) : (
                 <div className="mb-2 flex justify-end">
-              {!['/memo', '/'].includes(pathname) && (
+              {!['/memo', '/', '/mobile'].includes(pathname) && (
                     <div className="flex items-center gap-2 relative z-10">
                       <TodoModalButton />
                 <Button
