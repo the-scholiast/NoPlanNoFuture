@@ -39,6 +39,10 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Redirect to home page
-  return NextResponse.redirect(new URL('/', requestUrl.origin))
+  // Check if there's a returnTo parameter
+  const returnTo = requestUrl.searchParams.get('returnTo')
+  const redirectUrl = returnTo && returnTo !== '/login' ? returnTo : '/'
+  
+  // Redirect to the intended page or home
+  return NextResponse.redirect(new URL(redirectUrl, requestUrl.origin))
 }
