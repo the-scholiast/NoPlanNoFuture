@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { TaskData } from '@/types/todoTypes';
 import { getTodayString } from '@/lib/utils/dateUtils';
@@ -14,6 +15,7 @@ import { Plus } from 'lucide-react';
 import { AddTaskModal } from '@/components/todo';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { User as UserIcon } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 const tasksOverlap = (task1: TaskData, task2: TaskData): boolean => {
   if (!task1.start_time || !task1.end_time || !task2.start_time || !task2.end_time) {
@@ -59,8 +61,17 @@ const groupOverlappingTasks = (tasks: TaskData[]): TaskData[][] => {
 };
 
 export default function MobilePage() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const today = useMemo(() => getTodayString(), []);
+
+  // Redirect to homepage if user is not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/');
+    }
+  }, [user, authLoading, router]);
 
   const handleAddTasks = (tasks: TaskData[]) => {
     console.log('Tasks added:', tasks);
@@ -129,6 +140,20 @@ export default function MobilePage() {
   };
 
   const isLoading = isLoadingAll || isLoadingToday;
+
+  // Show loading state while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  // Don't render content if user is not authenticated (will redirect)
+  if (!user) {
+    return null;
+  }
 
   const headerContent = (
     <div className="mb-4 pb-3 border-b">
