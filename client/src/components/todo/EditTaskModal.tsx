@@ -201,6 +201,11 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
         await updateTaskMutation.mutateAsync({ id: taskIdToUpdate, updates });
       }
 
+      // Save the last used color to localStorage
+      if (editableTask.color) {
+        localStorage.setItem('lastUsedTaskColor', editableTask.color);
+      }
+
       // Notify parent component
       onTaskUpdated();
       // Close modal
