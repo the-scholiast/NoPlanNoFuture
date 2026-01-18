@@ -156,6 +156,14 @@ class TaskHelpers {
  * Provide helpers needed for editing existing tasks
  */
 export function useTaskFormLogic(initialTask?: Partial<TaskFormData>) {
+  // Get last used color from localStorage
+  const getLastUsedColor = (): string | undefined => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('lastUsedTaskColor') || undefined;
+    }
+    return undefined;
+  };
+
   const [task, setTask] = useState<TaskFormData>({
     title: '',
     section: 'daily',
@@ -168,7 +176,7 @@ export function useTaskFormLogic(initialTask?: Partial<TaskFormData>) {
     is_recurring: false,
     recurring_days: [],
     is_schedule: false,
-    color: undefined,
+    color: initialTask?.color ?? getLastUsedColor(),
     is_secondary: false,
     count_in_stats: true,
     count_in_work_hours: true,
@@ -197,7 +205,16 @@ export function useTaskFormLogic(initialTask?: Partial<TaskFormData>) {
  * Allows adding/removing tasks and provides per-task helper functions
  */
 export function useMultiTaskFormLogic() {
+  // Get last used color from localStorage
+  const getLastUsedColor = (): string | undefined => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('lastUsedTaskColor') || undefined;
+    }
+    return undefined;
+  };
+
   // Default task template for new tasks (daily recurring by default)
+  // Note: color is not included here, it will be added when creating new tasks
   const placeholderTask: TaskFormData = useMemo(() => ({
     title: '',
     section: 'daily',
@@ -228,6 +245,7 @@ export function useMultiTaskFormLogic() {
       id: Date.now().toString(),
       is_recurring: true,
       recurring_days: [...DAYS_OF_WEEK],
+      color: getLastUsedColor(),
     };
     setTasks(prev => [...prev, newTask]);
   }, [placeholderTask]);
@@ -283,6 +301,7 @@ export function useMultiTaskFormLogic() {
       id: '1',
       is_recurring: true,
       recurring_days: [...DAYS_OF_WEEK],
+      color: getLastUsedColor(),
     };
     setTasks([resetTask]);
   }, [placeholderTask]);
@@ -293,6 +312,8 @@ export function useMultiTaskFormLogic() {
       ...placeholderTask,
       ...initialData,
       id: '1',
+      // Use last used color if no color is provided in initialData
+      color: initialData.color ?? getLastUsedColor(),
     };
     setTasks([initialTask]);
   }, [placeholderTask]);
