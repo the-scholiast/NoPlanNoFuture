@@ -116,6 +116,12 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilled
       const validTasks = tasks.filter(task => task.title.trim() !== '');
       const tasksToCreate: CreateTaskData[] = validTasks.map(transformCreateTaskData);
 
+      // Save the last used color to localStorage (use the first task's color if available)
+      const lastUsedColor = validTasks.find(task => task.color)?.color;
+      if (lastUsedColor) {
+        localStorage.setItem('lastUsedTaskColor', lastUsedColor);
+      }
+
       // Use the shared mutation instead of direct API calls
       const createdTasks: TaskData[] = await Promise.all(
         tasksToCreate.map(taskData => createTaskMutation.mutateAsync(taskData))

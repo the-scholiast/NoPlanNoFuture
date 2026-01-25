@@ -122,18 +122,29 @@ export const getOverlappingTasksForTask = (
   task: TaskData,
   dayTasks: TaskData[]
 ): TaskData[] => {
-  return dayTasks.filter(otherTask => {
+  const overlapping = dayTasks.filter(otherTask => {
     if (otherTask.id === task.id) return false;
-    return tasksOverlap(task, otherTask);
+    const overlaps = tasksOverlap(task, otherTask);
+    if (overlaps) {
+      console.log(`[CALENDAR OVERLAP] "${task.title}" (${task.start_time}-${task.end_time}) overlaps with "${otherTask.title}" (${otherTask.start_time}-${otherTask.end_time})`);
+    }
+    return overlaps;
   });
+  
+  if (overlapping.length > 0) {
+    console.log(`[CALENDAR GROUP] Task "${task.title}" has ${overlapping.length} overlapping task(s):`, overlapping.map(t => `"${t.title}"`).join(', '));
+  }
+  
+  return overlapping;
 };
 
 // Get layout info for a task based on its overlapping group
+// Simple logic: if tasks overlap, they share 50% each (minimum concept)
 export const getTaskLayoutForOverlappingGroup = (
   task: TaskData,
   dayTasks: TaskData[]
 ): { width: string; left: string } => {
-  // Get all tasks that overlap with this task
+  // Get all tasks that directly overlap with this task
   const overlappingTasks = getOverlappingTasksForTask(task, dayTasks);
   
   // If no overlapping tasks, take full width
@@ -141,24 +152,27 @@ export const getTaskLayoutForOverlappingGroup = (
     return { width: '100%', left: '0%' };
   }
 
-  // Create a group with this task and all its overlapping tasks
-  const group = [task, ...overlappingTasks];
+  // Simple logic: if there are overlapping tasks, use 50% width
+  // This keeps the minimum concept - tasks that overlap share 50% each
+  const hasOverlapping = overlappingTasks.length > 0;
+  const width = hasOverlapping ? '50%' : '100%';
   
-  // Sort by start time to ensure consistent ordering
-  group.sort((a, b) => {
-    if (!a.start_time || !b.start_time) return 0;
-    const aStart = getTimeInMinutes(a.start_time);
-    const bStart = getTimeInMinutes(b.start_time);
-    return aStart - bStart;
-  });
+  // Find position: if this task starts before the first overlapping task, it's on the left (0%)
+  // Otherwise, it's on the right (50%)
+  let left = '0%';
+  if (hasOverlapping && task.start_time) {
+    const taskStart = getTimeInMinutes(task.start_time);
+    const overlappingStarts = overlappingTasks
+      .filter(t => t.start_time)
+      .map(t => getTimeInMinutes(t.start_time))
+      .sort((a, b) => a - b);
+    
+    if (overlappingStarts.length > 0 && taskStart > overlappingStarts[0]) {
+      left = '50%';
+    }
+  }
 
-  // Find this task's index in the sorted group
-  const taskIndex = group.findIndex(t => t.id === task.id);
-  const groupSize = group.length;
-
-  // Calculate width and position
-  const width = `${100 / groupSize}%`;
-  const left = `${(taskIndex * 100) / groupSize}%`;
+  console.log(`[CALENDAR LAYOUT] Task "${task.title}": hasOverlapping=${hasOverlapping}, width=${width}, left=${left}, overlapping tasks:`, overlappingTasks.map(t => `"${t.title}" (${t.start_time}-${t.end_time})`).join(', '));
 
   return { width, left };
 };

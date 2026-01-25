@@ -3,11 +3,13 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card } from '../ui/card';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { TaskData } from '@/types/todoTypes';
 import { todoKeys } from '@/lib/queryKeys';
-import { recurringTodoApi } from '@/lib/api';
+import { recurringTodoApi, dayStickersApi } from '@/lib/api';
 import { formatDateString, getTodayString } from '@/lib/utils/dateUtils';
+import { DayStickerManagerDialog } from './DayStickerManagerDialog';
+import { StickerLibraryDialog } from './StickerLibraryDialog';
 
 const PRIORITY_ORDER = { 'high': 0, 'medium': 1, 'low': 2, undefined: 3 };
 
@@ -16,11 +18,16 @@ interface MonthViewProps {
   weekStartsOn?: 'mon' | 'sun'; // optional: choose Monday-first or Sunday-first (default: Monday)
 }
 
+type StickerManagerState = { date: Date } | null;
+
 export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const [currentDate, setCurrentDate] = useState<Date>(selectedDate || new Date());
   const [isMounted, setIsMounted] = useState(false);
+  const [stickerManager, setStickerManager] = useState<StickerManagerState>(null);
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   // Labels
   const dayNamesMonFirst = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -35,6 +42,50 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes Cache garbage collection
   });
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth() + 1;
+  const { data: monthStickers = [] } = useQuery({
+    queryKey: todoKeys.dayStickers(year, month),
+    queryFn: () => dayStickersApi.getMonthStickers(year, month),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+
+  const stickersByDate = useMemo(() => {
+    return monthStickers.reduce<Record<string, { id: string; emoji: string; name: string }[]>>((acc, s) => {
+      if (!acc[s.date]) acc[s.date] = [];
+      acc[s.date].push({ id: s.id, emoji: s.emoji, name: s.name });
+      return acc;
+    }, {});
+  }, [monthStickers]);
+
+  const createStickerMutation = useMutation({
+    mutationFn: ({ dateStr, emoji, name }: { dateStr: string; emoji: string; name: string }) =>
+      dayStickersApi.createSticker(dateStr, { emoji, name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: todoKeys.dayStickers(year, month) });
+    },
+  });
+
+  const updateStickerMutation = useMutation({
+    mutationFn: ({ id, emoji, name }: { id: string; emoji: string; name: string }) =>
+      dayStickersApi.updateSticker(id, { emoji, name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: todoKeys.dayStickers(year, month) });
+    },
+  });
+
+  const deleteStickerMutation = useMutation({
+    mutationFn: (id: string) => dayStickersApi.deleteSticker(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: todoKeys.dayStickers(year, month) });
+    },
+  });
+
+  const openStickerManager = (date: Date) => {
+    setStickerManager({ date });
+  };
 
   // Group todos by date for quick lookup
   const todosByDate = useMemo(() => {
@@ -218,26 +269,73 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
             {weeks.map((week, wi) => (
               <div key={wi} className="grid grid-cols-7 gap-1">
                 {week.map((date) => {
-                  const overlay = !isSameMonth(date, currentDate); // overlay detection
+                  const overlay = !isSameMonth(date, currentDate);
                   const isToday = isSameDay(date, new Date());
+                  const dayStickers = stickersByDate[formatDateString(date)] ?? [];
 
                   return (
-                    <button
+                    <div
                       key={date.toISOString()}
+                      role="button"
+                      tabIndex={0}
                       className={`
-                        h-full p-2 border rounded-lg text-left transition-colors flex flex-col relative
+                        h-full p-2 border rounded-lg text-left transition-colors flex flex-col relative cursor-pointer
                         ${overlay ? 'bg-muted/20 text-muted-foreground' : 'bg-background'}
                         ${isToday ? 'ring-2 ring-blue-500' : ''}
                         ${overlay ? 'hover:bg-muted/30' : 'hover:bg-muted/50'}
                       `}
-                      onClick={() => {
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).closest('[data-sticker-zone]')) return;
                         router.push(
                           `/calendar/week?year=${date.getFullYear()}&month=${date.getMonth() + 1}&day=${date.getDate()}`
                         );
                       }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          if ((e.target as HTMLElement).closest('[data-sticker-zone]')) return;
+                          router.push(
+                            `/calendar/week?year=${date.getFullYear()}&month=${date.getMonth() + 1}&day=${date.getDate()}`
+                          );
+                        }
+                      }}
                     >
-                      <div className="text-sm font-medium mb-1 flex-shrink-0 text-center">
-                        {date.getDate()}
+                      {/* Top row: date (left), stickers (center, click to delete), + (right, open manager) */}
+                      <div
+                        data-sticker-zone
+                        className="flex-shrink-0 flex items-center gap-0.5 mb-0.5 min-h-0"
+                      >
+                        <span className="text-base font-medium">{date.getDate()}</span>
+                        <span className="flex flex-wrap gap-0.5 items-center text-muted-foreground text-xs min-w-0 flex-1 ml-1">
+                          {dayStickers.map((s) => (
+                            <button
+                              key={s.id}
+                              type="button"
+                              className="text-lg p-0 min-w-0 h-auto leading-none hover:opacity-70"
+                              title={s.name ? `${s.name} (click to delete)` : 'Click to delete'}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                deleteStickerMutation.mutate(s.id);
+                              }}
+                              aria-label={s.name ? `Delete ${s.name}` : 'Delete sticker'}
+                            >
+                              {s.emoji}
+                            </button>
+                          ))}
+                        </span>
+                        <button
+                          type="button"
+                          className="flex-shrink-0 text-lg p-0 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            openStickerManager(date);
+                          }}
+                          aria-label="Manage stickers or add new"
+                        >
+                          +
+                        </button>
                       </div>
                       <div className="flex-1 space-y-1">
                         {/* Always visible tasks (first 3) */}
@@ -255,7 +353,7 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
                           </div>
                         )}
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -263,6 +361,25 @@ export default function MonthView({ selectedDate, weekStartsOn = 'mon' }: MonthV
           </div>
         </div>
       </Card>
+      <DayStickerManagerDialog
+        open={!!stickerManager}
+        onOpenChange={(o) => { if (!o) setStickerManager(null); }}
+        date={stickerManager?.date ?? currentDate}
+        dayStickers={stickersByDate[formatDateString(stickerManager?.date ?? currentDate)] ?? []}
+        onAdd={({ emoji, name }) => {
+          if (!stickerManager) return;
+          createStickerMutation.mutate({
+            dateStr: formatDateString(stickerManager.date),
+            emoji,
+            name,
+          });
+        }}
+        onUpdate={(id, { emoji, name }) => updateStickerMutation.mutate({ id, emoji, name })}
+        onDelete={(id) => deleteStickerMutation.mutate(id)}
+        onOpenManageStickers={() => setLibraryOpen(true)}
+        isPending={createStickerMutation.isPending || updateStickerMutation.isPending || deleteStickerMutation.isPending}
+      />
+      <StickerLibraryDialog open={libraryOpen} onOpenChange={setLibraryOpen} />
     </div>
   );
 }

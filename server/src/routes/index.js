@@ -10,6 +10,8 @@ import timetableRoutes from './timetable.js';
 import notificationRoutes from './notifications.js';
 import statsTodoRoutes from './statsTodo.js';
 import calendarShareRoutes from './calendarShares.js';
+import dayStickerRoutes from './dayStickers.js';
+import stickerTemplateRoutes from './stickerTemplates.js';
 
 const router = express.Router();
 
@@ -25,5 +27,7 @@ router.use('/timetable', timetableRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/stats-todo', statsTodoRoutes);
 router.use('/calendar-shares', calendarShareRoutes);
+router.use('/day-stickers', dayStickerRoutes);
+router.use('/sticker-templates', stickerTemplateRoutes);
 
 export default router;
