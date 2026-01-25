@@ -12,5 +12,7 @@ export const todoKeys = {
     allWeeks: ['timetable-week'] as const,
   },
   monthTasks: (year: number, month: number) => ['month-tasks', year, month] as const,
+  dayStickers: (year: number, month: number) => ['day-stickers', year, month] as const,
+  stickerTemplates: ['sticker-templates'] as const,
   calendar: (year: number) => ['todos', 'calendar', year] as const,
 }
