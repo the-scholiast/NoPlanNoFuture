@@ -2,20 +2,21 @@ import { useEffect, useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { TaskData, EditTaskModalProps } from '@/types/todoTypes';
+import { CreateTaskData, TaskData, EditTaskModalProps } from '@/types/todoTypes';
 import { transformCreateTaskData, updateTaskData } from '@/lib/utils/transformers';
 import { useTodoMutations, useTaskFormLogic, validateEditTask, getRecurringDescription, isRecurringInstance } from './shared/';
 import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField, SecondaryTaskField, TaskFormData } from './shared/components/TaskFormComponents';
 import { useQuery } from '@tanstack/react-query';
 import { todoApi } from '@/lib/api/todos';
 import { todoKeys } from '@/lib/queryKeys';
+import { formatDateString, parseToLocalDate } from '@/lib/utils/dateUtils';
 
 export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated }: EditTaskModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [editMode, setEditMode] = useState<'instance' | 'series'>('instance');
+  const [editMode, setEditMode] = useState<'instance' | 'future' | 'series'>('instance');
 
-  const { updateTaskMutation, deleteTaskMutation, createTaskOverrideMutation } = useTodoMutations();
+  const { createTaskMutation, updateTaskMutation, deleteTaskMutation, createTaskOverrideMutation } = useTodoMutations();
 
   // Fetch all existing tasks to get task names for suggestions
   const { data: allTasks = [] } = useQuery({
@@ -139,6 +140,12 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
     }
   }, [task, open, setEditableTask]);
 
+  const getPreviousDateString = (dateString: string) => {
+    const date = parseToLocalDate(dateString);
+    date.setDate(date.getDate() - 1);
+    return formatDateString(date);
+  };
+
   const handleSave = async () => {
     if (!task?.id) return;
 
@@ -155,36 +162,80 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
         return;
       }
 
-      if (isRecurringInstance(task) && editMode === 'instance') {
-        // Create override for this specific instance
-        const overrideData = {
-          title: editableTask.title !== task.title ? editableTask.title : undefined,
-          start_date: editableTask.start_date !== task.instance_date ? editableTask.start_date : undefined,
-          end_date: editableTask.end_date !== task.end_date ? editableTask.end_date : undefined,
-          start_time: editableTask.start_time !== task.start_time ? editableTask.start_time : undefined,
-          end_time: editableTask.end_time !== task.end_time ? editableTask.end_time : undefined,
-          description: editableTask.description !== task.description ? editableTask.description : undefined,
-          priority: editableTask.priority !== task.priority ? editableTask.priority : undefined,
-          is_schedule: editableTask.is_schedule !== task.is_schedule ? editableTask.is_schedule : undefined,
-          is_secondary: editableTask.is_secondary !== task.is_secondary ? editableTask.is_secondary : undefined,
-          count_in_stats: editableTask.count_in_stats !== task.count_in_stats ? editableTask.count_in_stats : undefined,
-          count_in_work_hours: editableTask.count_in_work_hours !== task.count_in_work_hours ? editableTask.count_in_work_hours : undefined,
-        };
+      if (isRecurringInstance(task)) {
+        if (editMode === 'instance') {
+          // Create override for this specific instance
+          const overrideData = {
+            title: editableTask.title !== task.title ? editableTask.title : undefined,
+            start_date: editableTask.start_date !== task.instance_date ? editableTask.start_date : undefined,
+            end_date: editableTask.end_date !== task.end_date ? editableTask.end_date : undefined,
+            start_time: editableTask.start_time !== task.start_time ? editableTask.start_time : undefined,
+            end_time: editableTask.end_time !== task.end_time ? editableTask.end_time : undefined,
+            description: editableTask.description !== task.description ? editableTask.description : undefined,
+            priority: editableTask.priority !== task.priority ? editableTask.priority : undefined,
+            is_schedule: editableTask.is_schedule !== task.is_schedule ? editableTask.is_schedule : undefined,
+            is_secondary: editableTask.is_secondary !== task.is_secondary ? editableTask.is_secondary : undefined,
+            count_in_stats: editableTask.count_in_stats !== task.count_in_stats ? editableTask.count_in_stats : undefined,
+            count_in_work_hours: editableTask.count_in_work_hours !== task.count_in_work_hours ? editableTask.count_in_work_hours : undefined,
+          };
 
-        // Remove undefined values
-        const cleanOverrideData = Object.fromEntries(
-          Object.entries(overrideData).filter(([, value]) => value !== undefined)
-        );
+          // Remove undefined values
+          const cleanOverrideData = Object.fromEntries(
+            Object.entries(overrideData).filter(([, value]) => value !== undefined)
+          );
 
-        if (Object.keys(cleanOverrideData).length > 0) {
-          await createTaskOverrideMutation.mutateAsync({
-            parentTaskId: task.parent_task_id!,
-            instanceDate: task.instance_date!,
-            overrideData: cleanOverrideData
+          if (Object.keys(cleanOverrideData).length > 0) {
+            await createTaskOverrideMutation.mutateAsync({
+              parentTaskId: task.parent_task_id!,
+              instanceDate: task.instance_date!,
+              overrideData: cleanOverrideData
+            });
+          }
+        } else if (editMode === 'future') {
+          const instanceDate = task.instance_date!;
+          const previousDate = getPreviousDateString(instanceDate);
+
+          // End the old series the day before, so past instances remain unchanged
+          await updateTaskMutation.mutateAsync({
+            id: task.parent_task_id!,
+            updates: updateTaskData({ end_date: previousDate })
           });
+
+          // Create a new task starting from this instance date, with the updated values
+          let createData: CreateTaskData = transformCreateTaskData({
+            ...editableTask,
+            start_date: instanceDate,
+          } as TaskFormData);
+
+          createData = {
+            ...createData,
+            start_date: instanceDate,
+          };
+
+          if (!editableTask.is_recurring) {
+            createData = {
+              ...createData,
+              is_recurring: false,
+              recurring_days: [],
+            };
+          }
+
+          await createTaskMutation.mutateAsync(createData);
+        } else {
+          let taskDataToUpdate: Partial<TaskData> = transformCreateTaskData(editableTask);
+
+          if (!editableTask.is_recurring) {
+            taskDataToUpdate = {
+              ...taskDataToUpdate,
+              is_recurring: false,
+              recurring_days: []
+            };
+          }
+
+          const updates = updateTaskData(taskDataToUpdate);
+          await updateTaskMutation.mutateAsync({ id: task.parent_task_id!, updates });
         }
       } else {
-
         let taskDataToUpdate: Partial<TaskData> = transformCreateTaskData(editableTask);
 
         if (!editableTask.is_recurring) {
@@ -195,10 +246,8 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
           };
         }
 
-        const taskIdToUpdate = isRecurringInstance(task) ? task.parent_task_id! : task.id;
         const updates = updateTaskData(taskDataToUpdate);
-
-        await updateTaskMutation.mutateAsync({ id: taskIdToUpdate, updates });
+        await updateTaskMutation.mutateAsync({ id: task.id, updates });
       }
 
       // Save the last used color to localStorage
@@ -243,6 +292,16 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
             parentTaskId: task.parent_task_id!,
             instanceDate: task.instance_date!,
             overrideData: { is_skipped: true }
+          });
+        } else if (editMode === 'future') {
+          const confirmMessage = `Are you sure you want to delete this instance and all future instances starting from (${task.instance_date})?`;
+          if (!window.confirm(confirmMessage)) return;
+
+          const instanceDate = task.instance_date!;
+          const previousDate = getPreviousDateString(instanceDate);
+          await updateTaskMutation.mutateAsync({
+            id: task.parent_task_id!,
+            updates: updateTaskData({ end_date: previousDate })
           });
         } else {
           // Delete entire series
@@ -292,14 +351,14 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
         {isRecurringInstanceTask && (
           <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-md">
             <label className="text-sm font-medium mb-2 block">What would you like to edit?</label>
-            <div className="flex gap-4">
+            <div className="flex gap-4 flex-wrap">
               <label className="flex items-center gap-2">
                 <input
                   type="radio"
                   name="editMode"
                   value="instance"
                   checked={editMode === 'instance'}
-                  onChange={(e) => setEditMode(e.target.value as 'instance' | 'series')}
+                  onChange={(e) => setEditMode(e.target.value as 'instance' | 'future' | 'series')}
                   className="text-blue-600"
                 />
                 <span className="text-sm">Only this instance ({task.instance_date})</span>
@@ -308,9 +367,20 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
                 <input
                   type="radio"
                   name="editMode"
+                  value="future"
+                  checked={editMode === 'future'}
+                  onChange={(e) => setEditMode(e.target.value as 'instance' | 'future' | 'series')}
+                  className="text-blue-600"
+                />
+                <span className="text-sm">This task and the task in the future</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="editMode"
                   value="series"
                   checked={editMode === 'series'}
-                  onChange={(e) => setEditMode(e.target.value as 'instance' | 'series')}
+                  onChange={(e) => setEditMode(e.target.value as 'instance' | 'future' | 'series')}
                   className="text-blue-600"
                 />
                 <span className="text-sm">Entire recurring series</span>
@@ -349,8 +419,8 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
               }}
             />
 
-            {/* Recurring Section - Only show for series edit mode */}
-            {editMode === 'series' && (
+            {/* Recurring Section - Show when editing series or future */}
+            {editMode !== 'instance' && (
               <RecurringSection
                 task={editableTask}
                 updateField={updateField}
