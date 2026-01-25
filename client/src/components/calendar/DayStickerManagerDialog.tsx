@@ -72,7 +72,7 @@ export function DayStickerManagerDialog({
       setEditEmoji(editing.emoji);
       setEditPasteEmoji('');
     }
-  }, [editing?.id, editing?.name, editing?.emoji]);
+  }, [editing]);
 
   const dateLabel = date.toLocaleDateString(undefined, {
     weekday: 'short',
