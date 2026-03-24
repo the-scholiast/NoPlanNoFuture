@@ -20,6 +20,37 @@ const parseHours = (start?: string, end?: string): number => {
   return Math.max(0, mins) / 60
 }
 
+function calculateNonOverlappingHours(tasks: TimetableTask[]): number {
+  const timed = tasks.filter(t => t.start_time && t.end_time)
+  if (timed.length === 0) return 0
+
+  const sorted = [...timed].sort((a, b) => {
+    const [ah, am] = a.start_time!.split(':').map(Number)
+    const [bh, bm] = b.start_time!.split(':').map(Number)
+    return (ah * 60 + am) - (bh * 60 + bm)
+  })
+
+  let total = 0
+  let currentEnd = 0
+
+  for (const t of sorted) {
+    const [sh, sm] = t.start_time!.split(':').map(Number)
+    const [eh, em] = t.end_time!.split(':').map(Number)
+    const start = sh * 60 + sm
+    const end = eh * 60 + em
+
+    if (start >= currentEnd) {
+      total += (end - start) / 60
+      currentEnd = end
+    } else if (end > currentEnd) {
+      total += (end - currentEnd) / 60
+      currentEnd = end
+    }
+  }
+
+  return total
+}
+
 export function useStatsData() {
   const { theme } = useTheme()
   const [period, setPeriodState] = useState<Period>('week')
@@ -181,19 +212,25 @@ export function useStatsData() {
   }
 
   const barData: BarPoint[] = useMemo(() => {
-    const map = new Map<string, number>()
+    const byDate = new Map<string, TimetableTask[]>()
     for (const t of rangeTasks) {
-      // Filter out secondary tasks that shouldn't be counted in stats
       if (t.is_secondary && !t.count_in_stats) continue
       const dateKey = t.instance_date || t.start_date
       if (!dateKey) continue
       if (dateKey > endStrEffective) continue
-      const h = parseHours(t.start_time, t.end_time)
+      if (!byDate.has(dateKey)) byDate.set(dateKey, [])
+      byDate.get(dateKey)!.push(t)
+    }
+
+    const map = new Map<string, number>()
+    for (const [dateKey, dayTasks] of byDate.entries()) {
+      const h = calculateNonOverlappingHours(dayTasks)
       let bucket = dateKey
       if (viewMode === 'week') bucket = getWeekKey(dateKey)
       if (viewMode === 'month') bucket = getMonthKey(dateKey)
       map.set(bucket, (map.get(bucket) || 0) + h)
     }
+
     const entries = [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))
     let limited = entries
     if (period === 'week') limited = entries.slice(-7)
@@ -297,16 +334,17 @@ export function useStatsData() {
   }, [rangeTasks, palette, endStrEffective])
 
   const aggregateDaily = useCallback((tasks: TimetableTask[]) => {
-    const map = new Map<string, number>()
+    const byDate = new Map<string, TimetableTask[]>()
     for (const t of tasks) {
-      // Filter out secondary tasks that shouldn't be counted in stats
       if (t.is_secondary && !t.count_in_stats) continue
       const dateKey = t.instance_date || t.start_date
       if (!dateKey) continue
-      const h = parseHours(t.start_time, t.end_time)
-      map.set(dateKey, (map.get(dateKey) || 0) + h)
+      if (!byDate.has(dateKey)) byDate.set(dateKey, [])
+      byDate.get(dateKey)!.push(t)
     }
-    const totals = [...map.entries()].sort((a,b)=>a[0].localeCompare(b[0]))
+    const totals = [...byDate.entries()]
+      .map(([date, dayTasks]) => [date, calculateNonOverlappingHours(dayTasks)] as [string, number])
+      .sort((a, b) => a[0].localeCompare(b[0]))
     const totalHours = totals.reduce((s, [,h]) => s + h, 0)
     const highest = totals.reduce((m, [,h]) => Math.max(m, h), 0)
     return { totals, totalHours, highest }
