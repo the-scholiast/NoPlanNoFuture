@@ -7,6 +7,7 @@ import {
     isFirstSlotForTask,
 } from '../utils';
 import { TaskData } from '@/types/todoTypes';
+import { getTaskSpanMinutes } from '@/components/todo/shared/utils/taskSortingUtils';
 
 type TimetableTask = TaskData & {
     start_time: string;
@@ -23,18 +24,8 @@ function sameDay(a: Date, b: Date): boolean {
 
 // Calculate actual work hours
 function calculateActualHours(task: TimetableTask): number {
-    const startTime = task.start_time;
-    const endTime = task.end_time;
-    
-    // Convert time to minutes
-    const [startHours, startMins] = startTime.split(':').map(Number);
-    const [endHours, endMins] = endTime.split(':').map(Number);
-    
-    const startMinutes = startHours * 60 + startMins;
-    const endMinutes = endHours * 60 + endMins;
-    
-    const durationMinutes = endMinutes - startMinutes;
-    return durationMinutes / 60; // Convert to hours
+    const [startMinutes, endMinutes] = getTaskSpanMinutes(task.start_time, task.end_time);
+    return (endMinutes - startMinutes) / 60; // Convert to hours
 }
 
 
@@ -54,10 +45,7 @@ function calculateNonOverlappingHours(tasks: TimetableTask[]): number {
     let currentEnd = 0;
     
     for (const task of sortedTasks) {
-        const [startHours, startMins] = task.start_time.split(':').map(Number);
-        const [endHours, endMins] = task.end_time.split(':').map(Number);
-        const startMinutes = startHours * 60 + startMins;
-        const endMinutes = endHours * 60 + endMins;
+        const [startMinutes, endMinutes] = getTaskSpanMinutes(task.start_time, task.end_time);
         
         if (startMinutes >= currentEnd) {
             // No overlap, add entire task time
@@ -132,10 +120,7 @@ export function useWorkHourTotals(
             let currentEnd = 0;
             
             for (const task of sortedTasks) {
-                const [startHours, startMins] = task.start_time.split(':').map(Number);
-                const [endHours, endMins] = task.end_time.split(':').map(Number);
-                const startMinutes = startHours * 60 + startMins;
-                const endMinutes = endHours * 60 + endMins;
+                const [startMinutes, endMinutes] = getTaskSpanMinutes(task.start_time, task.end_time);
                 
                 if (startMinutes >= currentEnd) {
                     // New session (no overlap with previous)

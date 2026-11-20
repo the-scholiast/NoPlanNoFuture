@@ -23,6 +23,14 @@ export const getTimeInMinutes = (timeString?: string): number => {
   }
 };
 
+// Start/end in minutes; an end earlier than start means the task runs past midnight (end can exceed 1440)
+export const getTaskSpanMinutes = (start?: string, end?: string): [number, number] => {
+  const s = getTimeInMinutes(start);
+  let e = getTimeInMinutes(end);
+  if (e < s) e += 1440;
+  return [s, e];
+};
+
 export const getDateObject = (dateString?: string): Date => {
   if (!dateString) return new Date(0);
   return new Date(dateString);

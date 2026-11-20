@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { AddTaskModalProps, TaskData, CreateTaskData } from '@/types/todoTypes';
 import { transformCreateTaskData } from '@/lib/utils/transformers';
 import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField, SecondaryTaskField } from '../shared/components/TaskFormComponents';
-import { useMultiTaskFormLogic, validateMultipleTasks, useTodoMutations, getRecurringDescription } from '../shared/';
+import { useMultiTaskFormLogic, validateMultipleTasks, confirmOvernightTasks, useTodoMutations, getRecurringDescription } from '../shared/';
 import { useQuery } from '@tanstack/react-query';
 import { todoApi } from '@/lib/api/todos';
 import { todoKeys } from '@/lib/queryKeys';
@@ -108,6 +108,11 @@ export default function AddTaskModal({ open, onOpenChange, onAddTasks, preFilled
 
       if (!validation.isValid) {
         setError(validation.errors.join('\n'));
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!confirmOvernightTasks(tasks)) {
         setIsSubmitting(false);
         return;
       }

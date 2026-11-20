@@ -5,6 +5,7 @@ import { useTheme } from 'next-themes'
 import { useQuery } from '@tanstack/react-query'
 import { timetableApi, type TimetableTask } from '@/lib/api/timetableApi'
 import { formatDateString } from '@/lib/utils/dateUtils'
+import { getTaskSpanMinutes } from '@/components/todo/shared/utils/taskSortingUtils'
 
 export type Period = 'all' | 'year' | 'month' | 'week'
 export type ViewMode = 'day' | 'week' | 'month'
@@ -14,10 +15,8 @@ export interface PieSlice { name: string; value: number; fill: string }
 
 const parseHours = (start?: string, end?: string): number => {
   if (!start || !end) return 0
-  const [sh, sm] = start.split(':').map(Number)
-  const [eh, em] = end.split(':').map(Number)
-  const mins = (eh * 60 + em) - (sh * 60 + sm)
-  return Math.max(0, mins) / 60
+  const [s, e] = getTaskSpanMinutes(start, end)
+  return (e - s) / 60
 }
 
 function calculateNonOverlappingHours(tasks: TimetableTask[]): number {
@@ -34,10 +33,7 @@ function calculateNonOverlappingHours(tasks: TimetableTask[]): number {
   let currentEnd = 0
 
   for (const t of sorted) {
-    const [sh, sm] = t.start_time!.split(':').map(Number)
-    const [eh, em] = t.end_time!.split(':').map(Number)
-    const start = sh * 60 + sm
-    const end = eh * 60 + em
+    const [start, end] = getTaskSpanMinutes(t.start_time, t.end_time)
 
     if (start >= currentEnd) {
       total += (end - start) / 60
@@ -222,13 +218,19 @@ export function useStatsData() {
       byDate.get(dateKey)!.push(t)
     }
 
+    const toBucket = (dateKey: string) =>
+      viewMode === 'week' ? getWeekKey(dateKey) : viewMode === 'month' ? getMonthKey(dateKey) : dateKey
+
+    // Seed every bucket in range with 0 so days/weeks/months without tasks still show
     const map = new Map<string, number>()
+    const [sy, sm, sd] = startStr.split('-').map(Number)
+    for (let d = new Date(sy, sm - 1, sd); formatDateString(d) <= endStrEffective; d.setDate(d.getDate() + 1)) {
+      map.set(toBucket(formatDateString(d)), 0)
+    }
+
     for (const [dateKey, dayTasks] of byDate.entries()) {
-      const h = calculateNonOverlappingHours(dayTasks)
-      let bucket = dateKey
-      if (viewMode === 'week') bucket = getWeekKey(dateKey)
-      if (viewMode === 'month') bucket = getMonthKey(dateKey)
-      map.set(bucket, (map.get(bucket) || 0) + h)
+      const bucket = toBucket(dateKey)
+      map.set(bucket, (map.get(bucket) || 0) + calculateNonOverlappingHours(dayTasks))
     }
 
     const entries = [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))
@@ -237,7 +239,7 @@ export function useStatsData() {
     if (period === 'month') limited = entries.slice(-31)
     if (period === 'all') limited = entries.slice(-60)
     return limited.map(([date, hours]) => ({ date, hours }))
-  }, [rangeTasks, period, endStrEffective, viewMode])
+  }, [rangeTasks, period, startStr, endStrEffective, viewMode])
 
   const pieData: PieSlice[] = useMemo(() => {
     // Map: normalizedKey -> { originalNames: Set, value: number, fill: string }
