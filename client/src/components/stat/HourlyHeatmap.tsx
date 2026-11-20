@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import type { TimetableTask } from '@/lib/api/timetableApi'
+import { getTaskSpanMinutes } from '@/components/todo/shared/utils/taskSortingUtils'
 
 interface Props {
   tasks: TimetableTask[]
@@ -33,15 +34,13 @@ export function HourlyHeatmap({ tasks, isDark, startDate, endDate }: Props) {
         if (dateKey < startDate || dateKey > endDate) return
       }
       
-      const [startHour, startMin] = task.start_time.split(':').map(Number)
-      const [endHour, endMin] = task.end_time.split(':').map(Number)
-      const startMinutes = startHour * 60 + startMin
-      const endMinutes = endHour * 60 + endMin
+      const [startMinutes, endMinutes] = getTaskSpanMinutes(task.start_time, task.end_time)
       
-      // Distribute work time across hours
-      for (let hour = 0; hour < 24; hour++) {
-        const hourStartMinutes = hour * 60
-        const hourEndMinutes = (hour + 1) * 60
+      // Distribute work time across hours (48 so the after-midnight part of overnight tasks wraps to 0-23)
+      for (let h = 0; h < 48; h++) {
+        const hour = h % 24
+        const hourStartMinutes = h * 60
+        const hourEndMinutes = (h + 1) * 60
         
         // Calculate overlap between task and this hour
         const overlapStart = Math.max(startMinutes, hourStartMinutes)

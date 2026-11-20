@@ -1,7 +1,7 @@
 import { formatDateString } from '@/lib/utils/dateUtils';
 import { convertTimeSlotTo24Hour } from './timeUtils';
 import { TaskData } from '@/types/todoTypes';
-import { getTimeInMinutes } from '@/components/todo';
+import { getTaskSpanMinutes, getTimeInMinutes } from '@/components/todo';
 
 // Helper to get tasks for a specific time slot
 export const getTasksForTimeSlot = (
@@ -21,19 +21,13 @@ export const getTasksForTimeSlot = (
 
     if (!task.start_time || !task.end_time) return false;
 
-    const taskStart = task.start_time;
-    const taskEnd = task.end_time;
-
     // Convert slot time to minutes for easier comparison
     const [slotHours, slotMinutes] = slotTime.split(':').map(Number);
     const slotStartMinutes = slotHours * 60 + slotMinutes;
     const slotEndMinutes = slotStartMinutes + 15;
 
-    // Convert task times to minutes
-    const [taskStartHours, taskStartMins] = taskStart.split(':').map(Number);
-    const [taskEndHours, taskEndMins] = taskEnd.split(':').map(Number);
-    const taskStartMinutes = taskStartHours * 60 + taskStartMins;
-    const taskEndMinutes = taskEndHours * 60 + taskEndMins;
+    // ponytail: overnight tasks render on their start day only, clipped at midnight
+    const [taskStartMinutes, taskEndMinutes] = getTaskSpanMinutes(task.start_time, task.end_time);
 
     return taskStartMinutes < slotEndMinutes && taskEndMinutes > slotStartMinutes;
   });
@@ -43,16 +37,10 @@ export const getTasksForTimeSlot = (
 export const getTaskDurationSlots = (task: TaskData) => {
   if (!task.start_time || !task.end_time) return 1;
 
-  const startTime24 = convertTimeSlotTo24Hour(task.start_time);
-  const endTime24 = convertTimeSlotTo24Hour(task.end_time);
+  const [startMinutes, endMinutes] = getTaskSpanMinutes(task.start_time, task.end_time);
 
-  const [startHours, startMins] = startTime24.split(':').map(Number);
-  const [endHours, endMins] = endTime24.split(':').map(Number);
-
-  const startMinutes = startHours * 60 + startMins;
-  const endMinutes = endHours * 60 + endMins;
-
-  const durationMinutes = endMinutes - startMinutes;
+  // Clip at midnight so overnight blocks stay inside the day column
+  const durationMinutes = Math.min(endMinutes, 1440) - startMinutes;
   return Math.ceil(durationMinutes / 15);
 };
 
@@ -109,10 +97,8 @@ const tasksOverlap = (task1: TaskData, task2: TaskData): boolean => {
     return false;
   }
 
-  const task1Start = getTimeInMinutes(task1.start_time);
-  const task1End = getTimeInMinutes(task1.end_time);
-  const task2Start = getTimeInMinutes(task2.start_time);
-  const task2End = getTimeInMinutes(task2.end_time);
+  const [task1Start, task1End] = getTaskSpanMinutes(task1.start_time, task1.end_time);
+  const [task2Start, task2End] = getTaskSpanMinutes(task2.start_time, task2.end_time);
 
   return task1Start < task2End && task2Start < task1End;
 };
