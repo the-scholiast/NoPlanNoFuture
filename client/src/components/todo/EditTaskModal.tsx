@@ -4,7 +4,7 @@ import { Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CreateTaskData, TaskData, EditTaskModalProps } from '@/types/todoTypes';
 import { transformCreateTaskData, updateTaskData } from '@/lib/utils/transformers';
-import { useTodoMutations, useTaskFormLogic, validateEditTask, getRecurringDescription, isRecurringInstance } from './shared/';
+import { useTodoMutations, useTaskFormLogic, validateEditTask, confirmOvernightTasks, getRecurringDescription, isRecurringInstance } from './shared/';
 import { TaskBasicFields, RecurringSection, DateTimeFields, ScheduleField, SecondaryTaskField, TaskFormData } from './shared/components/TaskFormComponents';
 import { useQuery } from '@tanstack/react-query';
 import { todoApi } from '@/lib/api/todos';
@@ -158,6 +158,11 @@ export default function EditTaskModal({ open, onOpenChange, task, onTaskUpdated 
 
       if (!validation.isValid) {
         setError(validation.errors.join('\n'));
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!confirmOvernightTasks([editableTask])) {
         setIsSubmitting(false);
         return;
       }

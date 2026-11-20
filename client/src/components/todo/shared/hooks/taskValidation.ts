@@ -28,17 +28,10 @@ export function validateSingleTask(task: TaskFormData, taskLabel: string = 'Task
     }
   }
 
-  // Time range validation - end time must be after start time on same data
+  // Time range validation - end before start is allowed (runs past midnight, confirmed on save), equal is not
   if (task.start_time && task.end_time) {
-    // If same date or no dates set, validate time order
-    if (!task.start_date || !task.end_date || task.start_date === task.end_date) {
-      // Import the getTimeInMinutes function from taskSortingUtils
-      const startMinutes = getTimeInMinutes(task.start_time);
-      const endMinutes = getTimeInMinutes(task.end_time);
-
-      if (endMinutes <= startMinutes) {
-        errors.push(`${taskLabel}: End time must be after start time when on the same date.`);
-      }
+    if (getTimeInMinutes(task.end_time) === getTimeInMinutes(task.start_time)) {
+      errors.push(`${taskLabel}: End time must be different from start time.`);
     }
   }
 
@@ -142,6 +135,16 @@ export function validateMultipleTasks(tasks: TaskFormData[]): ValidationResult {
     isValid: allErrors.length === 0,
     errors: allErrors
   };
+}
+
+// Ask before saving tasks whose end time is before start time, since that is usually an AM/PM mistake
+export function confirmOvernightTasks(tasks: TaskFormData[]): boolean {
+  const overnight = tasks.filter(t =>
+    t.title.trim() && t.start_time && t.end_time && getTimeInMinutes(t.end_time) < getTimeInMinutes(t.start_time)
+  );
+  if (overnight.length === 0) return true;
+  const list = overnight.map(t => `- ${t.title.trim()}: ${t.start_time} - ${t.end_time}`).join('\n');
+  return window.confirm(`These tasks end before they start, so they will run past midnight:\n${list}\n\nIs that correct? Press Cancel to fix the time (AM/PM).`);
 }
 
 // Simple wrapper for single task editing (used in EditTaskModal)
